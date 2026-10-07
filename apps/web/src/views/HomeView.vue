@@ -1,0 +1,415 @@
+<script setup lang="ts">
+import { List, ListFilter, LocateFixed, Map as MapIcon, MapPin, Plus, WifiOff } from '@lucide/vue';
+import type { Locale, PointCategory } from '@rumbo/route-spec';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import AppButton from '../components/AppButton.vue';
+import ChipGroup from '../components/ChipGroup.vue';
+import EmptyState from '../components/EmptyState.vue';
+import MapFab from '../components/MapFab.vue';
+import RouteCard from '../components/RouteCard.vue';
+import SegmentedControl from '../components/SegmentedControl.vue';
+import SheetFrame from '../components/SheetFrame.vue';
+import ToggleSwitch from '../components/ToggleSwitch.vue';
+import WordMark from '../components/WordMark.vue';
+import { useTexts } from '../i18n/text.ts';
+import { filterMarkers, poiMarkers, routeMarkers } from '../map/explore.ts';
+import { useOnline } from '../services/network.ts';
+import { resolvedTheme as theme } from '../services/theme.ts';
+import { local } from '../services/storage.ts';
+import { useCatalogStore } from '../stores/catalog.ts';
+import { useSettingsStore } from '../stores/settings.ts';
+
+// S01 · Explore: routes as a list or on a map with every curated point and
+// the points of interest (the course's 20+ markers, popups and filter).
+const RouteMap = defineAsyncComponent(() => import('../map/RouteMap.vue'));
+
+const { t, locale } = useI18n();
+const router = useRouter();
+const catalog = useCatalogStore();
+const settings = useSettingsStore();
+const texts = useTexts();
+const online = useOnline();
+
+type View = 'list' | 'map';
+type Filter = 'all' | 'free' | 'challenge' | 'walk' | 'bike';
+const VIEW_KEY = 'rumbo.explore.view';
+const view = ref<View>(local.read(VIEW_KEY) === 'map' ? 'map' : 'list');
+watch(view, (value) => local.write(VIEW_KEY, value));
+const filter = ref<Filter>('all');
+
+const viewOptions = computed(() => [
+  { value: 'list' as View, label: t('home.view.list'), icon: List },
+  { value: 'map' as View, label: t('home.view.map'), icon: MapIcon },
+]);
+const filterOptions = computed(() => [
+  { value: 'all' as Filter, label: t('home.filters.all') },
+  { value: 'free' as Filter, label: t('mode.free') },
+  { value: 'challenge' as Filter, label: t('mode.challenge') },
+  { value: 'walk' as Filter, label: t('activity.walk') },
+  { value: 'bike' as Filter, label: t('activity.bike') },
+]);
+
+const routes = computed(() =>
+  catalog.routes.filter(({ bundle: { spec } }) => {
+    if (filter.value === 'free' || filter.value === 'challenge') return spec.mode === filter.value;
+    if (filter.value === 'walk' || filter.value === 'bike') return spec.activity === filter.value;
+    return true;
+  }),
+);
+
+// ---- map
+const hiddenRoutes = ref<Set<string>>(new Set());
+const showPois = ref(true);
+const categories = ref<Set<PointCategory>>(new Set());
+const filterOpen = ref(false);
+
+const allMarkers = computed(() => {
+  const lang = locale.value as Locale;
+  const translate = t as unknown as (key: string, params?: Record<string, unknown>) => string;
+  return [
+    ...routeMarkers(routes.value, lang, translate),
+    ...poiMarkers(catalog.pois, lang, translate),
+  ];
+});
+const markers = computed(() =>
+  filterMarkers(allMarkers.value, {
+    hiddenRoutes: hiddenRoutes.value,
+    showPois: showPois.value,
+    categories: categories.value,
+  }),
+);
+const usedCategories = computed(() => [...new Set(allMarkers.value.map((m) => m.category))].sort());
+// Opens on the routes; points of interest further out appear when zooming out.
+const fit = computed(() =>
+  routes.value.flatMap((route) => route.bundle.spec.points.map((p) => p.position)),
+);
+
+const mapRef = ref<{ fitTo(): Promise<void> } | null>(null);
+
+function toggleRoute(id: string, on: boolean): void {
+  const next = new Set(hiddenRoutes.value);
+  if (on) next.delete(id);
+  else next.add(id);
+  hiddenRoutes.value = next;
+}
+function toggleCategory(category: PointCategory): void {
+  const next = new Set(categories.value);
+  if (next.has(category)) next.delete(category);
+  else next.add(category);
+  categories.value = next;
+}
+function showAll(): void {
+  hiddenRoutes.value = new Set();
+  showPois.value = true;
+  categories.value = new Set();
+}
+
+function onMarkerAction({ markerId, action }: { markerId: string; action: string }): void {
+  if (action === 'viewRoute')
+    void router.push({ name: 'route', params: { routeId: markerId.split('/')[0] } });
+}
+
+onMounted(() => {
+  void catalog.load();
+  // Warm the map SDK while the user reads the list (PROJECT_PLAN §10.3).
+  const idle = globalThis.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 1500));
+  idle(() => void import('../map/RouteMap.vue'));
+});
+</script>
+
+<template>
+  <main class="home" :class="{ 'home--map': view === 'map' }">
+    <header class="home__top">
+      <WordMark :size="30" />
+      <span class="home__city"><MapPin :size="16" aria-hidden="true" />{{ t('home.city') }}</span>
+    </header>
+    <div class="home__controls">
+      <SegmentedControl v-model="view" :options="viewOptions" :label="t('home.view.label')" />
+      <ChipGroup v-model="filter" :options="filterOptions" :label="t('home.filters.label')" />
+      <p v-if="!online" class="home__offline" role="status">
+        <WifiOff :size="18" aria-hidden="true" />{{ t('explore.offline') }}
+      </p>
+    </div>
+
+    <section v-if="view === 'list'" class="home__list" :aria-busy="catalog.status === 'loading'">
+      <template v-if="catalog.status === 'loading' || catalog.status === 'idle'">
+        <div v-for="n in 2" :key="n" class="skeleton" aria-hidden="true">
+          <div class="skeleton__cover" />
+          <div class="skeleton__line" />
+          <div class="skeleton__line skeleton__line--short" />
+        </div>
+      </template>
+      <EmptyState v-else-if="catalog.status === 'error'" :title="t('explore.error')">
+        <AppButton size="m" @click="catalog.load()">{{ t('common.retry') }}</AppButton>
+      </EmptyState>
+      <EmptyState
+        v-else-if="routes.length === 0"
+        :title="t('explore.empty.title')"
+        :body="t('explore.empty.body')"
+      >
+        <AppButton size="m" @click="router.push('/create')">
+          <template #icon><Plus :size="20" aria-hidden="true" /></template>
+          {{ t('explore.empty.cta') }}
+        </AppButton>
+      </EmptyState>
+      <RouteCard
+        v-for="route in routes"
+        v-else
+        :key="route.id"
+        :route="route"
+        :downloaded="catalog.downloaded.has(route.id)"
+      />
+    </section>
+
+    <section v-else class="home__map">
+      <RouteMap
+        ref="mapRef"
+        :markers="markers"
+        :fit="fit"
+        :theme="theme"
+        :large="settings.sol"
+        :label="t('home.view.map')"
+        @action="onMarkerAction"
+      >
+        <div class="home__fabs">
+          <MapFab :icon="ListFilter" :label="t('filter.open')" @click="filterOpen = true" />
+          <MapFab
+            :icon="LocateFixed"
+            tone="primary"
+            :label="t('run.recenter')"
+            @click="mapRef?.fitTo()"
+          />
+        </div>
+        <div class="legend" :aria-label="t('filter.legend')">
+          <span v-for="route in routes" :key="route.id" class="legend__item">
+            <span
+              class="legend__dot"
+              :style="{ background: route.color, boxShadow: `0 0 0 1px ${route.color}` }"
+            />
+            {{ texts.text(route.bundle.spec.name, route.bundle.spec.locale) }}
+          </span>
+          <span v-if="catalog.pois.length" class="legend__item">
+            <span class="legend__dot legend__dot--poi" />{{ t('filter.places') }}
+          </span>
+        </div>
+      </RouteMap>
+    </section>
+
+    <SheetFrame v-if="filterOpen" @dismiss="filterOpen = false">
+      <div class="panel">
+        <h2 class="t-h2">{{ t('filter.title') }}</h2>
+        <p class="t-small t-muted">
+          {{ t('filter.count', { shown: markers.length, total: allMarkers.length }) }}
+        </p>
+        <h3 class="t-caption t-muted">{{ t('filter.routes') }}</h3>
+        <div v-for="route in routes" :key="route.id" class="panel__row">
+          <span class="legend__dot" :style="{ background: route.color }" />
+          <span class="panel__label">{{
+            texts.text(route.bundle.spec.name, route.bundle.spec.locale)
+          }}</span>
+          <ToggleSwitch
+            :model-value="!hiddenRoutes.has(route.id)"
+            :label="texts.text(route.bundle.spec.name, route.bundle.spec.locale)"
+            @update:model-value="toggleRoute(route.id, $event)"
+          />
+        </div>
+        <div class="panel__row">
+          <span class="legend__dot legend__dot--poi" />
+          <span class="panel__label">{{ t('filter.places') }}</span>
+          <ToggleSwitch v-model="showPois" :label="t('filter.places')" />
+        </div>
+        <h3 class="t-caption t-muted">{{ t('filter.categories') }}</h3>
+        <div class="panel__chips">
+          <button
+            v-for="category in usedCategories"
+            :key="category"
+            type="button"
+            class="panel__chip"
+            :class="{ 'is-on': categories.has(category) }"
+            :aria-pressed="categories.has(category)"
+            @click="toggleCategory(category)"
+          >
+            {{ t(`category.${category}`) }}
+          </button>
+        </div>
+        <div class="panel__actions">
+          <AppButton variant="secondary" size="m" @click="showAll">{{
+            t('filter.showAll')
+          }}</AppButton>
+          <AppButton size="m" @click="filterOpen = false">{{ t('filter.done') }}</AppButton>
+        </div>
+      </div>
+    </SheetFrame>
+  </main>
+</template>
+
+<style scoped>
+.home {
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.home--map {
+  max-width: none;
+  height: calc(100dvh - var(--nav-height) - var(--safe-bottom));
+}
+.home__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(16px + var(--safe-top)) var(--gutter) 12px;
+}
+.home__city {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  margin-left: auto;
+  padding: 0 14px;
+  border: var(--control-border) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font: 600 15px var(--font-ui);
+}
+.home__city svg {
+  color: var(--color-accent);
+}
+.home__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 var(--gutter) 12px;
+}
+.home__offline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font: 500 14px/20px var(--font-ui);
+}
+.home__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 var(--gutter) 24px;
+}
+.home__map {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.home__fabs {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.legend {
+  position: absolute;
+  left: 12px;
+  bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: calc(100% - 96px);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-e2);
+}
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px/16px var(--font-ui);
+}
+.legend__dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+.legend__dot--poi {
+  background: #fff;
+  border-color: #16191d;
+  border-width: 1.5px;
+}
+.skeleton {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.skeleton__cover {
+  aspect-ratio: 16 / 9;
+  background: var(--color-surface-2);
+}
+.skeleton__line {
+  height: 14px;
+  margin: 14px 16px;
+  width: 70%;
+  border-radius: 6px;
+  background: var(--color-surface-2);
+}
+.skeleton__line--short {
+  width: 40%;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px var(--gutter) calc(16px + var(--safe-bottom));
+  overflow-y: auto;
+}
+.panel h3 {
+  margin-top: 8px;
+}
+.panel__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+.panel__label {
+  flex: 1;
+  font: 500 16px/22px var(--font-ui);
+}
+.panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.panel__chip {
+  height: 36px;
+  padding: 0 14px;
+  border: var(--control-border) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font: 600 14px var(--font-ui);
+}
+.panel__chip.is-on {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.panel__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.panel__actions > * {
+  flex: 1;
+}
+</style>

@@ -58,3 +58,4 @@ export {
   resolveContent,
 } from './content.ts';
 export { type RouteBundle, type RouteBundleValidation, validateRouteBundle } from './bundle.ts';
+export { type Poi, type PoiCollection, PoiCollectionSchema, PoiSchema } from './poi.ts';

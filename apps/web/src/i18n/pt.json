@@ -1,0 +1,471 @@
+{
+  "app": {
+    "name": "Rumbo",
+    "tagline": "A rota ganha vida quando chegas."
+  },
+  "common": {
+    "back": "Voltar",
+    "close": "Fechar",
+    "continue": "Continuar",
+    "cancel": "Cancelar",
+    "retry": "Tentar de novo",
+    "loading": "A carregar…",
+    "more": "Mais opções",
+    "readMore": "Ler mais",
+    "readLess": "Ver menos",
+    "done": "Concluído",
+    "comingSoon": "Brevemente"
+  },
+  "nav": {
+    "label": "Navegação principal",
+    "explore": "Explorar",
+    "myRoutes": "As minhas rotas",
+    "create": "Criar",
+    "settings": "Definições"
+  },
+  "lang": {
+    "title": "Escolhe o teu idioma",
+    "hint": "Podes alterá-lo depois nas Definições.",
+    "continue": "Continuar",
+    "names": {
+      "es": "Espanhol",
+      "en": "Inglês",
+      "pt": "Português"
+    }
+  },
+  "onboarding": {
+    "slide1": {
+      "title": "Escolhe uma rota",
+      "body": "Passeios pela cidade e pela natureza, prontos para descobrir ao teu ritmo."
+    },
+    "slide2": {
+      "title": "Caminha: avisamos-te quando chegares",
+      "body": "Guarda o telemóvel. Vibra e toca quando chegas a cada lugar."
+    },
+    "slide3": {
+      "title": "Cada lugar ganha vida",
+      "body": "Histórias, curiosidades e algum desafio em cada paragem."
+    },
+    "next": "Seguinte",
+    "skip": "Saltar",
+    "start": "Começar a explorar"
+  },
+  "consent": {
+    "title": "Estatísticas anónimas",
+    "body": "Ajuda-nos a melhorar com estatísticas anónimas. Nunca guardamos a tua localização.",
+    "accept": "Aceitar",
+    "decline": "Não, obrigado"
+  },
+  "ios": {
+    "install": "Instala o Rumbo para receberes avisos quando chegares",
+    "steps": "Toca em Partilhar e depois em «Adicionar ao ecrã principal»."
+  },
+  "home": {
+    "city": "Leiria",
+    "view": {
+      "label": "Vista",
+      "list": "Lista",
+      "map": "Mapa"
+    },
+    "filters": {
+      "label": "Filtrar rotas",
+      "all": "Todas"
+    }
+  },
+  "explore": {
+    "offline": "Sem ligação. Mostramos-te as rotas descarregadas.",
+    "error": "Não conseguimos carregar as rotas.",
+    "empty": {
+      "title": "Ainda não há rotas nesta zona",
+      "body": "Escolhe os lugares que queres ver e preparamos o guia por ti.",
+      "cta": "Cria a tua"
+    }
+  },
+  "mode": {
+    "free": "Livre",
+    "challenge": "Desafio"
+  },
+  "activity": {
+    "walk": "A pé",
+    "run": "Corrida",
+    "bike": "Bicicleta"
+  },
+  "category": {
+    "monument": "Monumento",
+    "museum": "Museu",
+    "church": "Igreja",
+    "viewpoint": "Miradouro",
+    "nature": "Natureza",
+    "food": "Gastronomia",
+    "culture": "Cultura",
+    "checkpoint": "Checkpoint",
+    "start": "Partida",
+    "finish": "Meta",
+    "other": "Lugar"
+  },
+  "pointState": {
+    "locked": "Bloqueado",
+    "active": "Por visitar",
+    "next": "Seguinte",
+    "reached": "Chegaste",
+    "completed": "Visitado"
+  },
+  "stats": {
+    "points": "{n} ponto | {n} pontos",
+    "timeLimit": "Limite {time}",
+    "score": "{n} pts",
+    "approxHours": "~{h} h",
+    "approxHoursMinutes": "~{h} h {m}",
+    "approxMinutes": "~{m} min"
+  },
+  "route": {
+    "start": "Iniciar rota",
+    "offlineReady": "Disponível sem ligação",
+    "downloading": "A descarregar a rota…",
+    "downloaded": "Descarregada",
+    "rulesTitle": "Regras do desafio",
+    "rules": {
+      "challenge": "Ordem obrigatória · Limite {time} · Passa pelos {n} checkpoints",
+      "challengeNoLimit": "Ordem obrigatória · Passa pelos {n} checkpoints"
+    },
+    "pointsTitle": "Pontos da rota",
+    "anyOrder": "{n} · por qualquer ordem",
+    "inOrder": "{n} · por ordem",
+    "fromPrevious": "{distance} desde o anterior",
+    "notFound": "Não encontrámos esta rota.",
+    "simulate": "Experimentar em simulação",
+    "createdByYou": "Criada por ti",
+    "fullscreen": "Ampliar o mapa",
+    "exitFullscreen": "Reduzir o mapa",
+    "noCover": "Sem foto"
+  },
+  "popup": {
+    "distance": "a {distance} de ti",
+    "viewRoute": "Ver rota",
+    "viewCard": "Ver ficha",
+    "goHere": "Ir para este ponto",
+    "poi": "Ponto de interesse",
+    "wikipedia": "Ler na Wikipédia",
+    "orderOf": "Ponto {n}"
+  },
+  "filter": {
+    "open": "Filtrar o mapa",
+    "title": "Filtrar o mapa",
+    "routes": "Rotas",
+    "places": "Pontos de interesse",
+    "categories": "Categorias",
+    "modes": "Modo",
+    "showAll": "Mostrar tudo",
+    "done": "Concluído",
+    "legend": "Legenda",
+    "count": "{shown} de {total} marcadores"
+  },
+  "prepare": {
+    "title": "Antes de começar",
+    "intro": "Assim podes levar o telemóvel no bolso: avisamos-te quando chegares a cada lugar.",
+    "required": "Obrigatório",
+    "recommended": "Recomendado",
+    "location": {
+      "title": "Localização",
+      "body": "Para sabermos quando chegas a cada lugar.",
+      "allow": "Permitir localização",
+      "granted": "Localização permitida",
+      "denied": "A localização está bloqueada. Ativa-a nas definições do navegador para este site e tenta de novo.",
+      "simulated": "Modo de simulação: não é preciso a tua localização real."
+    },
+    "notifications": {
+      "title": "Avisos",
+      "body": "Avisamos-te mesmo com a app minimizada.",
+      "allow": "Ativar",
+      "granted": "Ativados",
+      "denied": "Bloqueados no navegador",
+      "unsupported": "Este navegador não permite avisos."
+    },
+    "sound": {
+      "title": "Som e vibração",
+      "body": "Confirma que ouves o aviso de chegada.",
+      "test": "Testar som"
+    },
+    "wakeLock": {
+      "title": "Ecrã ligado",
+      "body": "A localização só funciona com o ecrã ligado.",
+      "unsupported": "Este navegador não o consegue manter ligado: toca-lhe de vez em quando."
+    },
+    "download": {
+      "title": "Conteúdo descarregado",
+      "ready": "Pronto a usar sem ligação",
+      "failed": "Não foi possível descarregar a rota."
+    },
+    "go": "Começar",
+    "ready": "Tudo pronto. Guarda o telemóvel e caminha.",
+    "needLocation": "Tens de permitir a localização",
+    "downloading": "A terminar a transferência…"
+  },
+  "run": {
+    "hud": {
+      "next": "Seguinte",
+      "nearest": "Mais próximo",
+      "inZone": "Na zona",
+      "counter": "{n}/{total}",
+      "choose": "Escolher outro ponto",
+      "eta": {
+        "walk": "~{time} a pé",
+        "run": "~{time} a correr",
+        "bike": "~{time} de bicicleta"
+      },
+      "allDone": "Todos os pontos visitados",
+      "waiting": "À espera da tua posição…"
+    },
+    "approaching": "Estás perto de {name}",
+    "backOnTrack": "De volta à rota!",
+    "confirming": "A confirmar a chegada…",
+    "manualCheckIn": "Estou aqui",
+    "gps": {
+      "waiting": "À procura de sinal…",
+      "weak": "Sinal de GPS fraco. Vai para um espaço aberto.",
+      "weakShort": "GPS fraco",
+      "lost": "Sem sinal de GPS",
+      "denied": "Localização bloqueada",
+      "good": "GPS bom"
+    },
+    "pause": "Pausar",
+    "recenter": "Recentrar",
+    "simulation": "Simulação",
+    "progress": "{completed} de {total}",
+    "elapsedOf": "{elapsed} / {limit}",
+    "pointsList": "Pontos",
+    "visitedAt": "Visitado às {time}",
+    "exit": {
+      "title": "Sair do mapa?",
+      "body": "A rota continua ativa.",
+      "yes": "Sair",
+      "no": "Ficar"
+    },
+    "noRun": "Não há nenhum percurso em curso.",
+    "openRun": "Voltar ao percurso",
+    "distanceTo": "{distance} até {name}",
+    "arrivedAt": "Chegaste a {name}"
+  },
+  "arrival": {
+    "label": "Chegaste · Ponto {n} de {total}",
+    "continue": "Continuar rota",
+    "facts": "Curiosidades",
+    "tip": "Dica",
+    "aiBadge": "Gerado com IA · Fontes: {sources}",
+    "sources": "Fontes",
+    "credit": "Foto: {credit}",
+    "menu": "Mais opções",
+    "pause": "Pausar percurso",
+    "end": "Terminar percurso"
+  },
+  "quiz": {
+    "label": "Pergunta rápida · +{points} pts",
+    "correct": "Certo!",
+    "wrong": "Quase. Era {answer}.",
+    "points": "+{points} pts"
+  },
+  "video": {
+    "label": "Vídeo",
+    "unavailable": "Vídeo indisponível",
+    "play": "Reproduzir"
+  },
+  "comingSoon": {
+    "title": "Brevemente",
+    "body": "Aqui vais poder ver este lugar em 3D.",
+    "back": "Voltar à rota"
+  },
+  "errorSheet": {
+    "PERMISSION_DENIED": {
+      "title": "A localização está bloqueada",
+      "body": "Sem localização não sabemos quando chegas. Ativa-a nas definições do navegador para este site e toca em Tentar de novo."
+    },
+    "POSITION_UNAVAILABLE": {
+      "title": "Não encontramos a tua posição",
+      "body": "Vai para um espaço aberto e confirma que a localização do telemóvel está ativa."
+    },
+    "TIMEOUT": {
+      "title": "A localização está a demorar demasiado",
+      "body": "Confirma que a localização do telemóvel está ativa e tenta de novo."
+    },
+    "UNSUPPORTED": {
+      "title": "Este navegador não dá a localização",
+      "body": "Abre o Rumbo no Chrome ou no Safari atualizados, ou usa o modo de simulação."
+    },
+    "retry": "Tentar de novo"
+  },
+  "decision": {
+    "deviation": {
+      "title": "Afastaste-te da rota",
+      "body": "Estás a {distance} do caminho para {name}.",
+      "primary": "Voltar à rota"
+    },
+    "idle": {
+      "title": "Ainda estás aí?",
+      "body": "Estás há {minutes} min no mesmo sítio.",
+      "primary": "Continuar"
+    },
+    "outOfOrder": {
+      "title": "Este não é o ponto seguinte",
+      "body": "Primeiro tens de passar por {name}.",
+      "primary": "Ir para {name}"
+    },
+    "timeout": {
+      "title": "O tempo acabou",
+      "body": "Podes continuar sem cronómetro oficial.",
+      "primary": "Continuar sem tempo"
+    },
+    "continue": "Continuar",
+    "pause": "Pausar",
+    "end": "Terminar percurso"
+  },
+  "pause": {
+    "title": "Em pausa",
+    "body": "O cronómetro está parado. Não te avisamos quando chegares.",
+    "resume": "Retomar",
+    "end": "Terminar percurso"
+  },
+  "end": {
+    "confirm": {
+      "title": "Terminar o percurso?",
+      "body": "Guardamos o que já fizeste.",
+      "yes": "Terminar",
+      "no": "Continuar"
+    }
+  },
+  "summary": {
+    "finished": "Rota concluída!",
+    "cancelled": "Percurso terminado",
+    "subtitle": "{route} · {when}",
+    "time": "Tempo",
+    "distance": "Distância",
+    "points": "Pontos",
+    "score": "Pontuação",
+    "speed": "Velocidade média",
+    "visitedAt": "Chegada às {time}",
+    "notVisited": "Por visitar",
+    "repeat": "Repetir",
+    "otherRoutes": "Ver outras rotas",
+    "none": "Ainda não terminaste nenhum percurso."
+  },
+  "recover": {
+    "title": "Tens um percurso a meio",
+    "body": "{route} · {completed} de {total} · {time}",
+    "continue": "Continuar",
+    "discard": "Descartar",
+    "changed": "Esta rota foi atualizada. Começa de novo para veres as alterações."
+  },
+  "notify": {
+    "arrive": "📍 Chegaste a {name}",
+    "tapToOpen": "Toca para ver",
+    "outOfOrder": "Este não é o ponto seguinte",
+    "deviation": "Afastaste-te da rota",
+    "idle": "Ainda estás na rota?",
+    "timeout": "O tempo acabou",
+    "finish": "🏁 Rota concluída!",
+    "generic": "Novidades na tua rota"
+  },
+  "redirect": {
+    "title": "Vais abrir um site externo",
+    "body": "{label} · {host}",
+    "open": "Abrir",
+    "later": "Agora não"
+  },
+  "myRoutes": {
+    "title": "As minhas rotas",
+    "empty": {
+      "title": "Cria a tua primeira rota",
+      "body": "Escolhe os lugares que queres ver e preparamos um guia que ganha vida quando chegas.",
+      "cta": "Criar rota"
+    }
+  },
+  "create": {
+    "title": "Criar rota",
+    "soon": {
+      "title": "O criador de rotas chega em breve",
+      "body": "Vais poder escolher os teus lugares, ordená-los e preparar as fichas com IA."
+    }
+  },
+  "settings": {
+    "title": "Definições",
+    "sections": {
+      "alerts": "Avisos",
+      "screen": "Ecrã",
+      "general": "Geral",
+      "privacy": "Privacidade",
+      "demo": "Demonstração",
+      "about": "Sobre"
+    },
+    "sound": "Som",
+    "vibration": "Vibração",
+    "notifications": {
+      "label": "Notificações",
+      "enable": "Ativar",
+      "granted": "Ativadas",
+      "denied": "Bloqueadas no navegador",
+      "unsupported": "Indisponíveis"
+    },
+    "theme": {
+      "label": "Tema",
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Escuro"
+    },
+    "sol": {
+      "label": "Alto contraste «Sol»",
+      "hint": "Mais contraste e textos maiores para usar ao sol."
+    },
+    "language": {
+      "label": "Idioma",
+      "hint": "As fichas já geradas com IA ficam no idioma em que foram criadas."
+    },
+    "units": {
+      "label": "Unidades",
+      "metric": "Quilómetros",
+      "imperial": "Milhas"
+    },
+    "analytics": {
+      "label": "Estatísticas anónimas",
+      "hint": "Nunca guardamos a tua localização."
+    },
+    "clearData": {
+      "label": "Apagar os meus dados locais",
+      "title": "Apagar os teus dados locais?",
+      "body": "As tuas definições, os percursos guardados e as rotas descarregadas vão ser apagados deste dispositivo.",
+      "yes": "Apagar",
+      "no": "Cancelar"
+    },
+    "simulation": {
+      "label": "Modo de simulação",
+      "hint": "Para demonstrações: a tua localização é simulada e aparece a roxo."
+    },
+    "version": "Versão {version}",
+    "credits": "Mapas: Esri / ArcGIS. Textos e imagens: Wikipédia e Wikimedia Commons. Dados: Wikidata e © contribuidores do OpenStreetMap."
+  },
+  "sim": {
+    "banner": "Modo de simulação: a tua localização é simulada",
+    "title": "Simulação",
+    "tapHint": "Toca no mapa para te moveres.",
+    "walkNext": "Caminhar até ao ponto seguinte",
+    "speed": "Velocidade",
+    "weakGps": "GPS fraco",
+    "badge": "SIM"
+  },
+  "offline": {
+    "banner": "Sem ligação"
+  },
+  "content": {
+    "fallbackLanguage": "Conteúdo disponível em {language}"
+  },
+  "units": {
+    "kmh": "{value} km/h",
+    "mph": "{value} mph"
+  },
+  "notFound": {
+    "title": "Esta página não existe",
+    "cta": "Ir para Explorar"
+  },
+  "time": {
+    "today": "hoje, {time}",
+    "date": "{date}, {time}"
+  }
+}

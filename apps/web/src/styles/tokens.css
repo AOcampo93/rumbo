@@ -1,0 +1,144 @@
+/* Design tokens from docs/DESIGN.md §5. Components only read these variables,
+   so the light, dark and high-contrast "Sol" themes are one attribute away:
+   <html data-theme="light|dark" data-contrast="sol">. */
+
+:root {
+  /* Palette "Atlántico, Azulejo y Terracota" (light). */
+  --color-bg: #f7f3ec;
+  --color-surface: #ffffff;
+  --color-surface-2: #efe9de;
+  --color-border: #e2dacb;
+  --color-text: #16191d;
+  --color-text-muted: #5b6470;
+  --color-primary: #1e4fa3;
+  --color-primary-hover: #183f82;
+  --color-secondary: #0b7a75;
+  --color-accent: #c4491f;
+  --color-accent-soft: #f6d3c4;
+  --color-success: #1a7f45;
+  --color-warning: #8a5a00;
+  --color-danger: #c0362c;
+  --color-locked: #8a94a0;
+  --color-user: #2f80ed;
+  --color-sim: #7c3aed;
+
+  /* Support tokens (from the mockups). */
+  --color-on-primary: #ffffff;
+  --color-on-accent: #ffffff;
+  --color-free-soft: #d7ecea;
+  --color-free-text: #0b6b66;
+  --color-challenge-soft: #f6d3c4;
+  --color-challenge-text: #a33a12;
+  --color-success-soft: #ddf0e4;
+  --color-danger-soft: #f8dedb;
+  --color-warning-bg: #fff1cc;
+  --color-sim-soft: #ede5fd;
+  --color-scrim: rgba(22, 25, 29, 0.45);
+
+  /* Route colours on the Explore map (always with a legend). */
+  --route-1: #1e4fa3;
+  --route-2: #0b7a75;
+  --route-3: #c4491f;
+  --route-4: #6d4aa8;
+  --route-5: #1a7f45;
+
+  /* Type. */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Spacing (base 4) and layout. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --gutter: 16px;
+  --nav-height: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Radii. */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Elevation. */
+  --shadow-e1: 0 1px 2px rgba(22, 25, 29, 0.08);
+  --shadow-e2: 0 6px 18px rgba(22, 25, 29, 0.12);
+  --shadow-e3: 0 16px 40px rgba(22, 25, 29, 0.18);
+
+  /* Motion. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-sheet: 360ms;
+  --ease-sheet: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Controls: 48 px everywhere, 56 px while running (gloves, bikes). */
+  --control-m: 48px;
+  --control-l: 56px;
+  --control-border: 1px;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #0f1318;
+  --color-surface: #171c22;
+  --color-surface-2: #1f262e;
+  --color-border: #2c343e;
+  --color-text: #eef1f4;
+  --color-text-muted: #a3adb8;
+  --color-primary: #8db0f2;
+  --color-primary-hover: #a9c4f5;
+  --color-secondary: #3fc1b7;
+  --color-accent: #f2875a;
+  --color-accent-soft: #3a2219;
+  --color-success: #4cc38a;
+  --color-warning: #f2c14e;
+  --color-danger: #ff7a6e;
+  --color-locked: #6b7581;
+  --color-user: #4a9bff;
+  --color-sim: #a78bfa;
+
+  --color-on-primary: #0f1318;
+  --color-on-accent: #0f1318;
+  --color-free-soft: #12302e;
+  --color-free-text: #3fc1b7;
+  --color-challenge-soft: #3a2219;
+  --color-challenge-text: #f2875a;
+  --color-success-soft: #12301f;
+  --color-danger-soft: #3a1a17;
+  --color-warning-bg: #2e2610;
+  --color-sim-soft: #2a2142;
+  --color-scrim: rgba(0, 0, 0, 0.6);
+
+  --shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-e2: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-e3: 0 16px 40px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
+
+/* High contrast "Sol", for bright sunlight (Settings → Screen). */
+:root[data-contrast='sol'] {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f1f1;
+  --color-border: #000000;
+  --color-text: #000000;
+  --color-text-muted: #1f1f1f;
+  --color-primary: #0b3a80;
+  --color-primary-hover: #082b60;
+  --color-accent: #a33a12;
+  --color-on-primary: #ffffff;
+  --color-on-accent: #ffffff;
+  --control-border: 2px;
+  color-scheme: light;
+}

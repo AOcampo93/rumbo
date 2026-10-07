@@ -11,6 +11,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck && tsc -p scripts/tsconfig.json",
     "validate:routes": "tsx scripts/validate-routes.ts",
+    "data:pois": "tsx scripts/fetch-pois.ts",
     "test": "pnpm -r test",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@rumbo/event-system": "workspace:*",
+    "@rumbo/geo-utils": "workspace:*",
     "@rumbo/route-builder": "workspace:*",
     "@rumbo/route-spec": "workspace:*",
     "@types/node": "^24.19.1",

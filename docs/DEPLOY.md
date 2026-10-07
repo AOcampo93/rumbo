@@ -16,7 +16,7 @@ Todo vive en el proyecto **Rumbo** de Coolify (entorno `production`). El VPS alo
 
 - **`main`**: desarrollo. La CI (GitHub Actions) corre en cada push: typecheck, tests, build y las dos imágenes Docker.
 - **`production`**: lo que está desplegado. Coolify despliega automáticamente cada push a esta rama.
-- **Watch paths:** cada app solo se redespliega si cambian sus archivos (`apps/web/**` o `apps/api/**`), `packages/**`, el lockfile, la configuración del workspace o `.dockerignore`. La misma lista está en `scripts/deploy-prod.sh`: si cambia en Coolify, hay que cambiarla también ahí.
+- **Watch paths:** cada app solo se redespliega si cambian sus archivos (`apps/web/**` o `apps/api/**`), `packages/**`, el lockfile, la configuración del workspace o `.dockerignore`. La web además incluye `data/**`, porque empaqueta las rutas curadas y los lugares de interés. La misma lista está en `scripts/deploy-prod.sh`: si cambia en Coolify, hay que cambiarla también ahí.
 - **Solo se despliega cuando lo pide el responsable del proyecto.**
 - **Si se borra y se recrea la rama `production`**, el webhook de una rama nueva no trae archivos cambiados y Coolify no despliega. Ese primer despliegue se lanza desde Coolify (botón *Deploy* o `GET /api/v1/deploy?uuid=…`).
 
@@ -90,3 +90,4 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] Primer despliegue de `rumbo-api` y `rumbo-web` (2026-10-07): HTTPS de Let's Encrypt, API con la BD conectada y commit servido verificado.
 - [x] Backups programados de `rumbo-db` (diarios) en Coolify (2026-10-07). Ver «Copias de seguridad».
 - [ ] Copia de los backups fuera del VPS (S3).
+- [ ] Añadir `data/**` a las watch paths de `rumbo-web` en Coolify (el script ya lo tiene en cuenta). Se hará en el próximo despliegue.

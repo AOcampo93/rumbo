@@ -1,0 +1,471 @@
+{
+  "app": {
+    "name": "Rumbo",
+    "tagline": "The route comes alive when you arrive."
+  },
+  "common": {
+    "back": "Back",
+    "close": "Close",
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "loading": "Loading…",
+    "more": "More options",
+    "readMore": "Read more",
+    "readLess": "Show less",
+    "done": "Done",
+    "comingSoon": "Coming soon"
+  },
+  "nav": {
+    "label": "Main navigation",
+    "explore": "Explore",
+    "myRoutes": "My routes",
+    "create": "Create",
+    "settings": "Settings"
+  },
+  "lang": {
+    "title": "Choose your language",
+    "hint": "You can change it later in Settings.",
+    "continue": "Continue",
+    "names": {
+      "es": "Spanish",
+      "en": "English",
+      "pt": "Portuguese"
+    }
+  },
+  "onboarding": {
+    "slide1": {
+      "title": "Pick a route",
+      "body": "Walks around the city and out in nature, ready to explore at your own pace."
+    },
+    "slide2": {
+      "title": "Walk: we'll tell you when you arrive",
+      "body": "Keep your phone in your pocket. It buzzes and chimes at every stop."
+    },
+    "slide3": {
+      "title": "Every place comes alive",
+      "body": "Stories, fun facts and the odd challenge at each stop."
+    },
+    "next": "Next",
+    "skip": "Skip",
+    "start": "Start exploring"
+  },
+  "consent": {
+    "title": "Anonymous statistics",
+    "body": "Help us improve with anonymous statistics. We never store your location.",
+    "accept": "Accept",
+    "decline": "No, thanks"
+  },
+  "ios": {
+    "install": "Install Rumbo to get alerts when you arrive",
+    "steps": "Tap Share, then “Add to Home Screen”."
+  },
+  "home": {
+    "city": "Leiria",
+    "view": {
+      "label": "View",
+      "list": "List",
+      "map": "Map"
+    },
+    "filters": {
+      "label": "Filter routes",
+      "all": "All"
+    }
+  },
+  "explore": {
+    "offline": "You're offline. Here are your downloaded routes.",
+    "error": "We couldn't load the routes.",
+    "empty": {
+      "title": "No routes in this area yet",
+      "body": "Pick the places you want to see and we'll put the guide together for you.",
+      "cta": "Create your own"
+    }
+  },
+  "mode": {
+    "free": "Free",
+    "challenge": "Challenge"
+  },
+  "activity": {
+    "walk": "Walk",
+    "run": "Run",
+    "bike": "Bike"
+  },
+  "category": {
+    "monument": "Monument",
+    "museum": "Museum",
+    "church": "Church",
+    "viewpoint": "Viewpoint",
+    "nature": "Nature",
+    "food": "Food",
+    "culture": "Culture",
+    "checkpoint": "Checkpoint",
+    "start": "Start",
+    "finish": "Finish",
+    "other": "Place"
+  },
+  "pointState": {
+    "locked": "Locked",
+    "active": "To visit",
+    "next": "Next",
+    "reached": "You're here",
+    "completed": "Visited"
+  },
+  "stats": {
+    "points": "{n} point | {n} points",
+    "timeLimit": "Limit {time}",
+    "score": "{n} pts",
+    "approxHours": "~{h} h",
+    "approxHoursMinutes": "~{h} h {m} min",
+    "approxMinutes": "~{m} min"
+  },
+  "route": {
+    "start": "Start route",
+    "offlineReady": "Available offline",
+    "downloading": "Downloading the route…",
+    "downloaded": "Downloaded",
+    "rulesTitle": "Challenge rules",
+    "rules": {
+      "challenge": "Fixed order · Limit {time} · Pass all {n} checkpoints",
+      "challengeNoLimit": "Fixed order · Pass all {n} checkpoints"
+    },
+    "pointsTitle": "Route stops",
+    "anyOrder": "{n} · in any order",
+    "inOrder": "{n} · in order",
+    "fromPrevious": "{distance} from the previous one",
+    "notFound": "We couldn't find this route.",
+    "simulate": "Try it in simulation",
+    "createdByYou": "Created by you",
+    "fullscreen": "Expand the map",
+    "exitFullscreen": "Shrink the map",
+    "noCover": "No photo"
+  },
+  "popup": {
+    "distance": "{distance} away",
+    "viewRoute": "View route",
+    "viewCard": "View card",
+    "goHere": "Go to this stop",
+    "poi": "Point of interest",
+    "wikipedia": "Read on Wikipedia",
+    "orderOf": "Stop {n}"
+  },
+  "filter": {
+    "open": "Filter the map",
+    "title": "Filter the map",
+    "routes": "Routes",
+    "places": "Points of interest",
+    "categories": "Categories",
+    "modes": "Mode",
+    "showAll": "Show everything",
+    "done": "Done",
+    "legend": "Legend",
+    "count": "{shown} of {total} markers"
+  },
+  "prepare": {
+    "title": "Before you start",
+    "intro": "Then you can keep your phone in your pocket: we'll let you know when you reach each place.",
+    "required": "Required",
+    "recommended": "Recommended",
+    "location": {
+      "title": "Location",
+      "body": "So we know when you reach each place.",
+      "allow": "Allow location",
+      "granted": "Location allowed",
+      "denied": "Location is blocked. Turn it on in your browser's settings for this site and try again.",
+      "simulated": "Simulation mode: your real location isn't needed."
+    },
+    "notifications": {
+      "title": "Alerts",
+      "body": "We'll alert you even when the app is minimised.",
+      "allow": "Turn on",
+      "granted": "On",
+      "denied": "Blocked in the browser",
+      "unsupported": "This browser doesn't allow alerts."
+    },
+    "sound": {
+      "title": "Sound and vibration",
+      "body": "Check that you can hear the arrival alert.",
+      "test": "Test sound"
+    },
+    "wakeLock": {
+      "title": "Screen on",
+      "body": "Location only works while the screen is on.",
+      "unsupported": "This browser can't keep it on: tap it now and then."
+    },
+    "download": {
+      "title": "Content downloaded",
+      "ready": "Ready to use offline",
+      "failed": "We couldn't download the route."
+    },
+    "go": "Start",
+    "ready": "All set. Pocket your phone and walk.",
+    "needLocation": "You need to allow location",
+    "downloading": "Finishing the download…"
+  },
+  "run": {
+    "hud": {
+      "next": "Next",
+      "nearest": "Nearest",
+      "inZone": "You're there",
+      "counter": "{n}/{total}",
+      "choose": "Choose another stop",
+      "eta": {
+        "walk": "~{time} walking",
+        "run": "~{time} running",
+        "bike": "~{time} by bike"
+      },
+      "allDone": "All stops visited",
+      "waiting": "Waiting for your position…"
+    },
+    "approaching": "You're close to {name}",
+    "backOnTrack": "Back on the route!",
+    "confirming": "Confirming arrival…",
+    "manualCheckIn": "I'm here",
+    "gps": {
+      "waiting": "Looking for a signal…",
+      "weak": "Weak GPS signal. Move to an open space.",
+      "weakShort": "Weak GPS",
+      "lost": "No GPS signal",
+      "denied": "Location blocked",
+      "good": "GPS is good"
+    },
+    "pause": "Pause",
+    "recenter": "Recenter",
+    "simulation": "Simulation",
+    "progress": "{completed} of {total}",
+    "elapsedOf": "{elapsed} / {limit}",
+    "pointsList": "Stops",
+    "visitedAt": "Visited at {time}",
+    "exit": {
+      "title": "Leave the map?",
+      "body": "The route stays active.",
+      "yes": "Leave",
+      "no": "Stay"
+    },
+    "noRun": "There's no route in progress.",
+    "openRun": "Back to the route",
+    "distanceTo": "{distance} to {name}",
+    "arrivedAt": "You've arrived at {name}"
+  },
+  "arrival": {
+    "label": "You've arrived · Stop {n} of {total}",
+    "continue": "Continue route",
+    "facts": "Fun facts",
+    "tip": "Tip",
+    "aiBadge": "Generated with AI · Sources: {sources}",
+    "sources": "Sources",
+    "credit": "Photo: {credit}",
+    "menu": "More options",
+    "pause": "Pause route",
+    "end": "End route"
+  },
+  "quiz": {
+    "label": "Quick question · +{points} pts",
+    "correct": "Correct!",
+    "wrong": "Close. It was {answer}.",
+    "points": "+{points} pts"
+  },
+  "video": {
+    "label": "Video",
+    "unavailable": "Video not available",
+    "play": "Play"
+  },
+  "comingSoon": {
+    "title": "Coming soon",
+    "body": "You'll be able to see this place in 3D here.",
+    "back": "Back to the route"
+  },
+  "errorSheet": {
+    "PERMISSION_DENIED": {
+      "title": "Location is blocked",
+      "body": "Without your location we can't tell when you arrive. Turn it on in your browser's settings for this site and tap Try again."
+    },
+    "POSITION_UNAVAILABLE": {
+      "title": "We can't find your position",
+      "body": "Move to an open space and check that location is on on your phone."
+    },
+    "TIMEOUT": {
+      "title": "Location is taking too long",
+      "body": "Check that location is on on your phone and try again."
+    },
+    "UNSUPPORTED": {
+      "title": "This browser doesn't share your location",
+      "body": "Open Rumbo in an up-to-date Chrome or Safari, or use simulation mode."
+    },
+    "retry": "Try again"
+  },
+  "decision": {
+    "deviation": {
+      "title": "You've left the route",
+      "body": "You're {distance} from the way to {name}.",
+      "primary": "Back to the route"
+    },
+    "idle": {
+      "title": "Still there?",
+      "body": "You've been in the same spot for {minutes} min.",
+      "primary": "Continue"
+    },
+    "outOfOrder": {
+      "title": "This isn't the next stop",
+      "body": "First you need to go to {name}.",
+      "primary": "Go to {name}"
+    },
+    "timeout": {
+      "title": "Time's up",
+      "body": "You can carry on without the official clock.",
+      "primary": "Continue without time"
+    },
+    "continue": "Continue",
+    "pause": "Pause",
+    "end": "End route"
+  },
+  "pause": {
+    "title": "Paused",
+    "body": "The clock is stopped. We won't alert you when you arrive.",
+    "resume": "Resume",
+    "end": "End route"
+  },
+  "end": {
+    "confirm": {
+      "title": "End the route?",
+      "body": "We'll keep what you've done so far.",
+      "yes": "End",
+      "no": "Keep going"
+    }
+  },
+  "summary": {
+    "finished": "Route complete!",
+    "cancelled": "Route ended",
+    "subtitle": "{route} · {when}",
+    "time": "Time",
+    "distance": "Distance",
+    "points": "Stops",
+    "score": "Score",
+    "speed": "Average speed",
+    "visitedAt": "Arrived at {time}",
+    "notVisited": "Not visited",
+    "repeat": "Do it again",
+    "otherRoutes": "See other routes",
+    "none": "You haven't finished a route yet."
+  },
+  "recover": {
+    "title": "You have a route in progress",
+    "body": "{route} · {completed} of {total} · {time}",
+    "continue": "Continue",
+    "discard": "Discard",
+    "changed": "This route has been updated. Start again to see the changes."
+  },
+  "notify": {
+    "arrive": "📍 You've arrived at {name}",
+    "tapToOpen": "Tap to see",
+    "outOfOrder": "This isn't the next stop",
+    "deviation": "You've left the route",
+    "idle": "Still on the route?",
+    "timeout": "Time's up",
+    "finish": "🏁 Route complete!",
+    "generic": "News on your route"
+  },
+  "redirect": {
+    "title": "You're about to open an external website",
+    "body": "{label} · {host}",
+    "open": "Open",
+    "later": "Not now"
+  },
+  "myRoutes": {
+    "title": "My routes",
+    "empty": {
+      "title": "Create your first route",
+      "body": "Pick the places you want to see and we'll prepare a guide that comes alive when you arrive.",
+      "cta": "Create route"
+    }
+  },
+  "create": {
+    "title": "Create route",
+    "soon": {
+      "title": "The route creator is coming soon",
+      "body": "You'll pick your places, put them in order and prepare their cards with AI."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "sections": {
+      "alerts": "Alerts",
+      "screen": "Screen",
+      "general": "General",
+      "privacy": "Privacy",
+      "demo": "Demo",
+      "about": "About"
+    },
+    "sound": "Sound",
+    "vibration": "Vibration",
+    "notifications": {
+      "label": "Notifications",
+      "enable": "Turn on",
+      "granted": "On",
+      "denied": "Blocked in the browser",
+      "unsupported": "Not available"
+    },
+    "theme": {
+      "label": "Theme",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "sol": {
+      "label": "“Sol” high contrast",
+      "hint": "More contrast and larger text for bright sunlight."
+    },
+    "language": {
+      "label": "Language",
+      "hint": "Cards already generated with AI stay in their language."
+    },
+    "units": {
+      "label": "Units",
+      "metric": "Kilometres",
+      "imperial": "Miles"
+    },
+    "analytics": {
+      "label": "Anonymous statistics",
+      "hint": "We never store your location."
+    },
+    "clearData": {
+      "label": "Delete my local data",
+      "title": "Delete your local data?",
+      "body": "Your settings, saved routes in progress and downloaded routes will be removed from this device.",
+      "yes": "Delete",
+      "no": "Cancel"
+    },
+    "simulation": {
+      "label": "Simulation mode",
+      "hint": "For demos: your location is simulated and shown in purple."
+    },
+    "version": "Version {version}",
+    "credits": "Maps: Esri / ArcGIS. Text and images: Wikipedia and Wikimedia Commons. Data: Wikidata and © OpenStreetMap contributors."
+  },
+  "sim": {
+    "banner": "Simulation mode: your location is simulated",
+    "title": "Simulation",
+    "tapHint": "Tap the map to move.",
+    "walkNext": "Walk to the next stop",
+    "speed": "Speed",
+    "weakGps": "Weak GPS",
+    "badge": "SIM"
+  },
+  "offline": {
+    "banner": "You're offline"
+  },
+  "content": {
+    "fallbackLanguage": "Content available in {language}"
+  },
+  "units": {
+    "kmh": "{value} km/h",
+    "mph": "{value} mph"
+  },
+  "notFound": {
+    "title": "This page doesn't exist",
+    "cta": "Go to Explore"
+  },
+  "time": {
+    "today": "today, {time}",
+    "date": "{date}, {time}"
+  }
+}

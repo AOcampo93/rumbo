@@ -1,0 +1,592 @@
+{
+  "id": "leiria",
+  "name": {
+    "es": "Leiria",
+    "en": "Leiria",
+    "pt": "Leiria"
+  },
+  "locale": "pt",
+  "source": "wikidata",
+  "license": "CC0 1.0 (Wikidata); images: see each credit and licence (Wikimedia Commons)",
+  "generatedAt": "2026-10-07T22:49:09.225Z",
+  "pois": [
+    {
+      "id": "Q10283294",
+      "name": {
+        "pt": "Fonte Luminosa"
+      },
+      "position": {
+        "lat": 39.743638,
+        "lng": -8.806944
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/9/91/Leiria_-_Portugal_%28267203459%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "alt": {
+          "pt": "Fonte Luminosa"
+        },
+        "credit": "Vitor Oliveira from Torres Vedras, PORTUGAL",
+        "license": "CC BY-SA 2.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Leiria_-_Portugal_(267203459).jpg"
+      },
+      "wikipedia": {
+        "pt": "https://pt.wikipedia.org/wiki/Fonte_Luminosa_(Leiria)"
+      }
+    },
+    {
+      "id": "Q10283313",
+      "name": {
+        "pt": "Fonte das Três Bicas",
+        "en": "Fonte das Três Bicas"
+      },
+      "position": {
+        "lat": 39.742994,
+        "lng": -8.805648
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Fonte_das_Tr%C3%AAs_Bicas_em_2021.jpg/960px-Fonte_das_Tr%C3%AAs_Bicas_em_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Fonte das Três Bicas",
+          "en": "Fonte das Três Bicas"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fonte_das_Tr%C3%AAs_Bicas_em_2021.jpg"
+      },
+      "wikipedia": {
+        "pt": "https://pt.wikipedia.org/wiki/Fonte_das_Tr%C3%AAs_Bicas_(Leiria)"
+      }
+    },
+    {
+      "id": "Q10347036",
+      "name": {
+        "pt": "Câmara Municipal de Leiria",
+        "en": "Câmara Municipal de Leiria"
+      },
+      "position": {
+        "lat": 39.740878,
+        "lng": -8.810766
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/Fachada_frontal_da_C%C3%A2mara_de_Leiria_em_2021.jpg/960px-Fachada_frontal_da_C%C3%A2mara_de_Leiria_em_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Câmara Municipal de Leiria",
+          "en": "Câmara Municipal de Leiria"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fachada_frontal_da_C%C3%A2mara_de_Leiria_em_2021.jpg"
+      },
+      "wikipedia": {
+        "pt": "https://pt.wikipedia.org/wiki/Pa%C3%A7os_do_Concelho_de_Leiria"
+      }
+    },
+    {
+      "id": "Q1056864",
+      "name": {
+        "pt": "Estádio Dr. Magalhães Pessoa",
+        "es": "Estádio Dr. Magalhães Pessoa",
+        "en": "Estádio Dr. Magalhães Pessoa"
+      },
+      "position": {
+        "lat": 39.748611,
+        "lng": -8.813056
+      },
+      "category": "culture",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/19/Est%C3%A1dio_Municipal_de_Leiria.jpg/960px-Est%C3%A1dio_Municipal_de_Leiria.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Estádio Dr. Magalhães Pessoa",
+          "es": "Estádio Dr. Magalhães Pessoa",
+          "en": "Estádio Dr. Magalhães Pessoa"
+        },
+        "credit": "Arne Müseler",
+        "license": "CC BY-SA 3.0 de",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Est%C3%A1dio_Municipal_de_Leiria.jpg"
+      },
+      "wikipedia": {
+        "pt": "https://pt.wikipedia.org/wiki/Est%C3%A1dio_Dr._Magalh%C3%A3es_Pessoa",
+        "es": "https://es.wikipedia.org/wiki/Estadio_Dr._Magalh%C3%A3es_Pessoa",
+        "en": "https://en.wikipedia.org/wiki/Est%C3%A1dio_Dr._Magalh%C3%A3es_Pessoa"
+      }
+    },
+    {
+      "id": "Q109442047",
+      "name": {
+        "pt": "Paço Episcopal de Leiria",
+        "en": "Paço Episcopal de Leiria"
+      },
+      "position": {
+        "lat": 39.745281,
+        "lng": -8.806558
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/65/Fachada_frontal_e_lateral_esquerda_do_Pa%C3%A7o_Episcopal_de_Leiria_visto_do_Jardim_Lu%C3%ADs_de_Cam%C3%B5es.jpg/960px-Fachada_frontal_e_lateral_esquerda_do_Pa%C3%A7o_Episcopal_de_Leiria_visto_do_Jardim_Lu%C3%ADs_de_Cam%C3%B5es.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Paço Episcopal de Leiria",
+          "en": "Paço Episcopal de Leiria"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fachada_frontal_e_lateral_esquerda_do_Pa%C3%A7o_Episcopal_de_Leiria_visto_do_Jardim_Lu%C3%ADs_de_Cam%C3%B5es.jpg"
+      },
+      "wikipedia": {
+        "pt": "https://pt.wikipedia.org/wiki/Pa%C3%A7o_Episcopal_de_Leiria_(Rossio)"
+      }
+    },
+    {
+      "id": "Q109444565",
+      "name": {
+        "pt": "Edifício do Café Colonial",
+        "en": "Edifício do Café Colonial"
+      },
+      "position": {
+        "lat": 39.743,
+        "lng": -8.807986
+      },
+      "category": "food",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Fachada_principal_do_Edif%C3%ADcio_Caf%C3%A9_Colonial.jpg/960px-Fachada_principal_do_Edif%C3%ADcio_Caf%C3%A9_Colonial.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Edifício do Café Colonial",
+          "en": "Edifício do Café Colonial"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fachada_principal_do_Edif%C3%ADcio_Caf%C3%A9_Colonial.jpg"
+      }
+    },
+    {
+      "id": "Q109444808",
+      "name": {
+        "pt": "Palacete do Visconde da Barreira",
+        "en": "Palacete do Visconde da Barreira"
+      },
+      "position": {
+        "lat": 39.744136,
+        "lng": -8.809031
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/05/Fachada_principal_do_Palacete_Visconde_da_Barreira.jpg/960px-Fachada_principal_do_Palacete_Visconde_da_Barreira.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Palacete do Visconde da Barreira",
+          "en": "Palacete do Visconde da Barreira"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fachada_principal_do_Palacete_Visconde_da_Barreira.jpg"
+      }
+    },
+    {
+      "id": "Q109450996",
+      "name": {
+        "pt": "Recolhimento e Igreja de Santo Estêvão",
+        "en": "Recolhimento e Igreja de Santo Estêvão"
+      },
+      "position": {
+        "lat": 39.74649,
+        "lng": -8.808306
+      },
+      "category": "church",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Fachada_lateral_direita_e_principal_do_Recolhimento_e_Igreja_de_Santo_Est%C3%AAv%C3%A3o.jpg/960px-Fachada_lateral_direita_e_principal_do_Recolhimento_e_Igreja_de_Santo_Est%C3%AAv%C3%A3o.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Recolhimento e Igreja de Santo Estêvão",
+          "en": "Recolhimento e Igreja de Santo Estêvão"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fachada_lateral_direita_e_principal_do_Recolhimento_e_Igreja_de_Santo_Est%C3%AAv%C3%A3o.jpg"
+      }
+    },
+    {
+      "id": "Q109453524",
+      "name": {
+        "pt": "Quiosque no Largo Alexandre Herculano",
+        "en": "Quiosque no Largo Alexandre Herculano"
+      },
+      "position": {
+        "lat": 39.743267,
+        "lng": -8.806064
+      },
+      "category": "culture",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Fachada_frontal_e_lateral_esquerda_do_Quiosque_na_Rua_Tenente_Valadim.jpg/960px-Fachada_frontal_e_lateral_esquerda_do_Quiosque_na_Rua_Tenente_Valadim.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Quiosque no Largo Alexandre Herculano",
+          "en": "Quiosque no Largo Alexandre Herculano"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fachada_frontal_e_lateral_esquerda_do_Quiosque_na_Rua_Tenente_Valadim.jpg"
+      }
+    },
+    {
+      "id": "Q109465202",
+      "name": {
+        "pt": "Posto de Turismo de Leiria",
+        "en": "Tourism office of Leiria"
+      },
+      "position": {
+        "lat": 39.744117,
+        "lng": -8.806353
+      },
+      "category": "other",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Fachada_frontal_do_Posto_de_Turismo_de_Leiria.jpg/960px-Fachada_frontal_do_Posto_de_Turismo_de_Leiria.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Posto de Turismo de Leiria",
+          "en": "Tourism office of Leiria"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fachada_frontal_do_Posto_de_Turismo_de_Leiria.jpg"
+      }
+    },
+    {
+      "id": "Q109653389",
+      "name": {
+        "pt": "Conjunto de Moinhos do Lis e Vala Real",
+        "en": "Conjunto de Moinhos do Lis e Vala Real"
+      },
+      "position": {
+        "lat": 39.743034,
+        "lng": -8.803202
+      },
+      "category": "culture",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/00/T%C3%BAneis_da_Vala_Real_com_Esta%C3%A7%C3%A3o_de_Transforma%C3%A7%C3%A3o_El%C3%A9trica_de_Leiria_ao_fundo.jpg/960px-T%C3%BAneis_da_Vala_Real_com_Esta%C3%A7%C3%A3o_de_Transforma%C3%A7%C3%A3o_El%C3%A9trica_de_Leiria_ao_fundo.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Conjunto de Moinhos do Lis e Vala Real",
+          "en": "Conjunto de Moinhos do Lis e Vala Real"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:T%C3%BAneis_da_Vala_Real_com_Esta%C3%A7%C3%A3o_de_Transforma%C3%A7%C3%A3o_El%C3%A9trica_de_Leiria_ao_fundo.jpg"
+      }
+    },
+    {
+      "id": "Q109653643",
+      "name": {
+        "pt": "Parque Municipal de Leiria",
+        "en": "Parque Municipal de Leiria"
+      },
+      "position": {
+        "lat": 39.74625,
+        "lng": -8.803022
+      },
+      "category": "nature",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6d/Entrada_norte_do_Parque_Municipal_de_Leiria.jpg/960px-Entrada_norte_do_Parque_Municipal_de_Leiria.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Parque Municipal de Leiria",
+          "en": "Parque Municipal de Leiria"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Entrada_norte_do_Parque_Municipal_de_Leiria.jpg"
+      }
+    },
+    {
+      "id": "Q109654275",
+      "name": {
+        "pt": "Ponte do Arrabalde",
+        "es": "Ponte do Arrabalde",
+        "en": "Ponte do Arrabalde"
+      },
+      "position": {
+        "lat": 39.750609,
+        "lng": -8.807415
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Vista_aproximada_da_Ponte_do_Arrabalde.jpg/960px-Vista_aproximada_da_Ponte_do_Arrabalde.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Ponte do Arrabalde",
+          "es": "Ponte do Arrabalde",
+          "en": "Ponte do Arrabalde"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Vista_aproximada_da_Ponte_do_Arrabalde.jpg"
+      }
+    },
+    {
+      "id": "Q109655227",
+      "name": {
+        "pt": "Arcos de Azenha Medieval",
+        "en": "Arcos de Azenha Medieval"
+      },
+      "position": {
+        "lat": 39.746007,
+        "lng": -8.80594
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/Enquadramento_dos_Arcos_de_Azenha_Medieval.jpg/960px-Enquadramento_dos_Arcos_de_Azenha_Medieval.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Arcos de Azenha Medieval",
+          "en": "Arcos de Azenha Medieval"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Enquadramento_dos_Arcos_de_Azenha_Medieval.jpg"
+      }
+    },
+    {
+      "id": "Q109658791",
+      "name": {
+        "pt": "Parque do Santuário de Nossa Senhora da Encarnação",
+        "en": "Parque do Santuário de Nossa Senhora da Encarnação"
+      },
+      "position": {
+        "lat": 39.7393,
+        "lng": -8.801074
+      },
+      "category": "nature",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ef/Vista_superior_do_Parque_do_Santu%C3%A1rio_de_Nossa_Senhora_da_Encarna%C3%A7%C3%A3o.jpg/960px-Vista_superior_do_Parque_do_Santu%C3%A1rio_de_Nossa_Senhora_da_Encarna%C3%A7%C3%A3o.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Parque do Santuário de Nossa Senhora da Encarnação",
+          "en": "Parque do Santuário de Nossa Senhora da Encarnação"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Vista_superior_do_Parque_do_Santu%C3%A1rio_de_Nossa_Senhora_da_Encarna%C3%A7%C3%A3o.jpg"
+      }
+    },
+    {
+      "id": "Q109661393",
+      "name": {
+        "pt": "Monumento comemorativo a D. Afonso Henriques",
+        "en": "Monumento comemorativo a D. Afonso Henriques"
+      },
+      "position": {
+        "lat": 39.746024,
+        "lng": -8.809426
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Est%C3%A1tua_de_Dom_Afonso_Henriques_-_Leiria_-_Portugal_%285296927949%29.jpg/960px-Est%C3%A1tua_de_Dom_Afonso_Henriques_-_Leiria_-_Portugal_%285296927949%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Monumento comemorativo a D. Afonso Henriques",
+          "en": "Monumento comemorativo a D. Afonso Henriques"
+        },
+        "credit": "Vitor Oliveira from Torres Vedras, PORTUGAL",
+        "license": "CC BY-SA 2.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Est%C3%A1tua_de_Dom_Afonso_Henriques_-_Leiria_-_Portugal_(5296927949).jpg"
+      }
+    },
+    {
+      "id": "Q109662149",
+      "name": {
+        "pt": "Ponte metálica Ferroviária sobre o Rio Lis",
+        "en": "Ponte metálica Ferroviária sobre o Rio Lis"
+      },
+      "position": {
+        "lat": 39.750464,
+        "lng": -8.831633
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Vista_sobre_o_tabuleiro_da_Ponte_met%C3%A1lica_Ferrovi%C3%A1ria_sobre_o_Rio_Lis.jpg/960px-Vista_sobre_o_tabuleiro_da_Ponte_met%C3%A1lica_Ferrovi%C3%A1ria_sobre_o_Rio_Lis.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Ponte metálica Ferroviária sobre o Rio Lis",
+          "en": "Ponte metálica Ferroviária sobre o Rio Lis"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Vista_sobre_o_tabuleiro_da_Ponte_met%C3%A1lica_Ferrovi%C3%A1ria_sobre_o_Rio_Lis.jpg"
+      }
+    },
+    {
+      "id": "Q112568674",
+      "name": {
+        "pt": "Banco das Artes Galeria"
+      },
+      "position": {
+        "lat": 39.745006,
+        "lng": -8.807147
+      },
+      "category": "museum",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Banco_das_Artes_Galeria_Leiria_01.jpg/960px-Banco_das_Artes_Galeria_Leiria_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Banco das Artes Galeria"
+        },
+        "credit": "GualdimG",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Banco_das_Artes_Galeria_Leiria_01.jpg"
+      }
+    },
+    {
+      "id": "Q112580834",
+      "name": {
+        "pt": "Estátua de D. Afonso III",
+        "en": "Statue of Afonso III of Portugal"
+      },
+      "position": {
+        "lat": 39.741209,
+        "lng": -8.810043
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Est%C3%A1tua_de_D._Afonso_III_Euclides_Vaz_Leiria_04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "alt": {
+          "pt": "Estátua de D. Afonso III",
+          "en": "Statue of Afonso III of Portugal"
+        },
+        "credit": "GualdimG",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Est%C3%A1tua_de_D._Afonso_III_Euclides_Vaz_Leiria_04.jpg"
+      }
+    },
+    {
+      "id": "Q112581709",
+      "name": {
+        "pt": "O Pastor Peregrino",
+        "en": "O Pastor Peregrino"
+      },
+      "position": {
+        "lat": 39.744318,
+        "lng": -8.807056
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://upload.wikimedia.org/wikipedia/commons/3/34/O_Pastor_Peregrino_Anjos_Teixeira_Leiria_08.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+        "alt": {
+          "pt": "O Pastor Peregrino",
+          "en": "O Pastor Peregrino"
+        },
+        "credit": "GualdimG",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:O_Pastor_Peregrino_Anjos_Teixeira_Leiria_08.jpg"
+      }
+    },
+    {
+      "id": "Q115527195",
+      "name": {
+        "pt": "Fonte do Arrabalde",
+        "es": "Fonte do Arrabalde",
+        "en": "Fonte do Arrabalde"
+      },
+      "position": {
+        "lat": 39.751226,
+        "lng": -8.803734
+      },
+      "category": "monument",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fd/Fonte_do_Arrabalde_em_estado_de_abandono_em_2022.jpg/960px-Fonte_do_Arrabalde_em_estado_de_abandono_em_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Fonte do Arrabalde",
+          "es": "Fonte do Arrabalde",
+          "en": "Fonte do Arrabalde"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fonte_do_Arrabalde_em_estado_de_abandono_em_2022.jpg"
+      }
+    },
+    {
+      "id": "Q66814153",
+      "name": {
+        "pt": "Convento de Santo António dos Capuchos",
+        "en": "Convento de Santo António dos Capuchos"
+      },
+      "position": {
+        "lat": 39.743681,
+        "lng": -8.814015
+      },
+      "category": "church",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c7/Escadaria_e_fachada_frontal_do_Convento_de_Santo_Ant%C3%B3nio_dos_Capuchos.jpg/960px-Escadaria_e_fachada_frontal_do_Convento_de_Santo_Ant%C3%B3nio_dos_Capuchos.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Convento de Santo António dos Capuchos",
+          "en": "Convento de Santo António dos Capuchos"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Escadaria_e_fachada_frontal_do_Convento_de_Santo_Ant%C3%B3nio_dos_Capuchos.jpg"
+      }
+    },
+    {
+      "id": "Q73038321",
+      "name": {
+        "pt": "Biblioteca Municipal Afonso Lopes Vieira",
+        "en": "Biblioteca Municipal Afonso Lopes Vieira"
+      },
+      "position": {
+        "lat": 39.743885,
+        "lng": -8.809989
+      },
+      "category": "culture",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4e/Enquadramento_da_Casa_da_Fam%C3%ADlia_Charters.jpg/960px-Enquadramento_da_Casa_da_Fam%C3%ADlia_Charters.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Biblioteca Municipal Afonso Lopes Vieira",
+          "en": "Biblioteca Municipal Afonso Lopes Vieira"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Enquadramento_da_Casa_da_Fam%C3%ADlia_Charters.jpg"
+      }
+    },
+    {
+      "id": "Q76956778",
+      "name": {
+        "pt": "Igreja do Espírito Santo",
+        "en": "Igreja do Espírito Santo"
+      },
+      "position": {
+        "lat": 39.743018,
+        "lng": -8.806537
+      },
+      "category": "church",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Igreja_do_Esp%C3%ADrito_Santo_2.jpg/960px-Igreja_do_Esp%C3%ADrito_Santo_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Igreja do Espírito Santo",
+          "en": "Igreja do Espírito Santo"
+        },
+        "credit": "Celia Ascenso",
+        "license": "CC BY-SA 3.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Igreja_do_Esp%C3%ADrito_Santo_2.jpg"
+      },
+      "wikipedia": {
+        "pt": "https://pt.wikipedia.org/wiki/Igreja_do_Esp%C3%ADrito_Santo_(Leiria)"
+      }
+    },
+    {
+      "id": "Q8840924",
+      "name": {
+        "pt": "Estação Ferroviária de Leiria",
+        "es": "Estación de Leiria",
+        "en": "Leiria train station"
+      },
+      "position": {
+        "lat": 39.7566,
+        "lng": -8.82781
+      },
+      "category": "other",
+      "image": {
+        "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/Leiria_train_station_in_2018.jpg/960px-Leiria_train_station_in_2018.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+        "alt": {
+          "pt": "Estação Ferroviária de Leiria",
+          "es": "Estación de Leiria",
+          "en": "Leiria train station"
+        },
+        "credit": "Threeohsix",
+        "license": "CC BY-SA 4.0",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Leiria_train_station_in_2018.jpg"
+      },
+      "wikipedia": {
+        "pt": "https://pt.wikipedia.org/wiki/Esta%C3%A7%C3%A3o_Ferrovi%C3%A1ria_de_Leiria",
+        "es": "https://es.wikipedia.org/wiki/Estaci%C3%B3n_de_Leir%C3%ADa"
+      }
+    }
+  ]
+}

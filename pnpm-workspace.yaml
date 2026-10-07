@@ -3,3 +3,15 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+  # Pulled in by @arcgis/core; its install script only collects usage statistics.
+  '@vaadin/vaadin-usage-statistics': false
+minimumReleaseAgeExclude:
+  - '@arcgis/core@5.1.27'
+  - vue-router@5.4.0
+  - '@arcgis/common-components@5.1.27'
+  - '@arcgis/lumina@5.1.27'
+  - '@arcgis/map-components@5.1.27'
+  - '@arcgis/toolkit@5.1.27'
+  - '@playwright/test@1.64.0'
+  - playwright-core@1.64.0
+  - playwright@1.64.0

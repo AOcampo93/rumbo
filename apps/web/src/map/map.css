@@ -1,0 +1,6 @@
+/* Global styles for the map element. The popup card's styles travel inside
+   the card (map/popup.ts): the SDK renders popups in a shadow root. */
+
+arcgis-map {
+  --calcite-font-family: var(--font-ui);
+}
