@@ -250,6 +250,15 @@ importers:
         specifier: ^3.3.12
         version: 3.3.12(typescript@6.0.3)
 
+  packages/geo-utils:
+    devDependencies:
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@24.19.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15))
+
 packages:
 
   '@babel/helper-string-parser@7.29.7':
