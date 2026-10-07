@@ -5,6 +5,9 @@ coverage/
 *.tsbuildinfo
 .vite/
 .DS_Store
+# Playwright output (e2e)
+test-results/
+playwright-report/
 
 # Secrets never go to the repo (it is public). Local values live in .env files,
 # production values in Coolify. Templates: apps/*/.env.example

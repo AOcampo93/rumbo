@@ -1,11 +1,13 @@
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 // Self-hosted fonts: they work offline (PWA) and no visitor IP reaches Google (GDPR).
-import '@fontsource/fraunces/600.css';
-import '@fontsource/inter/400.css';
-import '@fontsource/inter/500.css';
-import '@fontsource/inter/600.css';
-import '@fontsource/inter/700.css';
+// Latin subsets only: they cover es, en and pt (ã, ç, ª…), and the rest of
+// the scripts would only bloat the precache.
+import '@fontsource/fraunces/latin-600.css';
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/inter/latin-700.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import App from './App.vue';
@@ -23,5 +25,26 @@ const settings = useSettingsStore(pinia);
 applyLocale(settings.locale ?? detectLocale(navigator.languages ?? []));
 
 app.use(i18n);
-app.use(createAppRouter(pinia));
+const router = createAppRouter(pinia);
+app.use(router);
 app.mount('#app');
+
+// The PWA (production builds): offline shell and notifications. A tapped
+// notification asks the page to open its URL without reloading the run.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  void import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }));
+  // Map files loaded before the worker took control: hand them over for offline use.
+  const handOver = () =>
+    navigator.serviceWorker.controller?.postMessage({
+      type: 'cache-assets',
+      urls: performance.getEntriesByType('resource').map((entry) => entry.name),
+    });
+  navigator.serviceWorker.addEventListener('controllerchange', handOver);
+  if (navigator.serviceWorker.controller) handOver();
+  navigator.serviceWorker.addEventListener(
+    'message',
+    (event: MessageEvent<{ type?: string; url?: string }>) => {
+      if (event.data?.type === 'navigate' && event.data.url) void router.push(event.data.url);
+    },
+  );
+}

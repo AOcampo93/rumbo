@@ -32,12 +32,11 @@ En orden de prioridad:
 - el modo oscuro de S05–S08 y S10;
 - el prototipo de los flujos A y B.
 
+Construido con este mismo sistema en la fase 4, sin mockup propio: el onboarding y el consentimiento, S02 Mis rutas (estado vacío), S11 Recuperar recorrido, S12 Ajustes y el panel de filtros.
+
 Falta, y se diseñará con este mismo sistema al construir cada pantalla:
-- el onboarding y el consentimiento;
-- S02 Mis rutas, S11 Recuperar recorrido y S12 Ajustes;
 - el creador (C1–C5) y su flujo C;
-- las variantes S06c, S06d y S06f;
-- el panel de filtros completo;
+- las variantes S06c, S06d y S06f (hay una primera versión en código);
 - tablet y escritorio;
 - el tema «Sol» aplicado a pantallas;
 - el icono de la app.

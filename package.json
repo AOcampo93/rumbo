@@ -13,6 +13,7 @@
     "validate:routes": "tsx scripts/validate-routes.ts",
     "data:pois": "tsx scripts/fetch-pois.ts",
     "test": "pnpm -r test",
+    "e2e": "pnpm --filter @rumbo/web e2e",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

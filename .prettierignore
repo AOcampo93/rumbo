@@ -1,5 +1,7 @@
 pnpm-lock.yaml
 **/dist/
 **/coverage/
+**/test-results/
+**/playwright-report/
 # Hand-written Spanish docs and the exported mockups keep their own formatting.
 docs/

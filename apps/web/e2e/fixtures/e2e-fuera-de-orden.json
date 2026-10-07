@@ -1,0 +1,70 @@
+{
+  "spec": {
+    "specVersion": 1,
+    "id": "e2e-fuera-de-orden",
+    "name": {
+      "es": "Reto fuera de orden",
+      "en": "Out-of-order challenge",
+      "pt": "Desafio fora de ordem"
+    },
+    "summary": {
+      "es": "Ruta de prueba",
+      "en": "Test route",
+      "pt": "Rota de teste"
+    },
+    "locale": "es",
+    "mode": "challenge",
+    "activity": "walk",
+    "source": "curated",
+    "settings": {
+      "defaultRadius": 25
+    },
+    "points": [
+      {
+        "id": "cp1",
+        "name": "Checkpoint 1",
+        "position": {
+          "lat": 39.745,
+          "lng": -8.807
+        },
+        "order": 1,
+        "category": "checkpoint",
+        "triggers": {
+          "onEnter": "card"
+        }
+      },
+      {
+        "id": "cp2",
+        "name": "Checkpoint 2",
+        "position": {
+          "lat": 39.744428,
+          "lng": -8.807744
+        },
+        "order": 2,
+        "category": "checkpoint",
+        "triggers": {
+          "onEnter": "card"
+        }
+      },
+      {
+        "id": "meta",
+        "name": "Meta",
+        "position": {
+          "lat": 39.745763,
+          "lng": -8.806008
+        },
+        "order": 3,
+        "category": "finish",
+        "triggers": {
+          "onEnter": "card"
+        }
+      }
+    ],
+    "actions": {
+      "card": {
+        "type": "info_sheet"
+      }
+    }
+  },
+  "contents": {}
+}

@@ -1,0 +1,71 @@
+{
+  "spec": {
+    "specVersion": 1,
+    "id": "e2e-desvio",
+    "name": {
+      "es": "Reto con trazado",
+      "en": "Challenge with a path",
+      "pt": "Desafio com traçado"
+    },
+    "summary": {
+      "es": "Ruta de prueba",
+      "en": "Test route",
+      "pt": "Rota de teste"
+    },
+    "locale": "es",
+    "mode": "challenge",
+    "activity": "walk",
+    "source": "curated",
+    "settings": {
+      "deviation": {
+        "enabled": true,
+        "maxDistance": 80,
+        "graceTime": 10
+      }
+    },
+    "path": [
+      {
+        "lat": 39.745,
+        "lng": -8.807
+      },
+      {
+        "lat": 39.745954,
+        "lng": -8.805759
+      }
+    ],
+    "points": [
+      {
+        "id": "cp1",
+        "name": "Checkpoint 1",
+        "position": {
+          "lat": 39.745,
+          "lng": -8.807
+        },
+        "order": 1,
+        "category": "checkpoint",
+        "triggers": {
+          "onEnter": "card"
+        }
+      },
+      {
+        "id": "meta",
+        "name": "Meta",
+        "position": {
+          "lat": 39.745954,
+          "lng": -8.805759
+        },
+        "order": 2,
+        "category": "finish",
+        "triggers": {
+          "onEnter": "card"
+        }
+      }
+    ],
+    "actions": {
+      "card": {
+        "type": "info_sheet"
+      }
+    }
+  },
+  "contents": {}
+}

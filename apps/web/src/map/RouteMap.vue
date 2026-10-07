@@ -7,6 +7,8 @@ import Circle from '@arcgis/core/geometry/Circle.js';
 import Extent from '@arcgis/core/geometry/Extent.js';
 import Point from '@arcgis/core/geometry/Point.js';
 import Polyline from '@arcgis/core/geometry/Polyline.js';
+import SpatialReference from '@arcgis/core/geometry/SpatialReference.js';
+import TileInfo from '@arcgis/core/layers/support/TileInfo.js';
 import * as intl from '@arcgis/core/intl.js';
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils.js';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer.js';
@@ -16,6 +18,7 @@ import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol.js';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol.js';
 import type { LatLng } from '@rumbo/geo-utils';
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { currentLocale, LOCALE_TAGS, onLocaleChange } from '../i18n/index.ts';
 import { createBasemap } from './basemap.ts';
 import './map.css';
@@ -67,6 +70,7 @@ const emit = defineEmits<{
   userPan: [];
 }>();
 
+const { t } = useI18n();
 const mapEl = ref<HTMLArcgisMapElement | null>(null);
 const ready = ref(false);
 const failed = ref(false);
@@ -392,7 +396,12 @@ onMounted(async () => {
   // the very bottom, where sheets overlap it. Ours rises above them
   // (--attribution-offset) with the same text and "Powered by Esri".
   element.hideAttribution = true;
+  // Web Mercator and Esri's standard zoom levels up front: without network
+  // the basemap fails to load, and the points and the trace must still show
+  // on a neutral background (PROJECT_PLAN §10.6).
+  element.spatialReference = SpatialReference.WebMercator;
   element.constraints = {
+    lods: TileInfo.create().lods,
     minZoom: 3,
     maxZoom: 19,
     rotationEnabled: false,
@@ -536,8 +545,15 @@ watch(
 </script>
 
 <template>
-  <div class="arcgis" role="region" :aria-label="label">
+  <div class="arcgis" role="region" :aria-label="label" :data-ready="ready || undefined">
     <arcgis-map ref="mapEl" class="arcgis__map" />
+    <!-- The markers as a list: keyboard and screen-reader users reach every
+         popup (DESIGN §12). Hidden until it gets focus. -->
+    <ul class="arcgis__list" :aria-label="t('map.markers')">
+      <li v-for="marker in markers" :key="marker.id">
+        <button type="button" @click="openPopup(marker.id)">{{ marker.popup.title }}</button>
+      </li>
+    </ul>
     <slot />
     <p class="arcgis__attribution">
       <span class="arcgis__sources">{{ attribution }}</span>
@@ -557,6 +573,42 @@ watch(
   display: block;
   width: 100%;
   height: 100%;
+}
+.arcgis__list {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  list-style: none;
+}
+.arcgis__list:focus-within {
+  width: auto;
+  max-width: calc(100% - 16px);
+  height: auto;
+  max-height: 50%;
+  padding: 8px;
+  overflow-y: auto;
+  clip-path: none;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-e2);
+}
+.arcgis__list button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: 600 15px var(--font-ui);
+  text-align: left;
 }
 .arcgis__attribution {
   position: absolute;

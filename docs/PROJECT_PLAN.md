@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 3 completadas (base, contratos, motor y sistema de eventos); producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 4 completadas (base, contratos, motor, sistema de eventos y la web para recorrer rutas); producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -48,13 +48,13 @@ El primer entregable de este proyecto es el módulo **GIS Mapping** de CSE 310 (
 
 ### 2.1 Requisitos del módulo (obligatorios)
 
-- [ ] Web o app móvil que genera un mapa con **ArcGIS** (obligatorio usar ArcGIS).
-- [ ] **Al menos 20 marcadores** con información útil en el mapa.
-- [ ] Al hacer clic en un marcador se muestra un **popup** con su información.
+- [x] Web o app móvil que genera un mapa con **ArcGIS** (obligatorio usar ArcGIS).
+- [x] **Al menos 20 marcadores** con información útil en el mapa: 37 en Explorar.
+- [x] Al hacer clic en un marcador se muestra un **popup** con su información.
 - [ ] `README.md` raíz con la **plantilla GIS Mapping** del curso.
 - [ ] **Un stretch challenge** como mínimo (cubrimos dos):
-  - [ ] Más de un tipo de dato en el mapa, con **gráficos de marcador distintos** (categorías y estados).
-  - [ ] **Filtro** en el mapa para mostrar solo algunos marcadores.
+  - [x] Más de un tipo de dato en el mapa, con **gráficos de marcador distintos** (categorías y estados).
+  - [x] **Filtro** en el mapa para mostrar solo algunos marcadores.
   - [ ] *(Extra)* Datos obtenidos automáticamente de un servidor público (nuestra API + contenido de Wikipedia).
 
 ### 2.2 Requisitos comunes del curso
@@ -892,7 +892,7 @@ src/
 ├─ stores/                  # Pinia: catalog, run, creator, settings, device
 ├─ services/                # api (cliente tipado con api-contract), contentCache (IndexedDB),
 │                           # analytics, notifications, wakeLock, audio, permissions, installPrompt
-├─ map/                     # ArcgisMap.vue + capas (points, path, track, user), symbols.ts, popup.ts
+├─ map/                     # RouteMap.vue (envuelve <arcgis-map>) + capas, symbols.ts, popup.ts, basemap.ts
 ├─ engine/                  # useGeoEngine.ts: motor + fuentes + persistencia de snapshots
 ├─ events/                  # setupEventSystem.ts, uiAdapter.ts, feedbackAdapter.ts
 ├─ handlers/                # vistas de los handlers: info-sheet, ai-template, video, quiz, decision, coming-soon, error
@@ -924,8 +924,9 @@ Las hojas de llegada y de decisión **no son rutas**: forman una pila de overlay
 
 ### 10.3 Mapa (ArcGIS)
 
-- **SDK:** ArcGIS Maps SDK for JavaScript, versión 4.x actual. Verifica en la documentación oficial la forma recomendada de inicializar el mapa (Esri también ofrece web components `@arcgis/map-components`). Decisión: `@arcgis/core` (`Map` + `MapView` + `GraphicsLayer`) encapsulado en `ArcgisMap.vue`, para que el resto de la app no dependa del SDK.
+- **SDK:** ArcGIS Maps SDK for JavaScript 5.1. En la 5.0 Esri marcó los *widgets* (Popup, Attribution…) como obsoletos en favor de los componentes web, así que el mapa usa el componente `<arcgis-map>` de `@arcgis/map-components`, y las capas y gráficos son clases de `@arcgis/core` (`GraphicsLayer`, `Graphic`, símbolos). Todo va encapsulado en `RouteMap.vue` (no `ArcgisMap.vue`: Vue leería `<arcgis-map>` como el componente llamándose a sí mismo), y el resto de la app no toca el SDK.
 - **API key:** `esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY`. Clave **restringida por referrer** (dominios de la app + localhost) y limitada a los servicios de mapa base. La geocodificación va por el backend con otra clave.
+  - **Sin clave**, el mapa usa las teselas públicas de ArcGIS Online (`World_Street_Map`, `World_Topo_Map` y `World_Dark_Gray`), las mismas de los mockups. Con clave, los estilos vectoriales (`arcgis/navigation`, `arcgis/topographic` y `arcgis/navigation-night`).
 - **Coste:** la capa gratuita de ArcGIS Location Platform incluye 2 millones de teselas de mapa base al mes, de sobra para el curso. **No activar pay-as-you-go** mientras no haga falta: sin él, al agotar la cuota los servicios se bloquean hasta el siguiente ciclo y no hay cargos; con él, Esri no ofrece tope de gasto. Si el producto crece, comparar el cobro por teselas con el de *basemap sessions* u otro proveedor de teselas (el mapa está encapsulado, así que cambiarlo es barato).
 - **Mapa base:** configurable. Calles o navegación para ciudad, topográfico para naturaleza o bici, y una variante oscura para el modo oscuro. **La atribución de Esri debe quedar siempre visible.**
 - **Capas:**
@@ -970,6 +971,7 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
   - Imágenes → *CacheFirst* con expiración.
   - Assets del SDK de ArcGIS → servidos desde el propio bundle.
 - **Teselas del mapa base:** no se cachean de forma agresiva (términos de uso y tamaño). Sin red se muestra un fondo neutro con los puntos y la traza.
+- **Implementación (fase 4):** ver §10.9.
 
 ### 10.7 Modo simulación / demo
 
@@ -986,6 +988,39 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
 - `deviceId`: UUID aleatorio generado en el primer arranque y guardado en IndexedDB.
 - Se envía como `X-Device-Id`. **No es autenticación**: sirve para limitar el uso y para la propiedad provisional de las rutas.
 - Al crear una ruta, el servidor devuelve un `editToken` que se guarda localmente por ruta.
+
+### 10.9 Precisiones de la implementación (fase 4)
+
+Al construir `apps/web` se concretaron estos puntos.
+
+- **Mapa (`RouteMap.vue`):**
+  - Un `Graphic` por marcador, con su símbolo en SVG generado desde los iconos de Lucide (todos los estados × categorías de DESIGN §6.1, en caché). Solo se actualizan los gráficos que cambian.
+  - **Popup:** el del SDK, sin acoplar en móvil (`dockOptions.breakpoint: false`), con nuestra tarjeta como contenido. El SDK pinta el contenido dentro de un *shadow root*, así que la tarjeta lleva su propio CSS; los tokens (variables CSS) sí lo atraviesan. Al abrirse, el mapa se desplaza para que el popup quepa encima del marcador.
+  - **Atribución:** la dibujamos nosotros con los mismos datos del SDK (`view.attributionItems` y «Powered by Esri»), porque la suya queda pegada al borde inferior, bajo las hojas. La nuestra sube por encima (`--attribution-offset`).
+  - **Sin red:** el mapa se crea con Web Mercator y los niveles de zoom estándar de Esri (`TileInfo.create().lods`). Así, aunque el mapa base no cargue, se ven los puntos y la traza sobre fondo neutro.
+  - **Accesibilidad:** una lista oculta de los marcadores, que aparece al recibir el foco, abre cada popup desde el teclado (DESIGN §12).
+- **Explorar y los 20+ marcadores:** opción A de la sección 15.
+  - Explorar muestra los 12 puntos de la ruta y 25 lugares de interés de Wikidata: 37 marcadores, en dos tipos (punto de ruta con su color, lugar de interés en blanco).
+  - Los lugares salen de `data/pois/leiria.json`, que genera `pnpm data:pois` (Wikidata, CC0; fotos de Wikimedia Commons con autor y licencia).
+  - `pnpm validate:routes` los valida y avisa si un lugar queda a menos de 30 m de un punto de ruta (los marcadores se taparían).
+- **Rutas:** se piden a la API (`GET /api/v1/routes`) y, si no responde, se usan las de `data/routes`, que van dentro de la app y siempre funcionan sin conexión. En la fase 5 basta con que exista el endpoint.
+- **Recorrido (`stores/run.ts`):**
+  - El motor con GPS real o simulado (en simulación, el usuario empieza 150 m antes del primer punto).
+  - El sistema de eventos conectado a la pila de hojas (`stores/ui.ts`), al feedback del dispositivo y a analytics.
+  - El estado llega a la interfaz como mucho una vez por frame.
+  - Se guarda una instantánea cada 2 s y al pasar a segundo plano. Al reabrir, S11 ofrece continuar: el motor vuelve en pausa y el sistema de eventos repite las fichas pendientes.
+  - El resumen se construye con el estado del propio evento `finished` o `cancelled`, porque el motor publica el nuevo estado justo después.
+- **Vistas de los handlers:** `handlers/registry.ts` asocia cada vista que pide el sistema de eventos (`info_sheet`, `quiz`, `decision`…) con su componente. La ficha recibe el contenido en todos sus idiomas y elige el activo.
+- **PWA (`src/sw.ts`, Workbox con `injectManifest`):**
+  - Se precachea solo la carcasa de la app: unos 1,9 MB, que incluyen el núcleo del mapa.
+  - El resto del SDK (más de mil archivos) se compila en `assets/sdk/` y se guarda en caché cuando se usa.
+  - Lo que se cargó antes de que el *service worker* tomara el control, la página se lo pasa al tomar el control, para tenerlo sin conexión.
+  - Las fotos y los recursos del CDN de Esri se cachean con caducidad. La API de rutas va con red primero.
+  - Al tocar una notificación, la app navega sin recargarse, así que el recorrido en memoria sigue.
+- **Fuentes:** solo el subconjunto latino de Inter y Fraunces (cubre es, en y pt), para no hinchar el precache.
+- **Tests:**
+  - 33 unitarios (Vitest + happy-dom): paridad de los catálogos (claves, parámetros, plurales y claves del sistema de eventos), formatos, textos, ajustes, catálogo, marcadores, símbolos y la pila de hojas.
+  - 7 e2e (Playwright, sobre la build de producción): los escenarios de 14.2. Usan el modo simulación y el reloj de Playwright para que los paseos sean rápidos y deterministas; las rutas de reto son *fixtures* servidas simulando la API.
 
 ---
 
@@ -1204,9 +1239,7 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
 
 Decidido el 2026-10-07: **una ruta precargada**, creada por nosotros, y **una ruta creada con el planificador**, con fichas generadas por IA.
 
-> **Pendiente de decidir:** el curso exige **≥ 20 marcadores** en el mapa, y una sola ruta precargada de unos 12 puntos no llega. Hay dos opciones:
-> - ampliar la ruta a 20 puntos o más;
-> - añadir al mapa Explorar una capa de lugares de interés (por ejemplo, de Wikidata) que cuente para el requisito.
+> **Decidido (fase 4):** el curso exige **≥ 20 marcadores** y una ruta de 12 puntos no llega. Explorar añade una capa de **lugares de interés de Wikidata** (`data/pois/leiria.json`): 25 lugares con foto de Wikimedia Commons, que con los 12 puntos de la ruta suman 37 marcadores (§10.9).
 
 **1. Precargada, `leiria-historica`** (en `data/routes/`, creada en la fase 1). Modo libre, a pie, 12 puntos, unos 2,6 km y ~1 h 45. Los textos están en es/en/pt. Empieza sencilla, con fichas `info_sheet` basadas en Wikipedia, y sus acciones se van personalizando. Orden sugerido:
 
@@ -1284,17 +1317,20 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
   - Cobertura: 100 % de líneas y 96 % de ramas. `pnpm test` del paquete falla si baja del 90 %, igual que en el motor.
   - Precisiones de la implementación en el §9.7.
 
-### Fase 4: Web, recorrer rutas (P0, requisitos del curso)
+### Fase 4: Web, recorrer rutas (P0, requisitos del curso) · completada el 2026-10-08
 
-- [ ] Shell PWA, tokens de diseño, router y stores.
-- [ ] i18n: catálogos es/en/pt, S00 Idioma en el primer arranque y cambio de idioma en vivo desde Ajustes.
-- [ ] `ArcgisMap.vue` y sus capas.
-- [ ] Inicio (lista + **mapa con 20+ marcadores, popups y filtro**) y Detalle.
-- [ ] Preparación y permisos, **Recorrido**, handlers v1, decisiones, pausa, Resumen.
-- [ ] Persistencia y recuperación, wake lock, sonido, vibración y notificación local.
-- [ ] Modo simulación.
-- [ ] Las rutas se cargan desde `data/routes` (estático) si la API no está disponible.
-- **DoD:** e2e de 14.2 en verde y la demo completa grabable en simulación.
+- [x] Shell PWA, tokens de diseño, router y stores.
+- [x] i18n: catálogos es/en/pt, S00 Idioma en el primer arranque y cambio de idioma en vivo desde Ajustes.
+- [x] `RouteMap.vue` (componente `<arcgis-map>`) y sus capas.
+- [x] Inicio (lista + **mapa con 20+ marcadores, popups y filtro**) y Detalle.
+- [x] Preparación y permisos, **Recorrido**, handlers v1, decisiones, pausa, Resumen.
+- [x] Persistencia y recuperación, wake lock, sonido, vibración y notificación local.
+- [x] Modo simulación.
+- [x] Las rutas se cargan desde `data/routes` (estático) si la API no está disponible.
+- **DoD:** e2e de 14.2 en verde y la demo completa grabable en simulación. ✓
+  - Los 7 e2e de 14.2 en verde (Playwright, job propio en la CI).
+  - La demo se graba entera en simulación: Explorar → detalle → preparación → recorrido a 1×, 5× o 20× → fichas → resumen.
+  - Precisiones de la implementación en el §10.9.
 
 ### Fase 5: Backend mínimo y despliegue (P1)
 
@@ -1349,10 +1385,10 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 | Web y API en el mismo origen (`/api`) | Sin CORS; service worker y cookies en un solo origen |
 | Despliegue por promoción de `main` a `production` | Solo se despliega lo que pasó la CI, y cuando se pide |
 | TypeScript 6.0 (no 7) | vue-tsc y typescript-eslint aún no soportan la 7 |
+| 20+ marcadores con una capa de lugares de Wikidata | Datos abiertos (CC0), fotos con licencia y una sola ruta curada que mantener |
+| Mapa con el componente `<arcgis-map>` (SDK 5.x) | Los *widgets* están obsoletos desde la 5.0 |
 
 **Preguntas abiertas:**
-
-- Cómo llegar a **≥ 20 marcadores** con una sola ruta precargada (sección 15).
 
 - Nombre y marca definitivos.
 - Proveedor de autenticación.

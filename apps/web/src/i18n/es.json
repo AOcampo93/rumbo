@@ -148,6 +148,9 @@
     "wikipedia": "Leer en Wikipedia",
     "orderOf": "Punto {n}"
   },
+  "map": {
+    "markers": "Marcadores del mapa"
+  },
   "filter": {
     "open": "Filtrar el mapa",
     "title": "Filtrar el mapa",

@@ -7,7 +7,15 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  { ignores: ['**/dist/**', '**/coverage/**', 'docs/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
+      'docs/**',
+    ],
+  },
 
   js.configs.recommended,
   tseslint.configs.recommended,
@@ -22,7 +30,7 @@ export default defineConfig(
 
   { files: ['apps/web/src/**'], languageOptions: { globals: globals.browser } },
   {
-    files: ['apps/api/**', 'scripts/**', '**/*.config.{js,ts}'],
+    files: ['apps/api/**', 'scripts/**', '**/*.config.{js,ts}', 'apps/web/e2e/**'],
     languageOptions: { globals: globals.node },
   },
 

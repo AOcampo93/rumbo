@@ -184,7 +184,9 @@ export const useRunStore = defineStore('run', () => {
       }),
       () => cancelAnimationFrame(frame),
       next.on('*', (event) => {
-        if (event.type === 'finished' || event.type === 'cancelled') void onEnded(event.type);
+        // The event's own state: the engine publishes the new one right after.
+        if (event.type === 'finished' || event.type === 'cancelled')
+          void onEnded(event.type, event.state);
         else scheduleSave();
       }),
     );
@@ -243,10 +245,9 @@ export const useRunStore = defineStore('run', () => {
     await db.set(KEYS.activeRun, record);
   }
 
-  async function onEnded(status: 'finished' | 'cancelled'): Promise<void> {
-    const final = engine?.getState();
+  async function onEnded(status: 'finished' | 'cancelled', final: EngineState): Promise<void> {
     const route = spec.value;
-    if (!final || !route) return;
+    if (!route) return;
     const record: RunSummaryRecord = {
       routeId: route.id,
       mode: route.mode,

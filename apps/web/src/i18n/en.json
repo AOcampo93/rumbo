@@ -148,6 +148,9 @@
     "wikipedia": "Read on Wikipedia",
     "orderOf": "Stop {n}"
   },
+  "map": {
+    "markers": "Map markers"
+  },
   "filter": {
     "open": "Filter the map",
     "title": "Filter the map",
