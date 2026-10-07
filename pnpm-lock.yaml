@@ -169,6 +169,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.12.0)
+      '@rumbo/event-system':
+        specifier: workspace:*
+        version: link:packages/event-system
       '@rumbo/route-builder':
         specifier: workspace:*
         version: link:packages/route-builder
@@ -258,6 +261,31 @@ importers:
       vue-tsc:
         specifier: ^3.3.12
         version: 3.3.12(typescript@6.0.3)
+
+  packages/event-system:
+    dependencies:
+      '@rumbo/geo-engine':
+        specifier: workspace:*
+        version: link:../geo-engine
+      '@rumbo/route-spec':
+        specifier: workspace:*
+        version: link:../route-spec
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@rumbo/geo-utils':
+        specifier: workspace:*
+        version: link:../geo-utils
+      '@vitest/coverage-v8':
+        specifier: 5.0.3
+        version: 5.0.3(vitest@5.0.3)
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@24.19.1)(@vitest/coverage-v8@5.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15))
 
   packages/geo-engine:
     dependencies:

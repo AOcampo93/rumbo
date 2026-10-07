@@ -1,0 +1,25 @@
+{
+  "name": "@rumbo/event-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rumbo's event system: turns engine events into actions (cards, quizzes, decisions) and feedback.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@rumbo/geo-engine": "workspace:*",
+    "@rumbo/route-spec": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@rumbo/geo-utils": "workspace:*",
+    "@vitest/coverage-v8": "5.0.3",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

@@ -693,6 +693,8 @@ Puntos: Castelo de Leiria, Sé de Leiria, Igreja de São Pedro, Praça Rodrigues
 
 Los catálogos `apps/web/src/i18n/{es,en,pt}.json` son la fuente de verdad; esta tabla es la referencia en español. Las últimas filas recogen textos que aparecen en los mockups.
 
+Las claves que entrega el sistema de eventos (`run.*`, `decision.*`, `end.confirm.*`, `notify.*`, `redirect.*`) están en `UI_TEXT_KEYS` de `@rumbo/event-system`, y los tres catálogos deben tenerlas todas. Sus parámetros: `name` es el nombre del punto (un `LocalizedText` que la UI resuelve en el idioma activo), `distance` va en metros y `minutes` es un número; la UI los formatea según el idioma.
+
 | Clave | Texto |
 |---|---|
 | `home.tabs.explore` | Explorar |
@@ -726,22 +728,35 @@ Los catálogos `apps/web/src/i18n/{es,en,pt}.json` son la fuente de verdad; esta
 | `decision.deviation.primary` | Volver a la ruta |
 | `decision.idle.title` | ¿Sigues ahí? |
 | `decision.idle.body` | Llevas {minutes} min en el mismo sitio. |
+| `decision.idle.primary` | Continuar |
 | `decision.outOfOrder.title` | Este no es el siguiente punto |
 | `decision.outOfOrder.body` | Primero tienes que pasar por {name}. |
+| `decision.outOfOrder.primary` | Ir a {name} |
 | `decision.timeout.title` | Se acabó el tiempo |
 | `decision.timeout.body` | Puedes seguir sin cronómetro oficial. |
+| `decision.timeout.primary` | Seguir sin tiempo |
+| `decision.continue` | Continuar |
 | `decision.pause` / `decision.end` | Pausar / Terminar recorrido |
 | `run.backOnTrack` | ¡De vuelta en la ruta! |
 | `pause.title` | En pausa |
 | `pause.resume` | Reanudar |
 | `end.confirm.title` | ¿Terminar el recorrido? |
 | `end.confirm.body` | Guardaremos lo que llevas hecho. |
+| `end.confirm.yes` / `end.confirm.no` | Terminar / Seguir |
 | `summary.finished` | ¡Ruta completada! |
 | `summary.cancelled` | Recorrido terminado |
 | `recover.body` | Tienes un recorrido a medias |
-| `notify.arrive` | 📍 Llegaste a {name}. Toca para ver |
+| `notify.arrive` | 📍 Llegaste a {name} |
+| `notify.tapToOpen` | Toca para ver |
+| `notify.outOfOrder` | Este no es el siguiente punto |
 | `notify.deviation` | Te alejaste de la ruta |
+| `notify.idle` | ¿Sigues en la ruta? |
+| `notify.timeout` | Se acabó el tiempo |
 | `notify.finish` | 🏁 ¡Ruta completada! |
+| `notify.generic` | Novedades en tu ruta |
+| `redirect.title` | Vas a abrir una web externa |
+| `redirect.body` | {label} · {host} |
+| `redirect.open` / `redirect.later` | Abrir / Ahora no |
 | `create.mode.free` | Visita a tu ritmo, en el orden que quieras |
 | `create.mode.challenge` | Orden obligatorio, checkpoints y cronómetro |
 | `create.places.empty` | Busca un lugar o mantén pulsado el mapa |

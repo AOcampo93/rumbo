@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@rumbo/event-system": "workspace:*",
     "@rumbo/route-builder": "workspace:*",
     "@rumbo/route-spec": "workspace:*",
     "@types/node": "^24.19.1",

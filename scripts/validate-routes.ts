@@ -1,22 +1,12 @@
 // Validates every curated route in data/routes (run by CI as `pnpm validate:routes`).
-// Curated routes must carry es, en and pt, and only use action types the app knows.
+// Curated routes must carry es, en and pt, use only action types the app knows,
+// and give each action params its handler accepts.
 import { readdir, readFile } from 'node:fs/promises';
+import { BUILTIN_ACTION_TYPES, validateActionParams } from '@rumbo/event-system';
 import { summarizeRoute } from '@rumbo/route-builder';
 import { type Issue, LOCALES, validateRouteBundle } from '@rumbo/route-spec';
 
 const ROUTES_DIR = new URL('../data/routes/', import.meta.url);
-
-/** Handler types of docs/PROJECT_PLAN.md §9.5. Move to the handler registry when it exists. */
-const KNOWN_ACTION_TYPES = [
-  'info_sheet',
-  'ai_template',
-  'video',
-  'quiz',
-  'redirect',
-  'toast',
-  'decision',
-  'three_scene',
-];
 
 const show = (mark: string, issue: Issue) =>
   console.log(`  ${mark} ${issue.path || '(root)'}: ${issue.message} [${issue.code}]`);
@@ -37,7 +27,7 @@ for (const file of files) {
 
   const result = validateRouteBundle(input, {
     requireLocales: LOCALES,
-    knownActionTypes: KNOWN_ACTION_TYPES,
+    knownActionTypes: BUILTIN_ACTION_TYPES,
   });
   const spec = result.bundle?.spec;
   if (spec && `${spec.id}.json` !== file) {
@@ -46,6 +36,13 @@ for (const file of files) {
       code: 'schema',
       message: `must match the file name (${file})`,
     });
+  }
+  if (spec) {
+    const params = validateActionParams(spec).map((issue) => ({
+      ...issue,
+      path: `spec.${issue.path}`,
+    }));
+    result.errors.push(...params);
   }
 
   if (result.errors.length > 0 || !spec) {

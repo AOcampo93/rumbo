@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fase 0 completada; producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 3 completadas (base, contratos, motor y sistema de eventos); producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -161,7 +161,7 @@ rumbo/
 │  ├─ route-spec/             # CONTRATO DE ENTRADA: tipos, esquemas Zod, validación, normalización, migraciones, PointContent
 │  ├─ route-builder/          # MÓDULO 1 · CREADOR: RouteDraft → RouteSpec, resumen (distancia, duración)
 │  ├─ geo-engine/             # MÓDULO 2 · MOTOR: reglas, estado, eventos, fuentes de posición
-│  ├─ event-system/           # MÓDULO 3 · EVENTOS: registro de handlers, cola, decisiones, feedback (sin UI)
+│  ├─ event-system/           # MÓDULO 3 · EVENTOS: handlers v1, cola, decisiones, feedback (sin UI)
 │  └─ api-contract/           # DTOs Zod compartidos entre web y api
 ├─ data/
 │  └─ routes/                 # Rutas precargadas (RouteBundle JSON), validadas en CI
@@ -707,14 +707,15 @@ Recibe `EngineEvent` y:
 2. Si el evento trae `trigger`, busca `route.actions[trigger]`, encuentra el **handler** de `action.type` y lo ejecuta.
 3. Interpreta el `HandlerResult` y **controla el motor**: `complete`, `pause`, `resume` o `cancel`.
 
-El paquete no tiene UI. Los handlers visuales viven en `apps/web/src/handlers/` y usan un `UiAdapter` que la app inyecta.
+El paquete no tiene UI. Los handlers v1 viven en él: validan sus `params` y piden a la app una vista por nombre (`ui.present('quiz', props)`). La web implementa el `UiAdapter` y un componente por vista (`apps/web/src/handlers/`).
 
 ### 9.2 Contrato de handlers
 
 ```ts
-export interface ActionHandler<P = unknown> {
+export interface ActionHandler<P = Record<string, unknown>> {
   type: string;                                  // 'ai_template', 'video', 'quiz'...
-  paramsSchema?: ZodType<P>;
+  paramsSchema?: ZodType<P>;                     // params inválidos → ficha de respaldo
+  presentation?: 'blocking' | 'toast';           // por defecto; ActionDef.presentation manda
   load?: () => Promise<void>;                    // precarga diferida (p. ej. Three.js)
   run(params: P, ctx: HandlerContext): Promise<HandlerResult>;
 }
@@ -728,9 +729,10 @@ export interface HandlerResult {
 
 export interface HandlerContext {
   event: EngineEvent;
-  route: RouteSpec;
-  point: RoutePoint | null;
-  content: (ref: string) => Promise<PointContent | null>;  // desde caché local o API
+  route: NormalizedRouteSpec;
+  point: NormalizedRoutePoint | null;
+  action: ActionDef & { id: string };
+  content: (ref: string) => Promise<LocalizedContent | null>;  // la ficha en todos sus idiomas
   ui: UiAdapter;
   feedback: FeedbackAdapter;
   analytics: (name: string, props?: Record<string, unknown>) => void;
@@ -743,12 +745,20 @@ export type UiText =
   | { key: string; params?: Record<string, string | number | LocalizedText> }
   | LocalizedText;
 
+// Lo que devuelve una vista al cerrarse; `undefined` si se cerró sin responder.
+export interface ViewOutcome {
+  status?: 'done' | 'dismissed';
+  decision?: 'continue' | 'pause' | 'cancel';
+  data?: unknown;                                // p. ej. { answerIndex } del quiz
+}
+
 export interface UiAdapter {
-  present<R = unknown>(view: string, props: Record<string, unknown>,
-    opts?: { variant?: 'sheet' | 'modal' | 'fullscreen' }): Promise<R>;
+  present<R = ViewOutcome>(view: string, props: Record<string, unknown>,
+    opts?: { variant?: 'sheet' | 'modal' | 'fullscreen'; signal?: AbortSignal }): Promise<R | undefined>;
   toast(message: UiText, opts?: { icon?: string; durationMs?: number }): void;
   confirm(opts: { title: UiText; body?: UiText; confirmLabel: UiText; cancelLabel: UiText; destructive?: boolean }): Promise<boolean>;
   openExternal(url: string): void;
+  navigate(to: 'summary'): void;                 // la app lo traduce a su router (/run/summary)
 }
 
 export interface FeedbackAdapter {
@@ -757,9 +767,9 @@ export interface FeedbackAdapter {
   notify(n: { title: UiText; body: UiText; tag: string; url?: string }): void;  // solo si la app está en 2º plano
 }
 
-const events = createEventSystem({ engine, route, handlers, ui, feedback, content, analytics });
-events.start();   // se suscribe a engine.on('*')
-events.stop();
+const events = createEventSystem({ engine, route, handlers: builtinHandlers, ui, feedback, content, analytics, logger });
+events.start();   // se suscribe a engine.on('*') y vuelve a mostrar las fichas pendientes
+events.stop();    // se desuscribe, aborta lo abierto y vacía la cola
 ```
 
 ### 9.3 Reglas del dispatcher
@@ -772,8 +782,9 @@ events.stop();
 - **Interrupciones obsoletas:** se descartan si el estado ya las resolvió (p. ej. llega `back_on_track` antes de mostrar `deviation`).
 - **Sin trigger, comportamiento por defecto:**
   - `enter`: lo resuelve el motor (`autoCompleteWithoutAction`).
+  - `approach` y `back_on_track`: toast (`run.approaching`, `run.backOnTrack`).
   - `deviation`, `idle`, `out_of_order` y `timeout`: handler `decision` con su preset.
-  - `finished`: navegar a `/run/summary`.
+  - `finished` y `cancelled`: navegar a `/run/summary`, después de la acción de `onFinish` u `onCancel` si la hay.
   - `error`: hoja de error con instrucciones.
 - **Tras un `enter`:** se llama a `engine.complete(pointId, { score, data })` con cualquier resultado (`done` o `dismissed`).
 - **Una acción que falla nunca bloquea la ruta:** si el handler falla (`failed` o excepción), se muestra `info_sheet` de respaldo con los datos del punto y se completa igualmente. El fallo se registra en analytics.
@@ -782,6 +793,7 @@ events.stop();
   - `pause` → `pause()`.
   - `cancel` → `ui.confirm` destructivo y, si se confirma, `cancel()`.
 - **Cancelación:** se aborta el `signal` de los handlers en curso y se vacía la cola.
+- **Fichas pendientes:** al arrancar (`start()`), los puntos `reached` con `onEnter` vuelven a mostrar su ficha. Es el caso de una recarga con la ficha abierta.
 
 ### 9.4 Feedback por defecto (sobrescribible con `ActionDef.feedback`)
 
@@ -807,14 +819,14 @@ Los textos de esta tabla son la referencia en español. En el código, cada noti
 | `video` | Video del lugar | `{ provider: 'youtube' \| 'file', id?, url?, title? }` |
 | `quiz` | Pregunta con puntos | `{ question, options: string[], correctIndex, points, explanation? }` |
 | `redirect` | Web externa (con confirmación) | `{ url, label }` |
-| `toast` | Aviso breve no bloqueante | `{ messageKey \| message }` |
-| `decision` | Interrupciones: Continuar / Pausar / Terminar | `{ preset: 'deviation' \| 'idle' \| 'out_of_order' \| 'timeout' } \| { title, body, options }` |
+| `toast` | Aviso breve no bloqueante | `{ messageKey \| message, icon?, durationMs? }` |
+| `decision` | Interrupciones: Continuar / Pausar / Terminar | `{ preset: 'deviation' \| 'idle' \| 'out_of_order' \| 'timeout' } \| { title, body?, primaryLabel? }` |
 | `three_scene` | *(Futuro)* Escena Three.js | Stub en v1, registrado con `load()` diferido |
 | `ar_scene` | *(Futuro)* RA (WebXR / model-viewer) | No se implementa en v1 |
 
 **Acciones personalizadas en 3 idiomas:** los textos de los `params` son `LocalizedText`. Eso incluye la pregunta, las opciones y la explicación del quiz; el `label` del redirect; el `title` y el `body` de `info_sheet`; y el `message` del toast. Así, una acción escrita por nosotros (no por la IA) puede traer español, inglés y portugués, y el handler muestra el idioma activo.
 
-**Añadir un tipo nuevo** consiste en crear `apps/web/src/handlers/<tipo>/` (componente + definición) y registrarlo. **El motor no se toca.**
+**Añadir un tipo nuevo** consiste en escribir su `ActionHandler` (con su `paramsSchema`), pasarlo en `handlers` y crear en la web el componente de su vista. **El motor no se toca.**
 
 ### 9.6 Flujo de una llegada
 
@@ -824,6 +836,48 @@ GPS ─► motor: muestra aceptada → dentro del radio → permanencia 5 s ─�
    ─► UI: hoja con la ficha → el usuario pulsa "Continuar ruta" → HandlerResult { status: 'done' }
    ─► event-system: engine.complete("castelo") ─► motor: completed → (reto) activa el siguiente punto → nuevo estado
 ```
+
+### 9.7 Precisiones de la implementación (fase 3)
+
+Al construir `packages/event-system` se concretaron estos puntos.
+
+- **Handlers sin UI:** los 8 handlers v1 (`builtinHandlers`) validan sus `params` con Zod y piden vistas por nombre:
+  - `info_sheet`, `ai_template`, `video`, `quiz` y `decision` (hojas);
+  - `coming_soon` (pantalla completa, para `three_scene`);
+  - `error` (hoja con el `code` del error);
+  - `redirect` solo usa `confirm` y `openExternal`, y `toast` solo usa `toast`.
+
+  Así la lógica se prueba sin navegador.
+- **Contenido en todos los idiomas:** `content(ref)` devuelve `LocalizedContent` y la vista elige el idioma activo con `resolveContent`. Si el usuario cambia de idioma con la ficha abierta, la ficha cambia sin cerrarse.
+- **Claves i18n:** todas las que el paquete entrega a la UI están en `UI_TEXT_KEYS`. Un test comprueba que el código no usa ninguna otra, y los catálogos de la web deberán tenerlas todas (`docs/DESIGN.md` §11).
+- **Cola:**
+  - Niveles: error > interrupción > contenido > navegación al resumen, y FIFO dentro de cada nivel.
+  - La deduplicación usa `acción|punto`; los errores se deduplican por código.
+- **Obsolescencia:** se comprueba justo antes de mostrar cada elemento.
+  - `deviation`: se descarta si ya no hay `offRoute`.
+  - `idle`: se descarta si ya no hay `idle`.
+  - `out_of_order`: se descarta si el usuario salió de esa zona (radio + histéresis).
+  - Una ficha: se descarta si su punto ya no está `reached`.
+  - Si el recorrido terminó, se descarta todo menos la navegación.
+- **Fichas pendientes tras recargar:** el motor restaurado conserva los puntos `reached`, pero la ficha se perdió con la pestaña. `start()` las vuelve a encolar, sin repetir vibración ni notificación. Sin esto, el punto quedaría `reached` para siempre y la ruta no podría terminar.
+- **Cancelación y `stop()`:** abortan el `signal` de la acción abierta (la vista debe cerrarse) y vacían la cola. Una ficha abortada no completa su punto, que queda `reached` para volver a mostrarse.
+- **Respaldo:**
+  - Si la acción de un `enter` falla, se muestra `info_sheet` con el nombre del punto y el punto se completa.
+    - Cuenta como fallo una excepción, un resultado `failed`, unos `params` inválidos o un tipo sin handler.
+    - El fallo queda en analytics: `error` con `action_failed` y `point_completed` con `status: 'failed'`.
+  - Si también falla el respaldo, el punto se completa igual.
+  - Una interrupción que falla se registra y la cola sigue.
+  - Un `trigger` sin acción (la validación lo impide) muestra la ficha básica en un `enter` y la acción por defecto en el resto.
+- **Toasts:** se ejecutan al momento, sin pasar por la cola. Un `enter` cuya acción es un toast completa el punto en cuanto se muestra.
+- **Notificaciones:**
+  - `tag` es `<evento>:<punto o ruta>`, así que una notificación reemplaza a la anterior del mismo tipo.
+  - `url` es `/run?point=<id>` para abrir la ficha al tocarla.
+  - Si una acción activa `notify` en un evento sin notificación por defecto, se usa `notify.generic`.
+- **Analytics** (nunca con coordenadas):
+  - `run_started`, `run_paused`, `run_resumed`, `run_cancelled` y `run_finished`;
+  - `point_reached` y `point_completed` (con `handlerType`, `status` y `ms`), este último solo si el motor completó el punto;
+  - `interruption_shown`, `decision_made`, `gps_weak` y `error`.
+- **Rutas curadas:** `pnpm validate:routes` usa `BUILTIN_ACTION_TYPES` y `validateActionParams`. Un quiz mal escrito falla en CI, no en la calle.
 
 ---
 
@@ -841,7 +895,7 @@ src/
 ├─ map/                     # ArcgisMap.vue + capas (points, path, track, user), symbols.ts, popup.ts
 ├─ engine/                  # useGeoEngine.ts: motor + fuentes + persistencia de snapshots
 ├─ events/                  # setupEventSystem.ts, uiAdapter.ts, feedbackAdapter.ts
-├─ handlers/                # info-sheet, ai-template, video, quiz, redirect, toast, decision, three-scene (stub)
+├─ handlers/                # vistas de los handlers: info-sheet, ai-template, video, quiz, decision, coming-soon, error
 ├─ views/                   # Onboarding, Home, MyRoutes, RouteDetail, RunPrepare, Run, RunSummary,
 │                           # create/(Details, Places, Content, Review, Done), Settings
 ├─ components/              # BottomSheet, RouteCard, ModeBadge, StatChip, PointListItem, HudTarget,
@@ -1218,10 +1272,17 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
   - Cobertura: 99,8 % de líneas y 94 % de ramas. `pnpm test` del paquete falla si baja del 90 %.
   - Precisiones de la implementación en el §8.9.
 
-### Fase 3: Sistema de eventos (P0)
+### Fase 3: Sistema de eventos (P0) · completada el 2026-10-07
 
-- [ ] `createEventSystem`: cola, prioridades, deduplicación, decisiones, respaldo y feedback por defecto. Sin textos: solo claves i18n hacia los adaptadores.
-- **DoD:** tests de 14.2 en verde con un motor real y una fuente simulada.
+- [x] `createEventSystem`: cola, prioridades, deduplicación, decisiones, respaldo y feedback por defecto. Sin textos: solo claves i18n hacia los adaptadores.
+- [x] Los 8 handlers v1 sin UI (`builtinHandlers`) con sus esquemas de `params`. `validateActionParams` se ejecuta en `pnpm validate:routes`.
+- **DoD:** tests de 14.2 en verde con un motor real y una fuente simulada. ✓
+  - 78 tests en total:
+    - las reglas de la cola, con un motor simulado;
+    - cada handler;
+    - 8 escenarios con el motor real: la ruta de Leiria entera en simulación, desvío → Pausar, fuera de orden, interrupción obsoleta, respaldo, Terminar y recarga con una ficha abierta.
+  - Cobertura: 100 % de líneas y 96 % de ramas. `pnpm test` del paquete falla si baja del 90 %, igual que en el motor.
+  - Precisiones de la implementación en el §9.7.
 
 ### Fase 4: Web, recorrer rutas (P0, requisitos del curso)
 
