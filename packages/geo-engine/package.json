@@ -1,0 +1,23 @@
+{
+  "name": "@rumbo/geo-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rumbo's geolocation engine: turns positions into arrivals, deviations and other route events.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@rumbo/geo-utils": "workspace:*",
+    "@rumbo/route-spec": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "5.0.3",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}

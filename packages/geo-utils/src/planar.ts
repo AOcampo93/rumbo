@@ -111,9 +111,10 @@ export function polylineLength(line: readonly LatLng[]): number {
 /**
  * Douglas–Peucker simplification with a tolerance in metres. It always keeps
  * the first and last vertices. The engine uses it to cap long GPS tracks.
- * Iterative, so 5,000-point tracks don't risk a deep recursion.
+ * Iterative, so 5,000-point tracks don't risk a deep recursion. Returns the
+ * kept vertices themselves, so extra fields (like a timestamp) survive.
  */
-export function simplify(line: readonly LatLng[], toleranceM: number): LatLng[] {
+export function simplify<T extends LatLng>(line: readonly T[], toleranceM: number): T[] {
   const [origin] = line;
   if (!origin || line.length <= 2) return [...line];
   const points = line.map((p) => toLocalXY(origin, p));

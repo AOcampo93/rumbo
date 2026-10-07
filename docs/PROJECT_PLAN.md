@@ -511,12 +511,13 @@ const engine = createGeoEngine(spec, {
 });
 
 engine.start();
-engine.pause(reason?);
-engine.resume();
-engine.cancel(reason?);
-engine.complete(pointId, result?);   // result: { score?: number; data?: unknown }
-engine.manualCheckIn(pointId);       // solo si settings.allowManualCheckIn
-engine.setTarget(pointId | null);    // modo libre: el usuario elige el siguiente objetivo
+engine.pause(reason?);               // → boolean: false si no estaba en marcha
+engine.resume(reason?);              // → boolean; reintenta el GPS si el permiso estaba denegado
+engine.cancel(reason?);              // → boolean
+engine.complete(pointId, result?);   // → boolean (solo puntos 'reached'); result: { score?, data? }
+engine.canManualCheckIn(pointId);    // → boolean: si mostrar «Estoy aquí» ahora
+engine.manualCheckIn(pointId);       // → boolean; solo con settings.allowManualCheckIn y a ≤ 3 radios
+engine.setTarget(pointId | null);    // → boolean; modo libre: el usuario elige el siguiente objetivo
 engine.setSource(source);            // p. ej. alternar GPS ↔ simulación
 engine.getState();                   // EngineState (inmutable)
 engine.serialize();                  // EngineSnapshot (JSON) para persistir
@@ -525,8 +526,9 @@ engine.subscribe(stateListener);     // flujo de estado → unsubscribe()
 engine.destroy();
 
 const restored = restoreGeoEngine(spec, snapshot, options);
-// Si hashRouteSpec(spec) !== snapshot.specHash, lanza error (la ruta cambió).
-// Restaura SIEMPRE en estado 'paused': el usuario confirma para continuar.
+// Si hashRouteSpec(spec) !== snapshot.specHash, lanza EngineRestoreError('ROUTE_CHANGED').
+// Un recorrido sin terminar vuelve SIEMPRE en 'paused': el usuario confirma para continuar
+// y la fuente de posición no arranca hasta resume(). Uno terminado o cancelado vuelve tal cual.
 ```
 
 ### 8.3 Reglas por modo
@@ -607,9 +609,9 @@ export interface EngineState {
   } | null;
   target: {
     pointId: string; order: number;        // sin nombre: la UI lo resuelve por pointId (ADR 0001)
-    distance: number;                      // m
-    bearing: number;                       // grados 0-360 desde el usuario
-    etaSeconds: number;                    // distancia / expectedSpeed (o velocidad media si se mueve)
+    distance: number | null;               // m; null hasta tener posición
+    bearing: number | null;                // grados 0-360 desde el usuario; null hasta tener posición
+    etaSeconds: number | null;             // distancia / velocidad media (si ≥ 0,3 m/s) o expectedSpeed
     inZone: boolean;
     dwellProgress: number;                 // 0..1 mientras confirma la llegada
   } | null;
@@ -676,6 +678,22 @@ export interface EngineEvent<T extends EngineEventType = EngineEventType> {
 - Pestaña en segundo plano o pantalla bloqueada → sin muestras (`gps: 'lost'`). Al volver no se dispara una llegada con datos viejos.
 - Cambio de hora del sistema → las duraciones usan `clock.monotonic()`.
 - Zonas solapadas → advertencia al validar. El motor procesa la más cercana primero.
+
+### 8.9 Precisiones de la implementación (fase 2)
+
+Al construir el motor (`packages/geo-engine`) se concretaron estos puntos. Los valores están en `ENGINE_LIMITS`.
+
+- **Saltos de GPS:** se ignoran como máximo 3 lecturas seguidas. Si la posición nueva persiste, se acepta (por ejemplo, el usuario subió a un autobús); si no, el usuario quedaría «congelado».
+- **Hora del sistema atrasada:** una lectura más de 60 s anterior a la última se trata como cambio de hora y se acepta. Los retrocesos menores son lecturas tardías o duplicadas y se descartan.
+- **GPS débil:** `gps` pasa a `'weak'` cuando se emite `gps_weak` (10 s seguidos con precisión mala). Débil y perdido avisan una sola vez por episodio, hasta la siguiente lectura buena.
+- **Datos viejos:** los *ticks* solo confirman una llegada, un desvío o una inactividad con una lectura buena de hace ≤ 10 s (≤ 30 s para la inactividad). Al perder la señal se anulan las permanencias en curso.
+- **`approach`:** solo se emite fuera de la zona, contando la histéresis. Dentro ya manda la llegada.
+- **`exit`:** solo se emite al salir de una zona donde hubo `enter` en esa misma estancia. Pasar cerca de un punto no genera salidas.
+- **Reto con puntos opcionales:** son alcanzables el siguiente punto pendiente y los opcionales anteriores al siguiente obligatorio. Los opcionales que se dejan atrás pasan a `locked`.
+- **Distancia y traza:** la distancia crece en pasos de ≥ 10 m, así que el temblor del GPS estando quieto no suma. El tiempo en movimiento cuenta los tramos a ≥ 0,5 m/s. En pausa no se registra nada.
+- **Eventos sin reentrada:** los eventos se encolan y se entregan al final de cada paso. Un oyente puede llamar a `complete()` dentro de `enter` sin romper la evaluación en curso.
+- **Fuente simulada:** además de lo del §8.1, tiene `setTimeScale(1|5|20)` y `setWeakGps(on)`. Este último reporta 80 m de precisión y la vuelve no fiable, para que el motor aplique sus filtros reales; es el interruptor «GPS débil» de la demo.
+- **Fuente del navegador:** acepta la geolocalización inyectada, lo que permite testearla sin navegador.
 
 ---
 
@@ -1192,10 +1210,13 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
   - Los paquetes exportan su código TypeScript directamente (sin build). Vite, Vitest y tsx lo consumen tal cual. La API lo empaquetará con su build cuando los use (fase 5).
   - Los imports relativos llevan extensión `.ts` y se activa `erasableSyntaxOnly`, así que el código también corre con la eliminación de tipos nativa de Node.
 
-### Fase 2: Motor (P0)
+### Fase 2: Motor (P0) · completada el 2026-10-07
 
-- [ ] `createGeoEngine` con todas las reglas de la sección 8, `restoreGeoEngine` y las fuentes `simulated`, `replay` y `browser`, más el grabador.
-- **DoD:** todos los escenarios de 14.1 en verde y cobertura ≥ 90 %.
+- [x] `createGeoEngine` con todas las reglas de la sección 8, `restoreGeoEngine` y las fuentes `simulated`, `replay` y `browser`, más el grabador.
+- **DoD:** todos los escenarios de 14.1 en verde y cobertura ≥ 90 %. ✓
+  - 75 tests, incluida la ruta curada de Leiria recorrida de punta a punta en simulación.
+  - Cobertura: 99,8 % de líneas y 94 % de ramas. `pnpm test` del paquete falla si baja del 90 %.
+  - Precisiones de la implementación en el §8.9.
 
 ### Fase 3: Sistema de eventos (P0)
 
