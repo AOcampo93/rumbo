@@ -1,6 +1,7 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** planificación aprobada, listo para empezar a construir.
+> **Nombre provisional:** Rumbo. **Estado:** fase 0 completada; producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
+> **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
 ---
@@ -14,7 +15,7 @@
    - El `README.md` de la raíz **no es este documento**: debe seguir la plantilla del curso (sección 2.3), en inglés.
 3. **Construye por fases** (sección 16). No pases de fase sin que los tests estén en verde y se cumpla su *Definition of Done*.
 4. **Los contratos no se cambian sin actualizar la documentación.** Un cambio incompatible en `RouteSpec` sube `specVersion` e incluye una migración.
-5. **Idiomas:** código, identificadores, comentarios y commits en **inglés**. La UI pasa por i18n (español por defecto e inglés). La documentación interna va en español.
+5. **Idiomas:** código, identificadores, comentarios y commits en **inglés**. La app es trilingüe (español, inglés y portugués de Portugal) según el [ADR 0001](adr/0001-multilenguaje.md). La documentación interna va en español.
 6. Si una API externa (ArcGIS, Wikimedia, proveedor de IA) no se comporta como se describe aquí, **verifica la documentación oficial vigente** y documenta la diferencia en `docs/adr/`.
 
 ---
@@ -135,18 +136,18 @@ Secciones: `# Overview`, `# Development Environment`, `# Useful Websites`, `# Fu
 
 | Capa | Tecnología |
 |---|---|
-| Monorepo | pnpm workspaces (Turborepo opcional), Node.js LTS (≥ 22) |
-| Lenguaje | TypeScript `strict` en todo el repo |
+| Monorepo | pnpm 12 workspaces (su configuración vive en `pnpm-workspace.yaml`), Node.js 24 LTS |
+| Lenguaje | TypeScript 6.0 `strict` en todo el repo. La 7 (compilador nativo) aún no es compatible con vue-tsc ni con typescript-eslint |
 | Validación | Zod (esquemas compartidos; generar JSON Schema desde Zod para la salida estructurada de la IA) |
-| Web | Vue 3 + Vite + Pinia + Vue Router + vue-i18n + vite-plugin-pwa (Workbox, estrategia `injectManifest`) |
+| Web | Vue 3 + Vite 8 + Pinia + Vue Router + vue-i18n (catálogos es/en/pt) + vite-plugin-pwa (Workbox, estrategia `injectManifest`). Fuentes Fraunces e Inter alojadas en la app (`@fontsource`): funcionan sin conexión y no envían la IP del usuario a terceros |
 | Mapa | ArcGIS Maps SDK for JavaScript (`@arcgis/core`, `MapView` + `GraphicsLayer`), encapsulado en un componente propio |
 | UI | CSS propio con tokens (variables CSS) de `docs/DESIGN.md`; iconos Lucide; SortableJS (vía `vue-draggable-plus`) para reordenar |
-| API | Fastify + `fastify-type-provider-zod` + `@fastify/cors`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/swagger` |
-| BD | PostgreSQL 16+ (imagen con PostGIS habilitado; su uso es opcional en v1) + Drizzle ORM + drizzle-kit (migraciones) |
+| API | Fastify 5 + `fastify-type-provider-zod` + `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/swagger`. Sin CORS: la API comparte origen con la web |
+| BD | PostgreSQL 17 + PostGIS 3.5 (imagen `postgis/postgis`; su uso es opcional en v1) + Drizzle ORM + drizzle-kit (migraciones) |
 | IA | Interfaz `AiProvider` con una implementación por defecto (p. ej. API de Anthropic); modelo configurable por variable de entorno |
 | Tests | Vitest (unitarios y de escenario), Playwright (e2e con geolocalización simulada) |
-| Calidad | ESLint (flat config) + Prettier, Conventional Commits, GitHub Actions (typecheck, lint, test, build) |
-| Despliegue | Docker (un Dockerfile por app) en Coolify, Traefik con HTTPS (obligatorio para geolocalización y service worker) |
+| Calidad | ESLint 10 (flat config) + Prettier 3, Conventional Commits, GitHub Actions (formato, lint, typecheck, tests, build, imágenes Docker y escaneo de secretos con gitleaks) |
+| Despliegue | Docker (un Dockerfile por app) en Coolify, Traefik con HTTPS (obligatorio para geolocalización y service worker). Detalle en [DEPLOY.md](DEPLOY.md) |
 
 ### 5.2 Estructura
 
@@ -167,7 +168,11 @@ rumbo/
 ├─ docs/
 │  ├─ PROJECT_PLAN.md         # este documento
 │  ├─ DESIGN.md               # propuesta gráfica
+│  ├─ DEPLOY.md               # producción: Coolify, ramas y despliegue
+│  ├─ SECURITY.md             # secretos y repositorio público
+│  ├─ design/                 # mockups exportados y capturas de pantalla
 │  └─ adr/                    # decisiones de arquitectura
+├─ scripts/deploy-prod.sh     # promoción de main a production
 ├─ .github/workflows/ci.yml
 └─ README.md                  # plantilla CSE 310 (inglés)
 ```
@@ -199,14 +204,17 @@ export type LatLng = { lat: number; lng: number };
 export type RouteMode = 'free' | 'challenge';        // UI: "Libre" | "Reto"
 export type Activity = 'walk' | 'run' | 'bike';      // UI: "A pie" | "Correr" | "Bici"
 export type RouteSource = 'curated' | 'user';
+export type Locale = 'es' | 'en' | 'pt';             // 'pt' = portugués de Portugal (pt-PT)
+export type LocalizedText = string | Partial<Record<Locale, string>>;
+                                     // un string está en spec.locale (ADR 0001)
 
 export interface RouteSpec {
   specVersion: 1;
   id: string;                          // slug único ^[a-z0-9-]{3,64}$
-  name: string;                        // 1..80
-  summary?: string;                    // ≤280, para tarjetas
-  description?: string;                // markdown corto
-  locale: string;                      // BCP-47: 'es', 'pt-PT', 'en'
+  name: LocalizedText;                 // 1..80 por idioma
+  summary?: LocalizedText;             // ≤280, para tarjetas
+  description?: LocalizedText;         // markdown corto
+  locale: Locale;                      // idioma de origen: el de los textos que son string
   mode: RouteMode;
   activity: Activity;                  // default 'walk'
   source: RouteSource;
@@ -242,7 +250,7 @@ export type PointCategory =
 
 export interface RoutePoint {
   id: string;                          // único en la ruta ^[a-z0-9_-]{1,64}$
-  name: string;
+  name: LocalizedText;
   position: LatLng;
   order: number;                       // 1..n, único y consecutivo
   radius?: number;                     // sobrescribe defaultRadius
@@ -272,18 +280,19 @@ export interface RouteTriggers {
 
 export interface ActionDef {
   type: string;                        // clave del registro de handlers: 'ai_template', 'video', 'quiz'...
-  params?: Record<string, unknown>;    // cada handler valida sus params con su propio esquema Zod
+  params?: Record<string, unknown>;    // cada handler valida sus params con su propio esquema Zod;
+                                       // sus textos son LocalizedText (pueden traer los 3 idiomas)
   presentation?: 'blocking' | 'toast'; // default 'blocking'
   feedback?: { vibrate?: boolean; sound?: string | null; notify?: boolean }; // sobrescribe el feedback por defecto
 }
 
 export interface MediaRef {
-  url: string; alt: string; credit?: string; license?: string; sourceUrl?: string;
+  url: string; alt: LocalizedText; credit?: string; license?: string; sourceUrl?: string;
 }
 
 export interface RouteBundle {          // lo que viaja entre API, caché y app
   spec: RouteSpec;
-  contents: Record<string, PointContent>;  // clave = contentRef
+  contents: Record<string, Partial<Record<Locale, PointContent>>>;  // [contentRef][locale]
 }
 ```
 
@@ -293,8 +302,12 @@ export interface RouteBundle {          // lo que viaja entre API, caché y app
 {
   "specVersion": 1,
   "id": "leiria-historica",
-  "name": "Leiria histórica",
-  "summary": "Castillo, catedral y plazas del centro en un paseo de 2 horas.",
+  "name": { "es": "Leiria histórica", "en": "Historic Leiria", "pt": "Leiria histórica" },
+  "summary": {
+    "es": "Castillo, catedral y plazas del centro en un paseo de 2 horas.",
+    "en": "Castle, cathedral and town squares in a two-hour walk.",
+    "pt": "Castelo, sé e praças do centro num passeio de duas horas."
+  },
   "locale": "es",
   "mode": "free",
   "activity": "walk",
@@ -323,6 +336,7 @@ export interface RouteBundle {          // lo que viaja entre API, caché y app
 ```
 
 > Las coordenadas del ejemplo son orientativas. Las rutas reales usan coordenadas verificadas (sección 15).
+> El nombre del punto es un `string` simple: los nombres propios no se traducen.
 
 ### 6.3 Validación (`validateRouteSpec`)
 
@@ -337,6 +351,7 @@ export interface RouteBundle {          // lo que viaja entre API, caché y app
 - Un trigger apunta a una acción que no existe en `actions`.
 - `path` con menos de 2 puntos.
 - Más de 100 puntos.
+- Un `LocalizedText` vacío o con claves de idioma no soportadas.
 
 **Advertencias** (la ruta es válida):
 
@@ -345,21 +360,25 @@ export interface RouteBundle {          // lo que viaja entre API, caché y app
 - Tipo de acción desconocido, si se pasa `opts.knownActionTypes`.
 - Ruta `challenge` con un solo punto.
 - `radius` < 20 m (riesgo por la precisión del GPS).
+- Falta una traducción (`missing_translation`). Con `opts.requireLocales` pasa a ser error: las rutas curadas exigen `es`, `en` y `pt`.
 
 **Funciones auxiliares del paquete:**
 
 - `normalizeRouteSpec(spec)`: aplica los valores por defecto según modo y actividad. **El motor solo acepta specs normalizados.**
 - `migrateRouteSpec(input)`: convierte versiones anteriores de `specVersion` a la actual.
-- `hashRouteSpec(spec)`: SHA-256 del JSON canónico del spec normalizado. Sirve para detectar cambios en snapshots y en runs.
+- `hashRouteSpec(spec)`: SHA-256 del JSON canónico de los campos que usa el motor: puntos, posiciones, radios, orden, ajustes, triggers y acciones, sin textos. Sirve para detectar cambios en snapshots y en runs. Corregir o traducir un texto no invalida los recorridos guardados.
+- `resolveText(text, locale)`: devuelve el texto en el idioma pedido, siguiendo la cadena de respaldo del [ADR 0001](adr/0001-multilenguaje.md) (idioma pedido → `spec.locale` → `en` → `es` → `pt`), e indica qué idioma se usó.
 
 ### 6.4 Contrato de contenido: `PointContent`
 
 Es la ficha del lugar. La IA la genera para las rutas de usuario y se escribe a mano para las curadas. La plantilla `ai_template` la pinta. **La IA solo genera datos con este esquema, nunca interfaz.**
 
+Hay una ficha por idioma, en `RouteBundle.contents[contentRef][locale]`. Las curadas traen los tres idiomas. Las generadas por IA solo existen en el idioma en que se generaron.
+
 ```ts
 export interface PointContent {
   id: string;                    // = contentRef
-  locale: string;
+  locale: Locale;
   title: string;                 // ≤80
   subtitle?: string;             // ≤120
   summary: string;               // 2-4 frases
@@ -389,7 +408,7 @@ export interface PointContent {
 ```ts
 export interface RouteDraft {
   name: string;
-  locale: string;
+  locale: Locale;                    // el idioma de la app al crear la ruta (no se pregunta)
   mode: RouteMode;
   activity: Activity;
   interests?: string[];              // para la IA: 'history', 'art', 'food'...
@@ -426,7 +445,7 @@ summarizeRoute(spec)
 
 **Wizard (la UI está detallada en `docs/DESIGN.md`):**
 
-1. **Datos:** nombre, zona, modo, actividad, idioma, intereses y límite de tiempo (reto).
+1. **Datos:** nombre, zona, modo, actividad, intereses y límite de tiempo (reto). No se pregunta el idioma: es el de la app, y en él se generan las fichas de IA.
 2. **Lugares:** búsqueda con autocompletado (geocodificación vía backend), punto añadido tocando el mapa, lista **reordenable arrastrando**, radio y obligatoriedad por punto, y vista previa del trazado con distancia y duración estimadas.
 3. **Contenido IA:** generación por punto (sección 12), con revisión y edición antes de guardar. Se puede saltar y usar la ficha básica.
 4. **Revisar y simular:** validación, advertencias y botón **Probar ruta** (motor con fuente simulada).
@@ -587,7 +606,7 @@ export interface EngineState {
     timestamp: number; quality: 'good' | 'weak';
   } | null;
   target: {
-    pointId: string; name: string; order: number;
+    pointId: string; order: number;        // sin nombre: la UI lo resuelve por pointId (ADR 0001)
     distance: number;                      // m
     bearing: number;                       // grados 0-360 desde el usuario
     etaSeconds: number;                    // distancia / expectedSpeed (o velocidad media si se mueve)
@@ -700,18 +719,24 @@ export interface HandlerContext {
   signal: AbortSignal;                           // se aborta si el recorrido se cancela
 }
 
+// El sistema de eventos nunca produce texto: pasa claves i18n (con parámetros) o
+// textos de la ruta, y la UI los traduce con el idioma activo (ADR 0001).
+export type UiText =
+  | { key: string; params?: Record<string, string | number | LocalizedText> }
+  | LocalizedText;
+
 export interface UiAdapter {
   present<R = unknown>(view: string, props: Record<string, unknown>,
     opts?: { variant?: 'sheet' | 'modal' | 'fullscreen' }): Promise<R>;
-  toast(message: string, opts?: { icon?: string; durationMs?: number }): void;
-  confirm(opts: { title: string; body?: string; confirmLabel: string; cancelLabel: string; destructive?: boolean }): Promise<boolean>;
+  toast(message: UiText, opts?: { icon?: string; durationMs?: number }): void;
+  confirm(opts: { title: UiText; body?: UiText; confirmLabel: UiText; cancelLabel: UiText; destructive?: boolean }): Promise<boolean>;
   openExternal(url: string): void;
 }
 
 export interface FeedbackAdapter {
   vibrate(pattern: number[]): void;
   play(sound: 'approach' | 'arrive' | 'alert' | 'finish' | 'soft'): void;
-  notify(n: { title: string; body: string; tag: string; url?: string }): void;  // solo si la app está en 2º plano
+  notify(n: { title: UiText; body: UiText; tag: string; url?: string }): void;  // solo si la app está en 2º plano
 }
 
 const events = createEventSystem({ engine, route, handlers, ui, feedback, content, analytics });
@@ -753,6 +778,8 @@ events.stop();
 | `finished` | `[100, 50, 100, 50, 300]` | `finish` | "🏁 ¡Ruta completada!" |
 | `gps_weak` | — | — | No (indicador en la UI) |
 
+Los textos de esta tabla son la referencia en español. En el código, cada notificación es una clave i18n (`notify.arrive`, `notify.deviation`…) que se traduce al idioma activo en el momento del aviso.
+
 ### 9.5 Handlers v1
 
 | `type` | Para qué | `params` (Zod) |
@@ -766,6 +793,8 @@ events.stop();
 | `decision` | Interrupciones: Continuar / Pausar / Terminar | `{ preset: 'deviation' \| 'idle' \| 'out_of_order' \| 'timeout' } \| { title, body, options }` |
 | `three_scene` | *(Futuro)* Escena Three.js | Stub en v1, registrado con `load()` diferido |
 | `ar_scene` | *(Futuro)* RA (WebXR / model-viewer) | No se implementa en v1 |
+
+**Acciones personalizadas en 3 idiomas:** los textos de los `params` son `LocalizedText`. Eso incluye la pregunta, las opciones y la explicación del quiz; el `label` del redirect; el `title` y el `body` de `info_sheet`; y el `message` del toast. Así, una acción escrita por nosotros (no por la IA) puede traer español, inglés y portugués, y el handler muestra el idioma activo.
 
 **Añadir un tipo nuevo** consiste en crear `apps/web/src/handlers/<tipo>/` (componente + definición) y registrarlo. **El motor no se toca.**
 
@@ -800,7 +829,7 @@ src/
 ├─ components/              # BottomSheet, RouteCard, ModeBadge, StatChip, PointListItem, HudTarget,
 │                           # ProgressBar, DecisionSheet, Stepper, PlaceSearch, GpsIndicator, MiniRunBar...
 ├─ styles/                  # tokens.css (de DESIGN.md), base.css
-├─ i18n/                    # es.json, en.json
+├─ i18n/                    # es.json, en.json, pt.json (vue-i18n) y useLocale()
 └─ sw.ts                    # service worker (injectManifest): precache, caché en tiempo de ejecución, notificationclick
 ```
 
@@ -808,6 +837,7 @@ src/
 
 | Ruta | Vista |
 |---|---|
+| `/welcome` | Idioma (S00): solo en el primer arranque. Después el idioma se cambia en `/settings` |
 | `/onboarding` | Onboarding (primera vez) |
 | `/` | Inicio, pestaña Explorar (lista o mapa) |
 | `/my-routes` | Mis rutas |
@@ -833,6 +863,7 @@ Las hojas de llegada y de decisión **no son rutas**: forman una pila de overlay
   - `user`: punto propio + círculo de precisión + cono de rumbo. Si la fuente es simulada, se dibuja en morado con la etiqueta "SIM".
 - **Popup (requisito del curso):** `PopupTemplate` con título, imagen, categoría, estado, orden y distancia. En modo libre añade la acción **"Ir a este punto"** (`setTarget`).
 - **Filtro (stretch):** por ruta, categoría, modo y estado, alternando `graphic.visible`.
+- **Idioma:** al cambiar de idioma se llama a `intl.setLocale()` del SDK, para los controles y popups de ArcGIS. El contenido de los popups se genera con el idioma activo.
 - **Cámara:** modo seguir activado durante el recorrido. Si el usuario arrastra el mapa, se desactiva y aparece el botón **Recentrar**.
 - **Rendimiento:** el SDK de ArcGIS es pesado, así que va con *code-splitting* en las vistas con mapa y se precarga mientras el usuario está en Inicio. El estado del motor llega al mapa como mucho una vez por frame (`requestAnimationFrame`).
 
@@ -857,9 +888,9 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
 
 ### 10.6 Offline y caché
 
-- **Precache:** la app shell (Workbox).
+- **Precache:** la app shell y los tres catálogos de idioma (Workbox).
 - **Al pulsar Iniciar:**
-  - El bundle de la ruta va a IndexedDB.
+  - El bundle de la ruta, con todos sus idiomas, va a IndexedDB.
   - Las imágenes del contenido van a Cache Storage.
   - La UI muestra "Disponible sin conexión ✓".
 - **Caché en tiempo de ejecución:**
@@ -890,6 +921,10 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
 
 ### 11.1 Endpoints v1 (`/api/v1`, OpenAPI generado en `/api/v1/docs`)
 
+- **Mismo origen que la web** (`https://rumbo.arturoocampo.com/api`): no hace falta CORS.
+- **Idioma:** el cliente envía `Accept-Language` con el idioma activo.
+- **Errores:** devuelven un código (`{ code }`) que traduce el cliente, nunca texto para mostrar.
+
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/health` | Estado y versión |
@@ -900,7 +935,7 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
 | DELETE | `/routes/:id` | Borra (cabecera `X-Edit-Token`) |
 | GET | `/geo/suggest?q=&near=` | Autocompletado (proxy de geocodificación) |
 | GET | `/geo/resolve?key=` | Lugar resuelto `{ name, address, position, category, externalId }` |
-| POST | `/content/generate` | Genera un `PointContent` (borrador) con IA |
+| POST | `/content/generate` | Genera un `PointContent` (borrador) con IA, en el `locale` pedido (obligatorio) |
 | POST | `/runs` | Inicio de recorrido → `{ runId }` |
 | PATCH | `/runs/:runId` | Cierre: estado final + resumen |
 | POST | `/analytics/batch` | Lote de eventos anónimos → `202` |
@@ -908,8 +943,9 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
 ```ts
 // @rumbo/api-contract
 export interface RouteSummary {
-  id: string; name: string; summary?: string;
-  mode: RouteMode; activity: Activity; source: RouteSource; locale: string;
+  id: string; name: LocalizedText; summary?: LocalizedText;
+  mode: RouteMode; activity: Activity; source: RouteSource;
+  locale: Locale; locales: Locale[];   // idioma de origen e idiomas con contenido completo
   coverImage?: MediaRef;
   pointCount: number; distanceMeters: number; estimatedMinutes: number;
   centroid: LatLng; bbox: [number, number, number, number];
@@ -924,7 +960,7 @@ export interface RouteSummary {
 | `routes` | `id` (slug, pk), `spec` jsonb, `spec_version`, `spec_hash`, `name`, `mode`, `activity`, `source`, `locale`, `point_count`, `distance_m`, `est_minutes`, `centroid_lat`, `centroid_lng`, `bbox` jsonb, `status` (`published`\|`draft`\|`archived`), `owner_device_id`, `owner_user_id` (futuro, null), `edit_token_hash`, `created_at`, `updated_at` |
 | `point_contents` | `id` (pk), `route_id` (fk), `point_id`, `locale`, `content` jsonb, `status`, timestamps. Único (`route_id`, `point_id`, `locale`) |
 | `content_cache` | `cache_key` (pk), `content` jsonb, `sources` jsonb, `hits`, `created_at` |
-| `ai_generations` | `id`, `device_id`, `cache_key`, `model`, `prompt_version`, `input_tokens`, `output_tokens`, `cost_estimate`, `status`, `latency_ms`, `created_at` |
+| `ai_generations` | `id`, `device_id`, `cache_key`, `locale`, `model`, `prompt_version`, `input_tokens`, `output_tokens`, `cost_estimate`, `status`, `latency_ms`, `created_at` |
 | `runs` | `id` (uuid), `route_id`, `spec_hash`, `device_id`, `mode`, `status` (`running`\|`finished`\|`cancelled`\|`abandoned`), `started_at`, `ended_at`, `elapsed_ms`, `completed_points`, `total_points`, `score`, `client_info` jsonb |
 | `analytics_events` | `id` bigserial, `device_id`, `run_id` (null), `name`, `props` jsonb, `client_ts`, `server_ts`. Índice (`name`, `server_ts`) |
 | `devices` | `id`, `first_seen`, `last_seen`, `platform` (aproximada), `pwa_installed` |
@@ -934,25 +970,27 @@ export interface RouteSummary {
 
 ### 11.3 Seguridad
 
-- CORS con lista blanca (`CORS_ORIGINS`), `@fastify/helmet` y límite de tamaño del body (1 MB).
+- Mismo origen que la web, así que sin CORS. `@fastify/helmet` y límite de tamaño del body (1 MB).
 - Rate limit por IP y `X-Device-Id`. Más estricto en `/content/generate` y `/geo/*`.
 - Validación Zod de todo lo que entra. Los `RouteBundle` se validan con `validateRouteSpec` y `PointContent` en el servidor; nunca se confía en el cliente.
 - `editToken`: 32 bytes aleatorios. Se guarda solo su hash SHA-256 y se compara en tiempo constante.
-- Secretos únicamente en variables de entorno (gestionadas en Coolify). En el repo solo hay `.env.example`.
+- Secretos únicamente en variables de entorno: en Coolify, como variables solo de ejecución, y en local, en `.env` que git ignora. En el repo solo hay `.env.example`. El repo es público: reglas completas en [SECURITY.md](SECURITY.md).
 - Logs (pino) sin datos personales y sin coordenadas.
 
 ### 11.4 Variables de entorno
 
+Las plantillas completas, que son la fuente de verdad, están en `apps/api/.env.example` y `apps/web/.env.example`. En local se copian a `.env`, que git ignora.
+
 ```
-# apps/web
-VITE_API_BASE_URL=
+# apps/web (públicas: se incrustan en el bundle; nunca secretos)
 VITE_ARCGIS_API_KEY=            # restringida por referrer, solo mapas base
 VITE_DEFAULT_BASEMAP=arcgis/navigation
 
-# apps/api
+# apps/api (secretos: solo en el servidor)
+HOST=0.0.0.0
 PORT=3000
+LOG_LEVEL=info
 DATABASE_URL=
-CORS_ORIGINS=
 ARCGIS_API_KEY_SERVER=          # geocodificación de direcciones (solo para mostrar, nunca guardar)
 GEOCODING_PROVIDER=wikidata     # búsqueda de lugares con coordenadas guardables (ver 12.3)
 AI_PROVIDER=anthropic
@@ -966,14 +1004,17 @@ ANALYTICS_ENABLED=true
 
 ### 11.5 Despliegue (Coolify en Contabo)
 
-- **Servicios:**
-  - `web`: build estático servido por nginx o Caddy.
-  - `api`: Node.
-  - `postgres`: imagen con PostGIS y volumen persistente.
-- **Dominios** (de ejemplo): `app.<dominio>` y `api.<dominio>`, con HTTPS de Traefik.
+En marcha desde el 2026-10-07. El detalle operativo está en [DEPLOY.md](DEPLOY.md).
+
+- **Servicios** (proyecto «Rumbo» de Coolify):
+  - `rumbo-web`: build estático servido por nginx;
+  - `rumbo-api`: Node 24;
+  - `rumbo-db`: PostgreSQL 17 + PostGIS 3.5, con volumen persistente y sin puerto público.
+- **Un solo origen:** `https://rumbo.arturoocampo.com` para la web y `/api` para la API, con HTTPS de Let's Encrypt vía Traefik.
+- **Ramas:** `main` es desarrollo y `production` es lo desplegado. Desplegar es promover a `production` un commit de `main` con la CI en verde (`pnpm deploy:prod`), y solo cuando lo pide el responsable del proyecto.
 - **Migraciones:** `drizzle-kit migrate` al arrancar la API (o como paso previo del despliegue).
-- **Backups:** dump diario de Postgres.
-- **CI:** GitHub Actions ejecuta typecheck, lint, test, build y `validate:routes`. El despliegue lo hace Coolify con un webhook a `main`.
+- **Backups:** dump diario de Postgres, pendiente de programar en Coolify.
+- **CI:** GitHub Actions ejecuta formato, lint, typecheck, tests, build, las imágenes Docker y el escaneo de secretos; añadirá `validate:routes` cuando exista.
 
 ---
 
@@ -986,13 +1027,15 @@ ANALYTICS_ENABLED=true
 - **Imágenes reales, no generadas:** Wikimedia Commons con autor y licencia (CC0, dominio público, CC BY, CC BY-SA). Las imágenes generativas solo se usarían para ilustraciones decorativas, y en v1 no hay.
 - **Transparencia:** la ficha muestra "Contenido generado con IA a partir de Wikipedia" con enlaces a las fuentes.
 - El usuario **revisa y puede editar** cada ficha antes de guardar (`status: 'draft'` → `'approved'`).
+- **En el idioma del usuario:** cada generación usa el idioma de la app, y lo generado se queda en ese idioma aunque el usuario cambie después ([ADR 0001](adr/0001-multilenguaje.md)).
 
 ### 12.2 Pipeline de `POST /content/generate`
 
 ```
-Entrada: { name, position, locale, interests?, externalId? }
+Entrada: { name, position, locale (obligatorio: es | en | pt), interests?, externalId? }
 1. Resolver entidad: Wikipedia geosearch (radio ~500 m) + coincidencia de nombre → título + QID de Wikidata
-2. Texto: resumen/extracto en el idioma pedido (respaldo: en → pt)
+2. Texto: el artículo del idioma pedido, vía los sitelinks del QID (respaldo: en → es → pt).
+   La ficha se escribe siempre en el idioma pedido, aunque la fuente esté en otro
 3. Imágenes: imágenes de la página / Commons con extmetadata (autor, licencia); filtrar licencias compatibles
 4. LLM con salida estructurada (JSON Schema derivado de Zod, sin campos de media):
    - prompt versionado (PROMPT_VERSION), temperatura baja
@@ -1061,6 +1104,10 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
 - `route-spec`: fixtures válidos e inválidos para cada regla de 6.3, más la normalización por modo y actividad.
 - `route-builder`: un draft produce siempre un spec válido; `summarizeRoute` es correcto.
 - `event-system`: orden y prioridad de la cola, deduplicación, interrupciones obsoletas, decisiones aplicadas al motor y respaldo cuando un handler falla.
+- **i18n:**
+  - los tres catálogos tienen las mismas claves y los mismos parámetros;
+  - `resolveText` sigue su cadena de respaldo;
+  - distancias, tiempos y fechas se formatean bien en cada idioma.
 - API: tests de integración de endpoints (Postgres en contenedor de test) y validación de bundles.
 - **e2e (Playwright, Chromium):**
   - Recorrer "Leiria histórica" en simulación.
@@ -1069,6 +1116,7 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - Cancelar.
   - Recargar a mitad → "Continuar recorrido".
   - Mapa Explorar con 20+ marcadores, popup y filtro.
+  - Idioma: elegir PT en el primer arranque → recargar → sigue en PT → cambiar a EN en Ajustes a mitad de recorrido, sin recargar y sin alterar el motor.
 - **CI:** todo lo anterior en cada PR.
 
 ### 14.3 Definition of Done global
@@ -1080,11 +1128,15 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
 
 ---
 
-## 15. Rutas precargadas (datos de ejemplo en Leiria)
+## 15. Rutas de ejemplo en Leiria
 
-En total, **≥ 20 marcadores** entre las dos rutas.
+Decidido el 2026-10-07: **una ruta precargada**, creada por nosotros, y **una ruta creada con el planificador**, con fichas generadas por IA.
 
-**1. `leiria-historica`:** modo libre, a pie, unos 12 puntos. Candidatos (verificar existencia y coordenadas en Wikidata/OpenStreetMap):
+> **Pendiente de decidir:** el curso exige **≥ 20 marcadores** en el mapa, y una sola ruta precargada de unos 12 puntos no llega. Hay dos opciones:
+> - ampliar la ruta a 20 puntos o más;
+> - añadir al mapa Explorar una capa de lugares de interés (por ejemplo, de Wikidata) que cuente para el requisito.
+
+**1. Precargada, `leiria-historica`:** modo libre, a pie, unos 12 puntos, con los textos en es/en/pt. Empieza sencilla, con fichas `info_sheet`, y sus acciones se van personalizando. Candidatos (verificar existencia y coordenadas en Wikidata/OpenStreetMap):
 
 - Castelo de Leiria
 - Sé de Leiria (Catedral)
@@ -1099,9 +1151,11 @@ En total, **≥ 20 marcadores** entre las dos rutas.
 - Teatro José Lúcio da Silva
 - Igreja da Misericórdia
 
-Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `video` y un `redirect` para demostrar el sistema de eventos.
+Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y un `redirect`, todas en los tres idiomas, para demostrar el sistema de eventos.
 
-**2. `reto-ribeira-do-lis`:** modo reto, a pie o corriendo, con 8-10 checkpoints (`CP1`…`CP9` + `Meta`) por caminos públicos junto al río Lis y el centro. Incluye un `path` dibujado, `timeLimit` y premios en forma de puntos (quiz en 2-3 checkpoints).
+**2. De usuario, con IA:** se crea con el planificador (fases 6 y 7), y la IA genera sus fichas en el idioma del usuario. Sirve de demo del creador y del pipeline de IA.
+
+**Opcional (P2), `reto-ribeira-do-lis`:** modo reto, a pie o corriendo, con 8-10 checkpoints (`CP1`…`CP9` + `Meta`) por caminos públicos junto al río Lis y el centro. Incluye un `path` dibujado, `timeLimit` y premios en forma de puntos (quiz en 2-3 checkpoints).
 
 - **Contenido de las curadas:** escrito a mano o generado con el pipeline de IA y revisado, con imágenes de Wikimedia Commons con atribución.
 - **Coordenadas:** de Wikidata (CC0) o posiciones dibujadas por nosotros. Nunca coordenadas guardadas desde el geocodificador de ArcGIS (ver 12.3).
@@ -1112,18 +1166,21 @@ Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `vid
 
 > Prioridad: **P0** = la base sólida (los 3 módulos) más los requisitos del curso; **P1** = dentro del sprint si da tiempo; **P2** = futuro. Lo que no entre en 2 semanas sigue después: el proyecto continúa.
 
-### Fase 0: Setup (P0)
+### Fase 0: Setup (P0) · completada el 2026-10-07
 
-- [ ] Monorepo pnpm, TS strict, ESLint/Prettier, Vitest y CI de GitHub Actions.
-- [ ] `docs/` con este plan; README raíz con la plantilla del curso (borrador).
-- **DoD:** `pnpm i && pnpm test && pnpm build` funciona en CI.
+- [x] Monorepo pnpm, TS strict, ESLint/Prettier, Vitest y CI de GitHub Actions.
+- [x] `docs/` con este plan; README raíz con la plantilla del curso (borrador).
+- [x] Entorno de producción en Coolify (web, API y PostgreSQL), con despliegue por promoción de rama ([DEPLOY.md](DEPLOY.md)).
+- [x] Seguridad del repo público: `.env` ignorados, escaneo de secretos y Dependabot ([SECURITY.md](SECURITY.md)).
+- [x] Multilenguaje decidido y llevado a los contratos ([ADR 0001](adr/0001-multilenguaje.md)).
+- **DoD:** `pnpm i && pnpm test && pnpm build` funciona en CI. ✓
 
 ### Fase 1: Contrato y creador base (P0)
 
 - [ ] `geo-utils`: haversine, rumbo, distancia punto-segmento y punto-polilínea, longitud, bbox, centroide, Douglas-Peucker.
-- [ ] `route-spec`: tipos, Zod, `validateRouteSpec`, `normalizeRouteSpec`, `hashRouteSpec`, `migrateRouteSpec`, `PointContent`.
+- [ ] `route-spec`: tipos, Zod, `validateRouteSpec`, `normalizeRouteSpec`, `hashRouteSpec`, `migrateRouteSpec`, `PointContent`, `LocalizedText` y `resolveText`.
 - [ ] `route-builder`: `buildRouteSpec`, `summarizeRoute`.
-- [ ] `data/routes`: las dos rutas de Leiria + `pnpm validate:routes`.
+- [ ] `data/routes`: la ruta precargada de Leiria en es/en/pt + `pnpm validate:routes`, que exige los tres idiomas.
 - **DoD:** fixtures válidos e inválidos cubiertos y las rutas curadas validadas en CI.
 
 ### Fase 2: Motor (P0)
@@ -1133,12 +1190,13 @@ Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `vid
 
 ### Fase 3: Sistema de eventos (P0)
 
-- [ ] `createEventSystem`: cola, prioridades, deduplicación, decisiones, respaldo y feedback por defecto.
+- [ ] `createEventSystem`: cola, prioridades, deduplicación, decisiones, respaldo y feedback por defecto. Sin textos: solo claves i18n hacia los adaptadores.
 - **DoD:** tests de 14.2 en verde con un motor real y una fuente simulada.
 
 ### Fase 4: Web, recorrer rutas (P0, requisitos del curso)
 
-- [ ] Shell PWA, tokens de diseño, i18n, router, stores.
+- [ ] Shell PWA, tokens de diseño, router y stores.
+- [ ] i18n: catálogos es/en/pt, S00 Idioma en el primer arranque y cambio de idioma en vivo desde Ajustes.
 - [ ] `ArcgisMap.vue` y sus capas.
 - [ ] Inicio (lista + **mapa con 20+ marcadores, popups y filtro**) y Detalle.
 - [ ] Preparación y permisos, **Recorrido**, handlers v1, decisiones, pausa, Resumen.
@@ -1150,7 +1208,7 @@ Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `vid
 ### Fase 5: Backend mínimo y despliegue (P1)
 
 - [ ] Fastify, Drizzle, migraciones, seed, `GET /routes`, `GET /routes/:id`, `POST /runs`, `PATCH /runs/:id` y `POST /analytics/batch`.
-- [ ] Despliegue en Coolify (web + api + postgres) con HTTPS.
+- [x] Despliegue en Coolify (web + api + postgres) con HTTPS. Se adelantó a la fase 0.
 - **DoD:** la app en producción carga las rutas desde la API.
 
 ### Fase 6: Creador en la web (P1)
@@ -1160,7 +1218,7 @@ Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `vid
 
 ### Fase 7: Contenido IA (P1 → P2)
 
-- [ ] `POST /content/generate` (pipeline de 12.2), paso 3 del wizard y handler `ai_template` con datos reales.
+- [ ] `POST /content/generate` (pipeline de 12.2) en el idioma del usuario, paso 3 del wizard y handler `ai_template` con datos reales.
 - **DoD:** ruta de usuario con fichas generadas, revisadas y visibles al llegar, incluso sin conexión.
 
 ### Fase 8: Futuro (P2)
@@ -1174,12 +1232,9 @@ Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `vid
 - [ ] Importar y exportar GPX (variante deportiva).
 - [ ] Mapas offline.
 - [ ] Panel privado de analytics.
-- [ ] Contenido multi-idioma (pt).
+- [ ] Más idiomas (pt-BR…) y regenerar fichas de IA en otro idioma.
 
-**Plan orientativo del sprint:**
-
-- **Semana 1:** fases 0-3 (la base) y el arranque de la fase 4 (mapa + Explorar).
-- **Semana 2:** cierre de la fase 4, fase 5 si da tiempo, README del curso y video.
+**Ritmo:** sin fecha fija. Se avanza sección por sección, con la CI en verde, y se despliega cuando lo pide el responsable del proyecto.
 
 ---
 
@@ -1197,8 +1252,16 @@ Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `vid
 | Validación Zod compartida front/back | Un solo contrato y sin duplicar reglas |
 | Restaurar recorridos en pausa | El usuario puede estar en otro sitio al volver |
 | Sin trazas GPS en el servidor por defecto | RGPD y confianza del usuario |
+| App trilingüe (es/en/pt-PT): idioma elegido una vez y cambio en vivo | Requisito de producto ([ADR 0001](adr/0001-multilenguaje.md)) |
+| Textos de ruta como `LocalizedText`; motor y eventos sin texto | Una ruta curada trae los 3 idiomas; cambiar de idioma no toca el motor |
+| Lo generado por IA se queda en su idioma | Coste y coherencia; regenerar en otro idioma, en el futuro |
+| Web y API en el mismo origen (`/api`) | Sin CORS; service worker y cookies en un solo origen |
+| Despliegue por promoción de `main` a `production` | Solo se despliega lo que pasó la CI, y cuando se pide |
+| TypeScript 6.0 (no 7) | vue-tsc y typescript-eslint aún no soportan la 7 |
 
 **Preguntas abiertas:**
+
+- Cómo llegar a **≥ 20 marcadores** con una sola ruta precargada (sección 15).
 
 - Nombre y marca definitivos.
 - Proveedor de autenticación.
@@ -1212,13 +1275,14 @@ Debe combinar acciones `ai_template` o `info_sheet`, al menos un `quiz`, un `vid
 
 ```md
 # Rumbo: guía rápida
-- Plan completo: docs/PROJECT_PLAN.md · Diseño: docs/DESIGN.md
+- Plan completo: docs/PROJECT_PLAN.md · Diseño: docs/DESIGN.md · Producción: docs/DEPLOY.md · Seguridad: docs/SECURITY.md
 - 3 módulos desacoplados: route-builder (creador) → geo-engine (motor) → event-system (eventos)
 - geo-engine y event-system: TS puro, sin DOM/Vue/ArcGIS. Reloj, scheduler y fuente de posición inyectados.
 - Contratos en packages/route-spec (Zod). Cambio incompatible = subir specVersion + migración + actualizar docs.
-- Código y comentarios en inglés; UI con i18n (es/en); docs en español.
-- No pasar de fase sin tests en verde. Comandos: pnpm test · pnpm lint · pnpm build · pnpm validate:routes
-- Nunca secretos en el repo; claves de IA y geocodificación solo en apps/api.
+- Código y comentarios en inglés; UI en es/en/pt-PT (ADR 0001); docs en español.
+- No pasar de fase sin tests en verde. Comandos: pnpm format:check · pnpm lint · pnpm typecheck · pnpm test · pnpm build · pnpm validate:routes
+- Nunca secretos en el repo: .env locales ignorados y variables de Coolify. Claves de IA y geocodificación solo en apps/api.
+- Desplegar solo cuando se pida: pnpm deploy:prod.
 - README.md raíz = plantilla CSE 310 GIS Mapping (inglés).
 ```
 

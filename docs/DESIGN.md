@@ -2,7 +2,9 @@
 
 > PWA móvil de rutas guiadas por geolocalización: **la ruta cobra vida al llegar a cada lugar**.
 > Este documento define la identidad visual, los componentes, las pantallas (con sus datos de entrada y acciones de salida), la navegación y los estados, para generar la propuesta gráfica completa.
-> El plan técnico vive en `README.md` (`docs/PROJECT_PLAN.md`). Los nombres de estados, eventos y rutas de este documento coinciden con él.
+> El plan técnico vive en `docs/PROJECT_PLAN.md`. Los nombres de estados, eventos y rutas de este documento coinciden con él.
+> **Propuesta entregada (fase 1 de diseño):** los mockups están en `docs/design/mockup/` (abrir `Rumbo Mockup.dc.html`) y las capturas, en `docs/design/screens/`.
+> **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 
 ---
 
@@ -21,6 +23,24 @@ En orden de prioridad:
    - **C.** Crear ruta (pasos 1 → 5) → Probar en simulación.
 7. **Adaptación a escritorio y tablet** de Explorar (mapa) y del Creador (vista dividida).
 8. **Exploración de marca:** logotipo/wordmark e icono de app (sección 4.4). Es provisional.
+
+**Estado (2026-10-07).** Entregado:
+- los fundamentos (paletas clara, oscura y «Sol», y la tipografía);
+- el set de marcadores;
+- el wordmark;
+- las pantallas del flujo de recorrer rutas, con sus estados: S00 Idioma, S01, S03, S04 y S05–S10;
+- el modo oscuro de S05–S08 y S10;
+- el prototipo de los flujos A y B.
+
+Falta, y se diseñará con este mismo sistema al construir cada pantalla:
+- el onboarding y el consentimiento;
+- S02 Mis rutas, S11 Recuperar recorrido y S12 Ajustes;
+- el creador (C1–C5) y su flujo C;
+- las variantes S06c, S06d y S06f;
+- el panel de filtros completo;
+- tablet y escritorio;
+- el tema «Sol» aplicado a pantallas;
+- el icono de la app.
 
 ---
 
@@ -84,6 +104,12 @@ Un guía local con curiosidad: cálido, seguro y discreto. Mezcla de **revista d
 - **En lo técnico, explica qué hacer:** "Señal GPS débil. Sal a un espacio abierto."
 - **Formato de números:** "3,4 km", "340 m", "~2 h", "1:05:23". Por debajo de 1 km, en metros redondeados a 10.
 
+**En inglés:** el mismo tono, en segunda persona y con frases cortas: "You've arrived at Castelo de Leiria", "340 m to go". Decimales con punto: "3.4 km".
+
+**En portugués de Portugal:** trato de «tu» y vocabulario europeo, como en el mockup de S00 («Escolhe o teu idioma», «Definições», «ecrã», «telemóvel»). Decimales con coma, como en español: "3,4 km".
+
+Los nombres propios de los lugares (Castelo de Leiria, Sé de Leiria…) no se traducen.
+
 ### 4.4 Exploración de logotipo (provisional)
 
 - **Wordmark** "rumbo" en minúsculas (serif editorial, Fraunces SemiBold). La "o" final se convierte en un **pin/brújula**: un círculo con una aguja. Diseño original.
@@ -140,6 +166,20 @@ La paleta toma referencias de Portugal (punto de partida en Leiria) pero sirve p
 | `--color-user` | `#4A9BFF` |
 | `--color-sim` | `#A78BFA` |
 
+**Tokens de apoyo** (salen de los mockups):
+
+| Token | Claro | Oscuro | Uso |
+|---|---|---|---|
+| `--color-on-primary` | `#FFFFFF` | `#0F1318` | Texto sobre el primario |
+| `--color-on-accent` | `#FFFFFF` | `#0F1318` | Texto sobre el acento |
+| `--color-accent-soft` | `#F6D3C4` | `#3A2219` | Fondos suaves de acento (consejo de la ficha, HUD) |
+| `--color-free-soft` / `--color-free-text` | `#D7ECEA` / `#0B6B66` | `#12302E` / `#3FC1B7` | Badge del modo Libre |
+| `--color-challenge-soft` / `--color-challenge-text` | `#F6D3C4` / `#A33A12` | `#3A2219` / `#F2875A` | Badge y caja de reglas del modo Reto |
+| `--color-success-soft` | `#DDF0E4` | `#12301F` | Respuesta correcta del quiz |
+| `--color-danger-soft` | `#F8DEDB` | `#3A1A17` | Respuesta incorrecta del quiz |
+| `--color-warning-bg` | `#FFF1CC` | `#2E2610` | Fondo de los avisos (GPS débil, sin conexión) |
+| `--color-scrim` | `rgba(22,25,29,.45)` | `rgba(0,0,0,.6)` | Velo bajo hojas y diálogos |
+
 **Alto contraste "Sol"** (para exterior, se activa en Ajustes):
 
 - Fondo `#FFFFFF`, texto `#000000`, primario `#0B3A80`, acento `#A33A12`.
@@ -151,7 +191,7 @@ La paleta toma referencias de Portugal (punto de partida en Leiria) pero sirve p
 
 ### 5.2 Tipografía
 
-Las dos son fuentes abiertas (Google Fonts, licencia OFL):
+Las dos son fuentes abiertas (licencia OFL). Van alojadas en la propia app (`@fontsource`), no se cargan desde Google Fonts: así funcionan sin conexión y no envían la IP del usuario a terceros.
 
 - **Fraunces** (serif con carácter): nombres de rutas, títulos de fichas, momentos editoriales.
 - **Inter** (UI): todo lo demás. Cifras **tabulares** (`font-feature-settings: "tnum"`) en distancias y tiempos.
@@ -305,22 +345,25 @@ Base común:
 ### 8.1 Mapa de pantallas
 
 ```
-Onboarding ─► Inicio (Explorar) ─► Detalle de ruta ─► Preparación ─► RECORRIDO ─► Resumen
-                 │    ▲                                               │   ▲
-                 │    └── MiniRunBar (si hay recorrido activo) ◄──────┤   │
-                 │                                                    ▼   │
-                 │                                    Hojas: Llegada · Interrupción · Pausa
-                 │                                    (Continuar · Pausar · Terminar)
-                 ├─► Mis rutas ─► Detalle de ruta
-                 ├─► Crear: 1 Datos ► 2 Lugares ► 3 Contenido IA ► 4 Revisar y simular ► 5 Lista
-                 └─► Ajustes
+Idioma ─► Onboarding ─► Inicio (Explorar) ─► Detalle de ruta ─► Preparación ─► RECORRIDO ─► Resumen
+                           │    ▲                                               │   ▲
+                           │    └── MiniRunBar (si hay recorrido activo) ◄──────┤   │
+                           │                                                    ▼   │
+                           │                                    Hojas: Llegada · Interrupción · Pausa
+                           │                                    (Continuar · Pausar · Terminar)
+                           ├─► Mis rutas ─► Detalle de ruta
+                           ├─► Crear: 1 Datos ► 2 Lugares ► 3 Contenido IA ► 4 Revisar y simular ► 5 Lista
+                           └─► Ajustes (aquí se cambia el idioma después)
 ```
+
+Idioma y Onboarding solo aparecen en el primer arranque.
 
 ### 8.2 Rutas (URL) y navegación global
 
 | Ruta | Pantalla | Navegación inferior |
 |---|---|---|
-| `/onboarding` | S00 Onboarding | No |
+| `/welcome` | S00 Idioma (solo el primer arranque) | No |
+| `/onboarding` | S00b Onboarding | No |
 | `/` | S01 Inicio · Explorar | **Sí** |
 | `/my-routes` | S02 Mis rutas | **Sí** |
 | `/routes/:routeId` | S03 Detalle de ruta | No (flecha atrás) |
@@ -341,7 +384,22 @@ Onboarding ─► Inicio (Explorar) ─► Detalle de ruta ─► Preparación �
 
 Cada pantalla indica **Entradas** (datos que recibe), **Salidas** (acciones del usuario y su efecto), **Layout** y **Estados**.
 
-### S00 · Onboarding (primera vez)
+### S00 · Idioma (primer arranque, `/welcome`)
+
+Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
+
+- **Entradas:** los idiomas del navegador (`navigator.languages`), para preseleccionar. Si ninguno es es, en o pt, español.
+- **Salidas:** idioma elegido → `settings.locale` → Onboarding. No vuelve a mostrarse: después el idioma se cambia en Ajustes.
+- **Layout:**
+  - Cabecera con el patrón de azulejos y el icono `languages` en una tarjeta blanca.
+  - Título en el idioma seleccionado («Elige tu idioma») y, debajo, el mismo título en los otros dos idiomas, para que cualquiera lo entienda.
+  - Tres tarjetas de opción, de 72 px de alto. Cada una lleva una burbuja con el código (ES, EN, PT), el nombre nativo («Español», «English», «Português») y, debajo, el nombre en el idioma seleccionado.
+  - Nota: «Puedes cambiarlo después en Ajustes».
+  - CTA fija: **Continuar**.
+- **Comportamiento:** al tocar una opción, toda la pantalla cambia de idioma al instante: título, nota, CTA y nombres de los idiomas. Es la primera muestra del cambio en vivo.
+- **Accesibilidad:** `role="radiogroup"` en el grupo; cada tarjeta con `role="radio"` y `aria-checked`; `lang` en cada nombre nativo.
+
+### S00b · Onboarding (primera vez)
 
 - **Entradas:** plataforma (iOS/Android), si la PWA está instalada.
 - **Salidas:** consentimiento de estadísticas (sí/no) → `settings.analyticsConsent`; terminar → `/`.
@@ -407,7 +465,7 @@ Cada pantalla indica **Entradas** (datos que recibe), **Salidas** (acciones del 
 - **Entradas** (flujo `EngineState`):
   - `status`, `gps`.
   - `user` (posición, precisión, rumbo).
-  - `target` (`name`, `order`, `distance`, `bearing`, `etaSeconds`, `inZone`, `dwellProgress`).
+  - `target` (`pointId`, `order`, `distance`, `bearing`, `etaSeconds`, `inZone`, `dwellProgress`). El nombre del objetivo se resuelve por `pointId`, en el idioma activo.
   - `progress` (`completed`, `total`, `percent`, `score`).
   - `points[]` (estado, distancia, `completedAt`).
   - `flags` (`offRoute`, `idle`, `overtime`).
@@ -524,14 +582,14 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
 ### C1 · Crear: Datos (`/create/details`)
 
 - **Entradas:** borrador guardado (si existe).
-- **Salidas:** `name`, zona/ciudad, `mode`, `activity`, `locale`, `interests[]` y `timeLimit` (reto) → Siguiente.
+- **Salidas:** `name`, zona/ciudad, `mode`, `activity`, `interests[]` y `timeLimit` (reto) → Siguiente. El `locale` de la ruta es el idioma de la app.
 - **Layout:**
   - Stepper (1/4).
   - Campo "Nombre de la ruta".
   - Búsqueda de ciudad o zona.
   - **Dos tarjetas grandes de modo:** **Libre** ("Visita a tu ritmo, en el orden que quieras") / **Reto** ("Orden obligatorio, checkpoints y cronómetro").
   - SegmentedControl A pie · Correr · Bici.
-  - Selector de idioma.
+  - Sin selector de idioma: una línea informa «Las fichas se generarán en {idioma}», que es el de la app.
   - Chips de intereses: Historia, Arte, Arquitectura, Gastronomía, Naturaleza, Religión, Curiosidades (la IA los usa).
   - Límite de tiempo, solo en Reto.
 - **Estados:** validación en línea (nombre obligatorio).
@@ -592,7 +650,7 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
 - **Secciones:**
   - **Avisos:** sonido, vibración (oculto si no hay soporte), notificaciones (estado + botón).
   - **Pantalla:** tema (Sistema/Claro/Oscuro) y **alto contraste "Sol"**.
-  - **General:** idioma y unidades (km/mi).
+  - **General:** idioma y unidades (km/mi). El idioma usa las mismas tarjetas que S00 y el cambio se aplica al instante, sin recargar. Las fichas ya generadas por IA se quedan en su idioma.
   - **Privacidad:** estadísticas anónimas (toggle) y "Borrar mis datos locales".
   - **Demo:** **Modo simulación**.
   - **Acerca de:** versión y créditos (Esri/ArcGIS, Wikipedia/Wikimedia, fuentes).
@@ -620,7 +678,7 @@ Puntos: Castelo de Leiria, Sé de Leiria, Igreja de São Pedro, Praça Rodrigues
 ```json
 {
   "status": "running", "gps": "good",
-  "target": { "name": "Castelo de Leiria", "order": 3, "distance": 340, "bearing": 72, "etaSeconds": 262, "inZone": false, "dwellProgress": 0 },
+  "target": { "pointId": "castelo", "order": 3, "distance": 340, "bearing": 72, "etaSeconds": 262, "inZone": false, "dwellProgress": 0 },
   "progress": { "completed": 2, "total": 12, "percent": 17, "score": 150 },
   "elapsedMs": 3923000,
   "flags": { "offRoute": false, "idle": false, "overtime": false }
@@ -632,6 +690,8 @@ Puntos: Castelo de Leiria, Sé de Leiria, Igreja de São Pedro, Praça Rodrigues
 ---
 
 ## 11. Microcopy (claves i18n · español)
+
+Los catálogos `apps/web/src/i18n/{es,en,pt}.json` son la fuente de verdad; esta tabla es la referencia en español. Las últimas filas recogen textos que aparecen en los mockups.
 
 | Clave | Texto |
 |---|---|
@@ -694,6 +754,20 @@ Puntos: Castelo de Leiria, Sé de Leiria, Igreja de São Pedro, Praça Rodrigues
 | `sim.banner` | Modo simulación: tu ubicación es simulada |
 | `consent.body` | Ayúdanos a mejorar con estadísticas anónimas. Nunca guardamos tu ubicación. |
 | `ios.install` | Instala Rumbo para recibir avisos al llegar |
+| `lang.title` | Elige tu idioma |
+| `lang.hint` | Puedes cambiarlo después en Ajustes. |
+| `lang.continue` | Continuar |
+| `explore.offline` | Sin conexión. Te mostramos tus rutas descargadas. |
+| `explore.empty.title` / `.body` | Aún no hay rutas en esta zona / Elige los lugares que quieres ver y preparamos la guía por ti. |
+| `popup.distance` | a {distance} de ti |
+| `route.downloaded` | Descargada |
+| `prepare.ready` | Todo listo. Guarda el móvil y camina. |
+| `prepare.needLocation` | Necesitas permitir la ubicación |
+| `prepare.downloading` | Terminando la descarga… |
+| `pause.body` | El cronómetro está detenido. No te avisaremos al llegar. |
+| `quiz.correct` / `quiz.wrong` | ¡Correcto! / Casi. Era {answer}. |
+| `content.fallbackLanguage` | Contenido disponible en {language} |
+| `create.details.aiLanguage` | Las fichas se generarán en {language} |
 
 ---
 
@@ -709,6 +783,7 @@ Puntos: Castelo de Leiria, Sé de Leiria, Igreja de São Pedro, Praça Rodrigues
 - **Tamaño de texto:** la UI soporta hasta el 200 % sin romperse. El HUD se reorganiza en dos líneas.
 - **Movimiento reducido y hápticos** desactivables.
 - **Videos** con subtítulos (los de YouTube).
+- **Idioma:** `<html lang>` refleja siempre el idioma activo. Los textos en otro idioma, como los nombres nativos de S00, llevan su propio `lang`.
 
 ---
 
@@ -722,6 +797,9 @@ Puntos: Castelo de Leiria, Sé de Leiria, Igreja de São Pedro, Praça Rodrigues
   - Explorar: mapa a la izquierda (60 %) y lista a la derecha.
   - Creador: vista dividida (lista | mapa), con el Stepper arriba.
   - Recorrido: panel de ancho móvil centrado sobre el mapa. En escritorio se usa sobre todo para demostraciones en simulación.
+- **Textos más largos:** cada pantalla se revisa en los tres idiomas a 360 px. El español y el portugués ocupan en torno a un 30 % más que el inglés.
+  - En el mockup, la etiqueta del HUD («MÁS CERCANO · 3/12») ya salta de línea a 390 px, y en portugués («MAIS PRÓXIMO») será peor.
+  - Solución: la etiqueta va en una sola línea con elipsis y el contador, aparte.
 
 ---
 
