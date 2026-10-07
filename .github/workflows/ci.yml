@@ -29,6 +29,19 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  # The repository is public: fail the build if a credential slips into any commit.
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # scan the whole history, not just the last commit
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+
   # Coolify builds these same Dockerfiles on deploy; catching a broken image
   # here means a red CI instead of a failed production deploy.
   docker:

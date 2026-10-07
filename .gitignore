@@ -6,7 +6,13 @@ coverage/
 .vite/
 .DS_Store
 
-# Secrets never go to the repo (production values live in Coolify)
+# Secrets never go to the repo (it is public). Local values live in .env files,
+# production values in Coolify. Templates: apps/*/.env.example
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
