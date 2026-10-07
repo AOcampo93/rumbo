@@ -1,9 +1,19 @@
+# The nginx image renders this template at container start (envsubst). Only
+# ${SOURCE_COMMIT} is substituted (NGINX_ENVSUBST_FILTER in the Dockerfile);
+# nginx's own variables such as $uri are left alone.
 server {
   listen 80;
   server_name _;
   root /usr/share/nginx/html;
   index index.html;
   server_tokens off;
+
+  # Commit being served. scripts/deploy-prod.sh polls it to confirm a deploy.
+  location = /version.json {
+    default_type application/json;
+    add_header Cache-Control "no-store";
+    return 200 '{"commit":"${SOURCE_COMMIT}"}';
+  }
 
   # Hashed build assets never change: cache them for a year.
   location /assets/ {
