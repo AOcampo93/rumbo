@@ -52,6 +52,32 @@ Las reglas completas sobre secretos están en [`docs/SECURITY.md`](SECURITY.md).
 - **API:** por ahora, `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen.
 - **Web:** las `VITE_*` se inyectan en el bundle durante el build. Son públicas por definición: nunca secretos.
 
+## Copias de seguridad de la base de datos
+
+Configuradas en Coolify el 2026-10-07 (`rumbo-db` → *Backups*):
+
+| | |
+|---|---|
+| Frecuencia | Diaria a las 03:00 UTC (`0 3 * * *`) |
+| Contenido | La base `rumbo` con `pg_dump` en formato *custom* (`.dmp`) |
+| Dónde | En el propio VPS: `/data/coolify/backups/databases/root-team-0/rumbo-db-<uuid>/` |
+| Retención | Las 14 más recientes, con un máximo de 2 GB |
+
+El primer backup se lanzó al configurarlo y `pg_restore -l` lo lee bien.
+
+**Limitación:** las copias están en el mismo servidor. Sirven ante un error de datos (una migración mala, un borrado), pero no si se pierde el VPS. Para eso falta una copia fuera del servidor: un almacenamiento S3 en Coolify (`save_s3`) con credenciales del responsable del proyecto.
+
+**Restaurar** (sobrescribe los objetos que ya existan):
+
+```bash
+ssh vmi
+ls -lt /data/coolify/backups/databases/root-team-0/rumbo-db-*/      # elegir el archivo
+docker exec -i <uuid de rumbo-db> sh -c \
+  'pg_restore --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < <archivo>.dmp
+```
+
+El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes de restaurar en producción, conviene probar el archivo en una base temporal.
+
 ## Rollback
 
 - **Rápido:** en Coolify, app → *Deployments* → volver a la imagen anterior.
@@ -62,4 +88,5 @@ Las reglas completas sobre secretos están en [`docs/SECURITY.md`](SECURITY.md).
 - [x] DNS en Cloudflare: registro `A rumbo → IP del VPS`, «solo DNS» (nube gris), como el resto de subdominios.
 - [x] Repositorio público (requisito del curso).
 - [x] Primer despliegue de `rumbo-api` y `rumbo-web` (2026-10-07): HTTPS de Let's Encrypt, API con la BD conectada y commit servido verificado.
-- [ ] Backups programados de `rumbo-db` (diarios) en Coolify.
+- [x] Backups programados de `rumbo-db` (diarios) en Coolify (2026-10-07). Ver «Copias de seguridad».
+- [ ] Copia de los backups fuera del VPS (S3).
