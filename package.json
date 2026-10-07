@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsc -p scripts/tsconfig.json",
+    "validate:routes": "tsx scripts/validate-routes.ts",
     "test": "pnpm -r test",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -18,12 +19,15 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@rumbo/route-builder": "workspace:*",
+    "@rumbo/route-spec": "workspace:*",
     "@types/node": "^24.19.1",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.11.1",
     "globals": "^17.13.0",
     "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.1",
     "vue-eslint-parser": "^10.4.1"

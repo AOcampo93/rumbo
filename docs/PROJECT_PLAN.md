@@ -1136,20 +1136,24 @@ Decidido el 2026-10-07: **una ruta precargada**, creada por nosotros, y **una ru
 > - ampliar la ruta a 20 puntos o más;
 > - añadir al mapa Explorar una capa de lugares de interés (por ejemplo, de Wikidata) que cuente para el requisito.
 
-**1. Precargada, `leiria-historica`:** modo libre, a pie, unos 12 puntos, con los textos en es/en/pt. Empieza sencilla, con fichas `info_sheet`, y sus acciones se van personalizando. Candidatos (verificar existencia y coordenadas en Wikidata/OpenStreetMap):
+**1. Precargada, `leiria-historica`** (en `data/routes/`, creada en la fase 1). Modo libre, a pie, 12 puntos, unos 2,6 km y ~1 h 45. Los textos están en es/en/pt. Empieza sencilla, con fichas `info_sheet` basadas en Wikipedia, y sus acciones se van personalizando. Orden sugerido:
 
-- Castelo de Leiria
-- Sé de Leiria (Catedral)
-- Igreja de São Pedro
-- Praça Rodrigues Lobo
-- Museu de Leiria (Convento de Santo Agostinho)
-- m|i|mo – Museu da Imagem em Movimento
-- Santuário de Nossa Senhora da Encarnação
-- Moinho do Papel
-- Jardim Luís de Camões
-- Mercado de Sant'Ana
-- Teatro José Lúcio da Silva
-- Igreja da Misericórdia
+1. Praça Rodrigues Lobo
+2. Igreja da Misericórdia
+3. Sé de Leiria
+4. Igreja de São Pedro
+5. Castelo de Leiria (radio de 80 m: el recinto es grande)
+6. Igreja e Convento de São Francisco
+7. Teatro José Lúcio da Silva
+8. Jardim Luís de Camões
+9. Mercado de Sant'Ana
+10. Museu de Leiria (Convento de Santo Agostinho)
+11. Moinho do Papel
+12. Santuário de N.ª Sr.ª da Encarnação
+
+Cambios respecto a la lista de candidatos inicial:
+- El m|i|mo (Museu da Imagem em Movimento) no está ni en Wikidata ni en OpenStreetMap, así que se sustituyó por la Igreja e Convento de São Francisco.
+- La Praça Rodrigues Lobo no tiene coordenadas en Wikidata: se usan las de la estatua del poeta, que está en la plaza (verificado con OpenStreetMap).
 
 Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y un `redirect`, todas en los tres idiomas, para demostrar el sistema de eventos.
 
@@ -1159,6 +1163,8 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 
 - **Contenido de las curadas:** escrito a mano o generado con el pipeline de IA y revisado, con imágenes de Wikimedia Commons con atribución.
 - **Coordenadas:** de Wikidata (CC0) o posiciones dibujadas por nosotros. Nunca coordenadas guardadas desde el geocodificador de ArcGIS (ver 12.3).
+  - Si el valor de Wikidata es demasiado impreciso para una zona de llegada, se usa OpenStreetMap con su atribución (© OpenStreetMap contributors, ODbL). Hoy solo pasa con el Castelo de Leiria, cuyo valor en Wikidata está redondeado a unos 50 m.
+  - Cada punto guarda en `meta` su QID de Wikidata, sus fuentes y, si aplica, el origen de la coordenada.
 
 ---
 
@@ -1175,13 +1181,16 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 - [x] Multilenguaje decidido y llevado a los contratos ([ADR 0001](adr/0001-multilenguaje.md)).
 - **DoD:** `pnpm i && pnpm test && pnpm build` funciona en CI. ✓
 
-### Fase 1: Contrato y creador base (P0)
+### Fase 1: Contrato y creador base (P0) · completada el 2026-10-07
 
-- [ ] `geo-utils`: haversine, rumbo, distancia punto-segmento y punto-polilínea, longitud, bbox, centroide, Douglas-Peucker.
-- [ ] `route-spec`: tipos, Zod, `validateRouteSpec`, `normalizeRouteSpec`, `hashRouteSpec`, `migrateRouteSpec`, `PointContent`, `LocalizedText` y `resolveText`.
-- [ ] `route-builder`: `buildRouteSpec`, `summarizeRoute`.
-- [ ] `data/routes`: la ruta precargada de Leiria en es/en/pt + `pnpm validate:routes`, que exige los tres idiomas.
-- **DoD:** fixtures válidos e inválidos cubiertos y las rutas curadas validadas en CI.
+- [x] `geo-utils`: haversine, rumbo, distancia punto-segmento y punto-polilínea, longitud, bbox, centroide, Douglas-Peucker.
+- [x] `route-spec`: tipos, Zod, `validateRouteSpec`, `normalizeRouteSpec`, `hashRouteSpec`, `migrateRouteSpec`, `PointContent`, `LocalizedText` y `resolveText`.
+- [x] `route-builder`: `buildRouteSpec`, `summarizeRoute`.
+- [x] `data/routes`: la ruta precargada de Leiria en es/en/pt + `pnpm validate:routes`, que exige los tres idiomas.
+- **DoD:** fixtures válidos e inválidos cubiertos y las rutas curadas validadas en CI. ✓ (84 tests en los tres paquetes)
+- **Notas de implementación:**
+  - Los paquetes exportan su código TypeScript directamente (sin build). Vite, Vitest y tsx lo consumen tal cual. La API lo empaquetará con su build cuando los use (fase 5).
+  - Los imports relativos llevan extensión `.ts` y se activa `erasableSyntaxOnly`, así que el código también corre con la eliminación de tipos nativa de Node.
 
 ### Fase 2: Motor (P0)
 

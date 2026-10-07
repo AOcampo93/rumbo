@@ -1,0 +1,303 @@
+{
+  "spec": {
+    "specVersion": 1,
+    "id": "leiria-historica",
+    "name": { "es": "Leiria histórica", "en": "Historic Leiria", "pt": "Leiria histórica" },
+    "summary": {
+      "es": "Doce lugares del centro histórico que cobran vida al llegar.",
+      "en": "Twelve places in the old town that come alive when you arrive.",
+      "pt": "Doze lugares do centro histórico que ganham vida quando chegas."
+    },
+    "description": {
+      "es": "Un paseo libre por el centro histórico de Leiria: del castillo y las iglesias a las plazas, el antiguo mercado y la orilla del río Lis. Visita los lugares en el orden que quieras; cada uno abre su ficha al llegar.",
+      "en": "A free walk through Leiria's old town: from the castle and the churches to the squares, the old market and the banks of the river Lis. Visit the places in any order; each one opens its card when you arrive.",
+      "pt": "Um passeio livre pelo centro histórico de Leiria: do castelo e das igrejas às praças, ao antigo mercado e à margem do rio Lis. Visita os lugares pela ordem que quiseres; cada um abre a sua ficha quando chegas."
+    },
+    "locale": "pt",
+    "mode": "free",
+    "activity": "walk",
+    "source": "curated",
+    "points": [
+      {
+        "id": "praca-rodrigues-lobo",
+        "name": "Praça Rodrigues Lobo",
+        "position": { "lat": 39.744339, "lng": -8.808063 },
+        "order": 1,
+        "category": "other",
+        "triggers": { "onEnter": "info_praca-rodrigues-lobo" },
+        "meta": {
+          "wikidata": "Q10353362",
+          "coordinates": "Wikidata Q109653468 (statue of Francisco Rodrigues Lobo, in the square)",
+          "sources": ["https://pt.wikipedia.org/wiki/Pra%C3%A7a_Rodrigues_Lobo"]
+        }
+      },
+      {
+        "id": "igreja-da-misericordia",
+        "name": "Igreja da Misericórdia",
+        "position": { "lat": 39.74519, "lng": -8.807834 },
+        "order": 2,
+        "category": "church",
+        "triggers": { "onEnter": "info_igreja-da-misericordia" },
+        "meta": {
+          "wikidata": "Q10300258",
+          "sources": ["https://pt.wikipedia.org/wiki/Igreja_da_Miseric%C3%B3rdia_(Leiria)"]
+        }
+      },
+      {
+        "id": "se-de-leiria",
+        "name": "Sé de Leiria",
+        "position": { "lat": 39.7461, "lng": -8.80675 },
+        "order": 3,
+        "category": "church",
+        "triggers": { "onEnter": "info_se-de-leiria" },
+        "meta": {
+          "wikidata": "Q8342841",
+          "sources": ["https://pt.wikipedia.org/wiki/S%C3%A9_de_Leiria"]
+        }
+      },
+      {
+        "id": "igreja-de-sao-pedro",
+        "name": "Igreja de São Pedro",
+        "position": { "lat": 39.747276, "lng": -8.807198 },
+        "order": 4,
+        "category": "church",
+        "triggers": { "onEnter": "info_igreja-de-sao-pedro" },
+        "meta": {
+          "wikidata": "Q10300821",
+          "sources": ["https://pt.wikipedia.org/wiki/Igreja_de_S%C3%A3o_Pedro_(Leiria)"]
+        }
+      },
+      {
+        "id": "castelo-de-leiria",
+        "name": "Castelo de Leiria",
+        "position": { "lat": 39.747164, "lng": -8.809381 },
+        "order": 5,
+        "radius": 80,
+        "category": "monument",
+        "triggers": { "onEnter": "info_castelo-de-leiria" },
+        "meta": {
+          "wikidata": "Q2969701",
+          "coordinates": "© OpenStreetMap contributors (ODbL): the Wikidata value is rounded to about 50 m",
+          "sources": ["https://pt.wikipedia.org/wiki/Castelo_de_Leiria"]
+        }
+      },
+      {
+        "id": "convento-de-sao-francisco",
+        "name": "Igreja e Convento de São Francisco",
+        "position": { "lat": 39.748404, "lng": -8.803327 },
+        "order": 6,
+        "category": "church",
+        "triggers": { "onEnter": "info_convento-de-sao-francisco" },
+        "meta": {
+          "wikidata": "Q10300966",
+          "sources": [
+            "https://pt.wikipedia.org/wiki/Igreja_e_Convento_de_S%C3%A3o_Francisco_(Leiria)"
+          ]
+        }
+      },
+      {
+        "id": "teatro-jose-lucio-da-silva",
+        "name": "Teatro José Lúcio da Silva",
+        "position": { "lat": 39.746831, "lng": -8.803893 },
+        "order": 7,
+        "category": "culture",
+        "triggers": { "onEnter": "info_teatro-jose-lucio-da-silva" },
+        "meta": { "wikidata": "Q130386698" }
+      },
+      {
+        "id": "jardim-luis-de-camoes",
+        "name": "Jardim Luís de Camões",
+        "position": { "lat": 39.744556, "lng": -8.806446 },
+        "order": 8,
+        "category": "nature",
+        "triggers": { "onEnter": "info_jardim-luis-de-camoes" },
+        "meta": { "wikidata": "Q109653768" }
+      },
+      {
+        "id": "mercado-de-santana",
+        "name": "Mercado de Sant'Ana",
+        "position": { "lat": 39.743336, "lng": -8.807285 },
+        "order": 9,
+        "category": "culture",
+        "triggers": { "onEnter": "info_mercado-de-santana" },
+        "meta": {
+          "wikidata": "Q10328788",
+          "sources": ["https://pt.wikipedia.org/wiki/Mercado_Santana_(Leiria)"]
+        }
+      },
+      {
+        "id": "museu-de-leiria",
+        "name": "Museu de Leiria",
+        "position": { "lat": 39.741782, "lng": -8.802572 },
+        "order": 10,
+        "category": "museum",
+        "triggers": { "onEnter": "info_museu-de-leiria" },
+        "meta": { "wikidata": "Q101958754" }
+      },
+      {
+        "id": "moinho-do-papel",
+        "name": "Moinho do Papel",
+        "position": { "lat": 39.740278, "lng": -8.800669 },
+        "order": 11,
+        "category": "museum",
+        "triggers": { "onEnter": "info_moinho-do-papel" },
+        "meta": {
+          "wikidata": "Q10331516",
+          "sources": ["https://pt.wikipedia.org/wiki/Moinho_do_Papel"]
+        }
+      },
+      {
+        "id": "santuario-da-encarnacao",
+        "name": "Santuário de N.ª Sr.ª da Encarnação",
+        "position": { "lat": 39.738761, "lng": -8.799869 },
+        "order": 12,
+        "category": "church",
+        "triggers": { "onEnter": "info_santuario-da-encarnacao" },
+        "meta": {
+          "wikidata": "Q17125229",
+          "sources": [
+            "https://pt.wikipedia.org/wiki/Capela_de_Nossa_Senhora_da_Encarna%C3%A7%C3%A3o_(Leiria)"
+          ]
+        }
+      }
+    ],
+    "actions": {
+      "info_praca-rodrigues-lobo": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Praça Rodrigues Lobo",
+          "body": {
+            "es": "Plaza de referencia en el centro de Leiria. Lleva el nombre del poeta Francisco Rodrigues Lobo, cuya estatua se levanta en ella.",
+            "en": "A landmark square in the heart of Leiria. It is named after the poet Francisco Rodrigues Lobo, whose statue stands here.",
+            "pt": "Praça de referência no centro de Leiria. Tem o nome do poeta Francisco Rodrigues Lobo, cuja estátua se ergue aqui."
+          }
+        }
+      },
+      "info_igreja-da-misericordia": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Igreja da Misericórdia",
+          "body": {
+            "es": "Iglesia levantada en el siglo XVI y reconstruida en el XVIII, parte del conjunto de la Santa Casa da Misericórdia. Es Monumento de Interés Público desde 2015.",
+            "en": "A church first built in the 16th century and rebuilt in the 18th, part of the Santa Casa da Misericórdia complex. Listed as a Monument of Public Interest in 2015.",
+            "pt": "Igreja erguida no século XVI e reedificada no século XVIII, parte do conjunto da Santa Casa da Misericórdia. Monumento de Interesse Público desde 2015."
+          }
+        }
+      },
+      "info_se-de-leiria": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Sé de Leiria",
+          "body": {
+            "es": "La catedral de Leiria, un templo manierista del siglo XVI en pleno centro. Curiosidad: su campanario está separado del edificio principal.",
+            "en": "Leiria's cathedral, a 16th-century Mannerist church in the heart of the city. A curiosity: its bell tower stands apart from the main building.",
+            "pt": "A Sé de Leiria é um templo maneirista do século XVI, no centro da cidade. Curiosidade: a torre sineira está separada do corpo principal."
+          }
+        }
+      },
+      "info_igreja-de-sao-pedro": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Igreja de São Pedro",
+          "body": {
+            "es": "Iglesia de origen románico, del siglo XII, junto al castillo. Es Monumento Nacional desde 1910.",
+            "en": "A Romanesque church dating back to the 12th century, next to the castle. It has been a National Monument since 1910.",
+            "pt": "Igreja de raiz românica, com origens no século XII, perto do castelo. É Monumento Nacional desde 1910."
+          }
+        }
+      },
+      "info_castelo-de-leiria": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Castelo de Leiria",
+          "body": {
+            "es": "Castillo medieval en lo alto de la colina que domina Leiria. Tómate tu tiempo: el recinto es amplio.",
+            "en": "A medieval castle on the hilltop overlooking Leiria. Take your time: the grounds are large.",
+            "pt": "Castelo medieval no alto da colina que domina Leiria. Vai com calma: o recinto é amplo."
+          }
+        }
+      },
+      "info_convento-de-sao-francisco": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Igreja e Convento de São Francisco",
+          "body": {
+            "es": "Antiguo convento junto al río Lis, conocido por el gran ciclo de pintura mural del siglo XV descubierto en su interior. A principios del siglo XX se reconvirtió para uso industrial.",
+            "en": "A former convent by the river Lis, known for the large cycle of 15th-century wall paintings discovered inside. In the early 20th century it was converted to industrial use.",
+            "pt": "Antigo convento junto ao rio Lis, marcado pelo vasto ciclo de pintura mural quatrocentista descoberto no interior. No início do século XX foi reconvertido para uso industrial."
+          }
+        }
+      },
+      "info_teatro-jose-lucio-da-silva": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Teatro José Lúcio da Silva",
+          "body": {
+            "es": "Teatro en el centro de Leiria. Consulta la programación antes de tu visita.",
+            "en": "A theatre in central Leiria. Check what's on before your visit.",
+            "pt": "Teatro no centro de Leiria. Consulta a programação antes da visita."
+          }
+        }
+      },
+      "info_jardim-luis-de-camoes": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Jardim Luís de Camões",
+          "body": {
+            "es": "Jardín del centro de Leiria que lleva el nombre del poeta Luís de Camões. Un buen sitio para hacer una pausa.",
+            "en": "A garden in central Leiria named after the poet Luís de Camões. A good spot for a break.",
+            "pt": "Jardim no centro de Leiria com o nome do poeta Luís de Camões. Um bom sítio para uma pausa."
+          }
+        }
+      },
+      "info_mercado-de-santana": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Mercado de Sant'Ana",
+          "body": {
+            "es": "Antiguo mercado municipal de arquitectura ecléctica, proyectado por Ernesto Korrodi. Desde 2002 es un centro cultural y, desde 2011, Monumento de Interés Público.",
+            "en": "The former municipal market, an eclectic building designed by Ernesto Korrodi. A cultural centre since 2002 and a Monument of Public Interest since 2011.",
+            "pt": "Antigo mercado municipal de arquitetura eclética, projetado por Ernesto Korrodi. Centro cultural desde 2002 e Monumento de Interesse Público desde 2011."
+          }
+        }
+      },
+      "info_museu-de-leiria": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Museu de Leiria",
+          "body": {
+            "es": "El museo de la ciudad, instalado en el antiguo Convento de Santo Agostinho.",
+            "en": "The city museum, housed in the former Convent of Santo Agostinho.",
+            "pt": "O museu da cidade, instalado no antigo Convento de Santo Agostinho."
+          }
+        }
+      },
+      "info_moinho-do-papel": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Moinho do Papel",
+          "body": {
+            "es": "Molino medieval a orillas del río Lis, creado para fabricar papel, junto al puente de los Caniços. Hoy alberga el Museo del Papel.",
+            "en": "A medieval mill on the river Lis, built to make paper, by the Caniços bridge. Today it houses the Paper Museum.",
+            "pt": "Moinho medieval na margem do rio Lis, criado para produzir papel, junto à ponte dos Caniços. Hoje acolhe o Museu do Papel."
+          }
+        }
+      },
+      "info_santuario-da-encarnacao": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Santuário de N.ª Sr.ª da Encarnação",
+          "body": {
+            "es": "Santuario dedicado a Nuestra Señora de la Encarnación, también conocido como capilla de Nossa Senhora da Encarnação.",
+            "en": "A sanctuary dedicated to Our Lady of the Incarnation, also known as the Chapel of Nossa Senhora da Encarnação.",
+            "pt": "Santuário dedicado a Nossa Senhora da Encarnação, também conhecido como Capela de Nossa Senhora da Encarnação."
+          }
+        }
+      }
+    },
+    "meta": {
+      "attribution": "Coordinates: Wikidata (CC0), except Castelo de Leiria: © OpenStreetMap contributors (ODbL). Texts based on Wikipedia."
+    }
+  },
+  "contents": {}
+}
