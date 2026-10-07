@@ -9,10 +9,7 @@ export interface Database {
   close(): Promise<void>;
 }
 
-export function createDatabase(
-  connectionString: string,
-  onError: (err: Error) => void,
-): Database {
+export function createDatabase(connectionString: string, onError: (err: Error) => void): Database {
   const pool = new pg.Pool({ connectionString, max: 5, connectionTimeoutMillis: 3000 });
   // An idle client can fail (e.g. Postgres restarts); without a listener
   // the pool would emit an unhandled 'error' and crash the process.

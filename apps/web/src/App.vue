@@ -34,7 +34,11 @@ onMounted(async () => {
       <li lang="en">The route comes alive when you arrive.</li>
       <li lang="pt-PT">A rota ganha vida quando chegas.</li>
     </ul>
-    <p class="status" :class="{ ok: health?.db === 'ok', bad: failed || health?.db === 'error' }" role="status">
+    <p
+      class="status"
+      :class="{ ok: health?.db === 'ok', bad: failed || health?.db === 'error' }"
+      role="status"
+    >
       <template v-if="failed">API ✗</template>
       <template v-else-if="health">
         API {{ health.version }} · DB {{ health.db

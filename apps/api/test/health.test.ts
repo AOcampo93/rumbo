@@ -34,7 +34,12 @@ describe('GET /api/v1/health', () => {
   it('reports ok, the version and the served commit when the database answers', async () => {
     const res = await getHealth(fakeDb(true));
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ status: 'ok', db: 'ok', commit: 'abc1234def', version: '0.1.0' });
+    expect(res.json()).toMatchObject({
+      status: 'ok',
+      db: 'ok',
+      commit: 'abc1234def',
+      version: '0.1.0',
+    });
   });
 
   it('stays 200 but flags the database when it does not answer', async () => {

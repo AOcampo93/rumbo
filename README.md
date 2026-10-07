@@ -6,7 +6,7 @@ My goal as a software engineer is to build a small but solid location engine: a 
 
 The map uses the ArcGIS Maps SDK for JavaScript and shows more than 20 markers with popups, category-specific symbols and filters. Place content comes from Wikipedia, Wikidata and Wikimedia Commons, with attribution.
 
-[Software Demo Video](#) *(coming soon)*
+[Software Demo Video](#) _(coming soon)_
 
 # Development Environment
 
