@@ -1,0 +1,12 @@
+# Build context is the repo root for every image; keep it small.
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+docs
+scripts
+**/*.md

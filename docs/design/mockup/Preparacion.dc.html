@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0}a{color:#1E4FA3}a:hover{color:#183F82}</style>
+</helmet>
+<div style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--r-bg,#F7F3EC);color:var(--r-text,#16191D);font-family:Inter, system-ui, sans-serif;display:flex;flex-direction:column">
+  <div style="flex:none;padding:54px 16px 8px;display:flex;align-items:center;gap:12px">
+    <button onClick="{{ back }}" aria-label="Atrás" style="width:48px;height:48px;border-radius:50%;border:1px solid var(--r-border,#E2DACB);background:var(--r-surface,#FFFFFF);color:var(--r-text,#16191D);display:flex;align-items:center;justify-content:center;cursor:pointer"><dc-import name="Icon" icon="arrow-left" size="22" hint-size="22px,22px"></dc-import></button>
+    <div style="font:600 15px Inter, sans-serif;color:var(--r-muted,#5B6470)">{{ routeName }}</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:8px 16px 24px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:30px;line-height:36px;letter-spacing:-0.01em">Antes de empezar</div>
+    <div style="font:400 16px/24px Inter, sans-serif;color:var(--r-muted,#5B6470);margin-bottom:4px;text-wrap:pretty">Así podrás llevar el móvil en el bolsillo: te avisaremos al llegar a cada lugar.</div>
+
+    <div style="background:var(--r-surface,#FFFFFF);border:1px solid {{ locBorder }};border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:44px;height:44px;flex:none;border-radius:12px;background:var(--r-surface2,#EFE9DE);display:flex;align-items:center;justify-content:center"><dc-import name="Icon" icon="map-pin" size="22" hint-size="22px,22px"></dc-import></div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font:600 17px/22px Inter, sans-serif">Ubicación</span><span style="font:700 11px/14px Inter, sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--r-chal-text,#A33A12)">Obligatorio</span></div>
+          <div style="font:400 14px/20px Inter, sans-serif;color:var(--r-muted,#5B6470)">Para saber cuándo llegas a cada lugar.</div>
+        </div>
+      </div>
+      <sc-if value="{{ locPending }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ grantLoc }}" style="height:48px;border:none;border-radius:999px;background:var(--r-primary,#1E4FA3);color:var(--r-on-primary,#FFFFFF);font:600 16px Inter, sans-serif;cursor:pointer">Permitir ubicación</button>
+      </sc-if>
+      <sc-if value="{{ locGranted }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:6px;font:600 14px Inter, sans-serif;color:var(--r-success,#1A7F45)"><dc-import name="Icon" icon="circle-check" size="18" color="var(--r-success,#1A7F45)" hint-size="18px,18px"></dc-import>Concedido</div>
+      </sc-if>
+      <sc-if value="{{ locDenied }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:6px;font:600 14px Inter, sans-serif;color:var(--r-danger,#C0362C)"><dc-import name="Icon" icon="circle-x" size="18" color="var(--r-danger,#C0362C)" hint-size="18px,18px"></dc-import>Ubicación bloqueada en el navegador</div>
+          <div style="padding:12px;border-radius:10px;background:var(--r-surface2,#EFE9DE);display:flex;flex-direction:column;gap:8px;font:400 14px/20px Inter, sans-serif">
+            <div style="font:700 12px/16px Inter, sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--r-muted,#5B6470)">Cómo activarla en Safari (iOS)</div>
+            <div style="display:flex;gap:8px"><span style="font-weight:700">1.</span><span>Abre <strong>Ajustes › Privacidad › Localización</strong>.</span></div>
+            <div style="display:flex;gap:8px"><span style="font-weight:700">2.</span><span>Toca <strong>Sitios web de Safari</strong> y elige <strong>Mientras se usa</strong>.</span></div>
+            <div style="display:flex;gap:8px"><span style="font-weight:700">3.</span><span>Vuelve aquí y toca Reintentar.</span></div>
+          </div>
+          <button onClick="{{ grantLoc }}" style="height:48px;border:1.5px solid var(--r-primary,#1E4FA3);border-radius:999px;background:transparent;color:var(--r-primary,#1E4FA3);font:600 16px Inter, sans-serif;cursor:pointer">Reintentar</button>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="background:var(--r-surface,#FFFFFF);border:1px solid var(--r-border,#E2DACB);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center">
+      <div style="width:44px;height:44px;flex:none;border-radius:12px;background:var(--r-surface2,#EFE9DE);display:flex;align-items:center;justify-content:center"><dc-import name="Icon" icon="bell" size="22" hint-size="22px,22px"></dc-import></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font:600 17px/22px Inter, sans-serif">Avisos</span><span style="font:700 11px/14px Inter, sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--r-muted,#5B6470)">Recomendado</span></div>
+        <div style="font:400 14px/20px Inter, sans-serif;color:var(--r-muted,#5B6470)">Te avisamos aunque tengas la app minimizada.</div>
+      </div>
+      <sc-if value="{{ notifOff }}" hint-placeholder-val="{{ true }}"><button onClick="{{ grantNotif }}" style="height:48px;padding:0 16px;border:1.5px solid var(--r-border,#E2DACB);border-radius:999px;background:var(--r-surface,#FFFFFF);color:var(--r-text,#16191D);font:600 15px Inter, sans-serif;cursor:pointer">Activar</button></sc-if>
+      <sc-if value="{{ notifOn }}" hint-placeholder-val="{{ false }}"><dc-import name="Icon" icon="circle-check" size="24" color="var(--r-success,#1A7F45)" hint-size="24px,24px"></dc-import></sc-if>
+    </div>
+
+    <div style="background:var(--r-surface,#FFFFFF);border:1px solid var(--r-border,#E2DACB);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center">
+      <div style="width:44px;height:44px;flex:none;border-radius:12px;background:var(--r-surface2,#EFE9DE);display:flex;align-items:center;justify-content:center"><dc-import name="Icon" icon="volume-2" size="22" hint-size="22px,22px"></dc-import></div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 17px/22px Inter, sans-serif">Sonido y vibración</div>
+        <div style="font:400 14px/20px Inter, sans-serif;color:var(--r-muted,#5B6470)">Comprueba que oyes el aviso de llegada.</div>
+      </div>
+      <button onClick="{{ testSound }}" style="height:48px;padding:0 16px;border:1.5px solid var(--r-border,#E2DACB);border-radius:999px;background:var(--r-surface,#FFFFFF);color:var(--r-text,#16191D);font:600 15px Inter, sans-serif;display:flex;align-items:center;gap:6px;cursor:pointer">{{ soundLabel }}</button>
+    </div>
+
+    <div style="background:var(--r-surface,#FFFFFF);border:1px solid var(--r-border,#E2DACB);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center">
+      <div style="width:44px;height:44px;flex:none;border-radius:12px;background:var(--r-surface2,#EFE9DE);display:flex;align-items:center;justify-content:center"><dc-import name="Icon" icon="smartphone" size="22" hint-size="22px,22px"></dc-import></div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 17px/22px Inter, sans-serif">Pantalla encendida</div>
+        <div style="font:400 14px/20px Inter, sans-serif;color:var(--r-muted,#5B6470)">La ubicación solo funciona con la pantalla encendida.</div>
+      </div>
+      <button onClick="{{ toggleWake }}" role="switch" aria-checked="{{ wake }}" style="width:52px;height:32px;flex:none;border:none;border-radius:999px;background:{{ wakeBg }};position:relative;cursor:pointer;padding:0">
+        <span style="position:absolute;top:3px;left:{{ wakeKnob }}px;width:26px;height:26px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left 200ms"></span>
+      </button>
+    </div>
+
+    <div style="background:var(--r-surface,#FFFFFF);border:1px solid var(--r-border,#E2DACB);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center">
+      <div style="width:44px;height:44px;flex:none;border-radius:12px;background:var(--r-surface2,#EFE9DE);display:flex;align-items:center;justify-content:center"><dc-import name="Icon" icon="download" size="22" hint-size="22px,22px"></dc-import></div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 17px/22px Inter, sans-serif">Contenido sin conexión</span><span style="font:600 14px Inter, sans-serif;color:{{ dlColor }};font-variant-numeric:tabular-nums">{{ dlLabel }}</span></div>
+        <div style="height:6px;border-radius:3px;background:var(--r-surface2,#EFE9DE);overflow:hidden"><div style="height:100%;width:{{ dlPct }}%;background:{{ dlBar }};border-radius:3px;transition:width 200ms"></div></div>
+        <div style="font:400 14px/20px Inter, sans-serif;color:var(--r-muted,#5B6470)">Fichas, fotos y mapa de los 12 lugares.</div>
+      </div>
+    </div>
+  </div>
+  <div style="flex:none;padding:12px 16px 30px;background:var(--r-surface,#FFFFFF);border-top:1px solid var(--r-border,#E2DACB);display:flex;flex-direction:column;gap:8px">
+    <button onClick="{{ go }}" disabled="{{ disabled }}" style="height:56px;border:none;border-radius:999px;background:{{ goBg }};color:{{ goFg }};font:600 17px Inter, sans-serif;cursor:{{ goCursor }}">Empezar</button>
+    <div style="text-align:center;font:400 13px Inter, sans-serif;color:var(--r-muted,#5B6470)">{{ goHint }}</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;pending&quot;,&quot;ready&quot;,&quot;denied&quot;],&quot;default&quot;:&quot;pending&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;live&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onBack&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;onGo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = (() => {
+    const st = this.props.state || 'pending';
+    return { loc: st === 'ready' ? 'granted' : st === 'denied' ? 'denied' : 'pending', notif: st === 'ready', sound: st === 'ready', wake: true, dl: st === 'ready' ? 100 : st === 'denied' ? 100 : 46 };
+  })();
+  start = Date.now();
+  ensure() {
+    if (this.state.dl >= 100 || !this.props.live) return;
+    if (this.t && Date.now() - (this._beat || 0) < 400) return;
+    clearInterval(this.t); this._beat = Date.now();
+    this.t = setInterval(() => { this._beat = Date.now(); if (this.state.dl >= 100) { clearInterval(this.t); this.t = null; return; } this.setState(s => ({ dl: Math.min(100, Math.max(s.dl, 46 + Math.floor((Date.now() - this.start) / 45))) })); }, 120);
+  }
+  componentDidMount() { this.ensure(); }
+  componentDidUpdate() { this.ensure(); }
+  componentWillUnmount() { clearInterval(this.t); this.t = null; }
+  beep() {
+    try { const C = new (window.AudioContext || window.webkitAudioContext)(); [0, 0.18].forEach(d => { const o = C.createOscillator(), g = C.createGain(); o.frequency.value = d ? 988 : 784; g.gain.setValueAtTime(0.18, C.currentTime + d); g.gain.exponentialRampToValueAtTime(0.001, C.currentTime + d + 0.25); o.connect(g).connect(C.destination); o.start(C.currentTime + d); o.stop(C.currentTime + d + 0.26); }); } catch (e) {}
+    navigator.vibrate && navigator.vibrate([80, 40, 80]);
+  }
+  renderVals() {
+    const p = this.props, s = this.state;
+    if (s.dl < 100 && p.live) setTimeout(() => this.ensure(), 0);
+    const ready = s.loc === 'granted' && s.dl >= 100;
+    return {
+      routeName: p.routeName || 'Leiria histórica',
+      back: () => p.onBack && p.onBack(),
+      locPending: s.loc === 'pending', locGranted: s.loc === 'granted', locDenied: s.loc === 'denied',
+      locBorder: s.loc === 'denied' ? 'var(--r-danger,#C0362C)' : 'var(--r-border,#E2DACB)',
+      grantLoc: () => this.setState({ loc: 'granted' }),
+      notifOff: !s.notif, notifOn: s.notif, grantNotif: () => this.setState({ notif: true }),
+      soundLabel: s.sound ? '✓ Probado' : 'Probar sonido', testSound: () => { this.beep(); this.setState({ sound: true }); },
+      wake: s.wake, wakeBg: s.wake ? 'var(--r-primary,#1E4FA3)' : 'var(--r-border,#E2DACB)', wakeKnob: s.wake ? 23 : 3, toggleWake: () => this.setState({ wake: !s.wake }),
+      dlPct: s.dl, dlLabel: s.dl >= 100 ? '✓ Listo · 18 MB' : s.dl + ' % · ' + (s.dl * 0.18).toFixed(1).replace('.', ',') + ' MB',
+      dlColor: s.dl >= 100 ? 'var(--r-success,#1A7F45)' : 'var(--r-muted,#5B6470)', dlBar: s.dl >= 100 ? 'var(--r-success,#1A7F45)' : 'var(--r-primary,#1E4FA3)',
+      disabled: !ready, goBg: ready ? 'var(--r-primary,#1E4FA3)' : 'var(--r-surface2,#EFE9DE)', goFg: ready ? 'var(--r-on-primary,#FFFFFF)' : 'var(--r-muted,#5B6470)', goCursor: ready ? 'pointer' : 'not-allowed',
+      goHint: ready ? 'Todo listo. Guarda el móvil y camina.' : s.loc !== 'granted' ? 'Necesitas permitir la ubicación' : 'Terminando la descarga…',
+      go: () => ready && p.onGo && p.onGo()
+    };
+  }
+}
+</script>
+</body>
+</html>

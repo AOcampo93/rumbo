@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+.vite/
+.DS_Store
+
+# Secrets never go to the repo (production values live in Coolify)
+.env
+.env.*
+!.env.example

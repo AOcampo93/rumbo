@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:absolute;inset:0;overflow:hidden;background:var(--r-surface2,#EFE9DE)">
+  <div style="position:absolute;inset:0;display:var(--r-map-light,block)">
+    <sc-for list="{{ light }}" as="t" hint-placeholder-count="0"><img src="{{ t.src }}" alt="" draggable="false" style="position:absolute;left:{{ t.x }}px;top:{{ t.y }}px;width:256px;height:256px;user-select:none;pointer-events:none"></sc-for>
+    <div style="position:absolute;inset:0;background:rgba(247,243,236,.22);pointer-events:none"></div>
+  </div>
+  <div style="position:absolute;inset:0;display:var(--r-map-dark,none)">
+    <sc-for list="{{ dark }}" as="t" hint-placeholder-count="0"><img src="{{ t.src }}" alt="" draggable="false" style="position:absolute;left:{{ t.x }}px;top:{{ t.y }}px;width:256px;height:256px;user-select:none;pointer-events:none"></sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:500},&quot;base&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;streets&quot;,&quot;topo&quot;],&quot;default&quot;:&quot;streets&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;z&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:16,&quot;min&quot;:12,&quot;max&quot;:16,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props, z = +(p.z ?? 16), w = +(p.w ?? 390), h = +(p.h ?? 844);
+    const f = Math.pow(2, z - 16);
+    const cx = (+(p.cx ?? 31164.62)) * f, cy = (+(p.cy ?? 24873.1)) * f;
+    const URL = {
+      streets: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/',
+      topo: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/',
+      dark: 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/'
+    };
+    const x0 = Math.floor(cx - w / 512), x1 = Math.floor(cx + w / 512), y0 = Math.floor(cy - h / 512), y1 = Math.floor(cy + h / 512);
+    const mk = base => { const a = []; for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) a.push({ src: URL[base] + z + '/' + ty + '/' + tx, x: Math.round(w / 2 + (tx - cx) * 256), y: Math.round(h / 2 + (ty - cy) * 256) }); return a; };
+    return { light: mk(p.base === 'topo' ? 'topo' : 'streets'), dark: mk('dark') };
+  }
+}
+</script>
+</body>
+</html>

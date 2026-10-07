@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>@keyframes rPulse{0%{transform:scale(1);opacity:.45}100%{transform:scale(2.3);opacity:0}}@keyframes rSpin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion: reduce){*{animation:none !important}}</style></helmet>
+<sc-if value="{{ isUser }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;left:0;top:0;pointer-events:none">
+    <div style="position:absolute;left:{{ accOff }}px;top:{{ accOff }}px;width:{{ accD }}px;height:{{ accD }}px;border-radius:50%;background:{{ accFill }};border:1.5px solid {{ accStroke }};box-sizing:border-box"></div>
+    <div style="position:absolute;left:-55px;top:-55px;width:110px;height:110px;border-radius:50%;background:conic-gradient(from {{ coneFrom }}deg, {{ coneColor }} 0deg 60deg, transparent 60deg);-webkit-mask-image:radial-gradient(circle, #000 0%, rgba(0,0,0,.7) 25%, transparent 70%);mask-image:radial-gradient(circle, #000 0%, rgba(0,0,0,.7) 25%, transparent 70%)"></div>
+    <div style="position:absolute;left:-12px;top:-12px;width:24px;height:24px;box-sizing:border-box;border-radius:50%;border:3px solid #FFFFFF;background:{{ userColor }};box-shadow:0 1px 4px rgba(22,25,29,.35)"></div>
+    <sc-if value="{{ isSim }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:12px;top:-30px;background:#7C3AED;color:#FFFFFF;font:700 10px/14px Inter, sans-serif;letter-spacing:.06em;padding:2px 6px;border-radius:6px;border:1.5px solid #FFFFFF">SIM</div>
+    </sc-if>
+  </div>
+</sc-if>
+<sc-if value="{{ isPoint }}" hint-placeholder-val="{{ true }}">
+  <div onClick="{{ onTap }}" style="position:absolute;left:0;top:0;cursor:{{ cursor }}">
+    {{ halo }}
+    <sc-if value="{{ hasAnchorRing }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:{{ arOff }}px;top:{{ arOff }}px;width:{{ arD }}px;height:{{ arD }}px;box-sizing:border-box;border-radius:50%;border:2px solid #C4491F;background:rgba(255,255,255,.35)"></div>
+    </sc-if>
+    <div style="position:absolute;left:{{ off }}px;top:{{ off }}px;width:{{ d }}px;height:{{ d }}px;box-sizing:border-box;border-radius:50%;background:{{ fill }};border:{{ ringW }}px {{ ringStyle }} #FFFFFF;box-shadow:0 1px 3px rgba(22,25,29,.35);display:flex;align-items:center;justify-content:center">
+      <dc-import name="Icon" icon="{{ icon }}" size="{{ isz }}" color="#FFFFFF" stroke="2.25" hint-size="18px,18px"></dc-import>
+      <sc-if value="{{ hasBadge }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:-7px;right:-8px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#16191D;color:#FFFFFF;border:1.5px solid #FFFFFF;font:700 11px/15px Inter, sans-serif;text-align:center;font-variant-numeric:tabular-nums">{{ order }}</div>
+      </sc-if>
+    </div>
+    {{ ring }}
+    <sc-if value="{{ hasLabel }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;top:{{ labelTop }}px;left:0;transform:translateX(-50%);white-space:nowrap;background:#FFFFFF;color:#16191D;font:600 13px/18px Inter, sans-serif;padding:3px 9px;border-radius:8px;box-shadow:0 1px 3px rgba(22,25,29,.25)">{{ label }}</div>
+    </sc-if>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:120,&quot;height&quot;:120},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;active&quot;,&quot;next&quot;,&quot;reached&quot;,&quot;locked&quot;,&quot;completed&quot;,&quot;finish&quot;,&quot;route&quot;,&quot;user&quot;,&quot;sim&quot;],&quot;default&quot;:&quot;next&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;cat&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;monument&quot;,&quot;museum&quot;,&quot;church&quot;,&quot;viewpoint&quot;,&quot;nature&quot;,&quot;food&quot;,&quot;culture&quot;,&quot;checkpoint&quot;,&quot;start&quot;,&quot;finish&quot;,&quot;other&quot;],&quot;default&quot;:&quot;monument&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;order&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;3&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;optional&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dwell&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:0,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props, h = React.createElement;
+    const kind = p.kind ?? 'active', sc = +(p.scale ?? 1);
+    if (kind === 'user' || kind === 'sim') {
+      const sim = kind === 'sim', c = sim ? '#7C3AED' : '#2F80ED', rgb = sim ? '124,58,237' : '47,128,237';
+      const accD = +(p.accuracy ?? 64);
+      return { isUser: true, isPoint: false, isSim: sim, userColor: c, accD, accOff: -accD / 2, accFill: `rgba(${rgb},.15)`, accStroke: `rgba(${rgb},.35)`, coneFrom: (+(p.heading ?? 0)) - 30, coneColor: `rgba(${rgb},.55)` };
+    }
+    const ICON = { monument: 'castle', museum: 'landmark', church: 'church', viewpoint: 'binoculars', nature: 'trees', food: 'utensils', culture: 'drama', checkpoint: 'flag', start: 'circle-play', finish: 'flag-checkered', other: 'map-pin' };
+    const CFG = { active: ['#1E4FA3', 36], next: ['#C4491F', 44], reached: ['#C4491F', 44], locked: ['#8A94A0', 30], completed: ['#1A7F45', 36], finish: ['#16191D', 44], route: [p.color ?? '#1E4FA3', 32] };
+    const cfg = CFG[kind] || CFG.active;
+    const d = Math.round(cfg[1] * sc);
+    const big = kind === 'next' || kind === 'reached' || kind === 'finish';
+    const icon = kind === 'locked' ? 'lock' : kind === 'completed' ? 'check' : (ICON[p.cat] || 'map-pin');
+    const isz = kind === 'locked' ? 14 : Math.round((big ? 22 : kind === 'route' ? 16 : 18) * sc);
+    const dwell = +(p.dwell ?? 0);
+    let halo = null, ring = null;
+    if (kind === 'next' && dwell <= 0) halo = h('div', { style: { position: 'absolute', left: -d / 2, top: -d / 2, width: d, height: d, borderRadius: '50%', background: '#C4491F', animation: 'rPulse 2s ease-out infinite', pointerEvents: 'none' } });
+    const R = d / 2 + 6, S = R * 2 + 6;
+    if (dwell > 0 && kind !== 'reached') {
+      const C = 2 * Math.PI * R;
+      ring = h('svg', { width: S, height: S, style: { position: 'absolute', left: -S / 2, top: -S / 2, transform: 'rotate(-90deg)', pointerEvents: 'none' } },
+        h('circle', { cx: S / 2, cy: S / 2, r: R, style: { fill: 'none', stroke: 'rgba(255,255,255,.95)', strokeWidth: 5 } }),
+        h('circle', { cx: S / 2, cy: S / 2, r: R, style: { fill: 'none', stroke: '#C4491F', strokeWidth: 5, strokeLinecap: 'round', strokeDasharray: `${C * dwell} ${C}`, transition: 'stroke-dasharray 120ms linear' } }));
+    }
+    if (kind === 'reached') {
+      const C = 2 * Math.PI * R;
+      ring = h('svg', { width: S, height: S, style: { position: 'absolute', left: -S / 2, top: -S / 2, animation: 'rSpin 1.2s linear infinite', pointerEvents: 'none' } },
+        h('circle', { cx: S / 2, cy: S / 2, r: R, style: { fill: 'none', stroke: '#C4491F', strokeWidth: 4, strokeLinecap: 'round', strokeDasharray: `${C * 0.3} ${C}` } }));
+    }
+    const arD = d + 14;
+    return {
+      isUser: false, isPoint: true, d, off: -d / 2, fill: cfg[0], icon, isz,
+      ringW: kind === 'route' ? 2 : 2.5, ringStyle: p.optional ? 'dashed' : 'solid',
+      hasBadge: !!p.order && kind !== 'locked' && kind !== 'route', order: p.order,
+      hasAnchorRing: kind === 'next' && dwell <= 0, arD, arOff: -arD / 2,
+      halo, ring, hasLabel: !!p.label, label: p.label, labelTop: d / 2 + 10,
+      onTap: p.onTap, cursor: p.onTap ? 'pointer' : 'default'
+    };
+  }
+}
+</script>
+</body>
+</html>

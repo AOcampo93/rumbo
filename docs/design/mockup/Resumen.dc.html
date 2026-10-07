@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0}a{color:#1E4FA3}a:hover{color:#183F82}@keyframes rPop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}</style>
+</helmet>
+<div style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--r-bg,#F7F3EC);color:var(--r-text,#16191D);font-family:Inter, system-ui, sans-serif;display:flex;flex-direction:column">
+  <div style="flex:1;overflow-y:auto;padding-bottom:24px">
+    <div style="position:relative;height:200px;background:{{ headerBg }}">
+      <div style="position:absolute;left:50%;bottom:-36px;margin-left:-36px">{{ badge }}</div>
+    </div>
+    <div style="padding:52px 16px 0;display:flex;flex-direction:column;gap:20px">
+      <div style="text-align:center;display:flex;flex-direction:column;gap:4px">
+        <div style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:30px;line-height:36px;letter-spacing:-0.01em">{{ title }}</div>
+        <div style="font:400 16px/24px Inter, sans-serif;color:var(--r-muted,#5B6470)">{{ sub }}</div>
+      </div>
+      <div style="position:relative;height:200px;border-radius:14px;overflow:hidden;border:1px solid var(--r-border,#E2DACB)">
+        <dc-import name="MapBase" z="15" w="358" h="200" cx="31164.62" cy="24873.3" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <svg width="358" height="200" style="position:absolute;left:0;top:0;pointer-events:none">
+          <polyline points="{{ planPts }}" style="fill:none;stroke:#0B7A75;stroke-width:3px;stroke-dasharray:6 5;stroke-opacity:.7;stroke-linecap:round;stroke-linejoin:round"></polyline>
+          <polyline points="{{ trackPts }}" style="fill:none;stroke:#1E4FA3;stroke-width:4px;stroke-linecap:round;stroke-linejoin:round"></polyline>
+        </svg>
+        <sc-for list="{{ mapPts }}" as="m" hint-placeholder-count="0">
+          <dc-import name="Marker" kind="{{ m.kind }}" cat="{{ m.cat }}" scale="0.6" style="position:absolute;left:{{ m.x }}px;top:{{ m.y }}px" hint-size="0px,0px"></dc-import>
+        </sc-for>
+        <div style="position:absolute;right:4px;bottom:4px;font:600 9px Inter, sans-serif;color:#3D444D;background:rgba(255,255,255,.75);padding:1px 5px;border-radius:3px">Powered by Esri</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:10px">
+        <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+          <div style="background:var(--r-surface,#FFFFFF);border:1px solid var(--r-border,#E2DACB);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:6px;font:600 12px/16px Inter, sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--r-muted,#5B6470)"><dc-import name="Icon" icon="{{ s.icon }}" size="14" color="var(--r-muted,#5B6470)" hint-size="14px,14px"></dc-import>{{ s.label }}</div>
+            <div style="font:700 26px/32px Inter, sans-serif;letter-spacing:-0.01em;font-variant-numeric:tabular-nums">{{ s.v }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div style="font:700 20px/26px Inter, sans-serif;padding-bottom:6px">Tu recorrido</div>
+        <sc-for list="{{ list }}" as="it" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--r-border,#E2DACB);opacity:{{ it.op }}">
+            <div style="width:30px;height:30px;flex:none;border-radius:50%;background:{{ it.bubble }};display:flex;align-items:center;justify-content:center"><dc-import name="Icon" icon="{{ it.icon }}" size="16" color="{{ it.ic }}" stroke="2.5" hint-size="16px,16px"></dc-import></div>
+            <div style="flex:1;min-width:0;font:600 16px/22px Inter, sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div>
+            <div style="font:500 14px Inter, sans-serif;color:var(--r-muted,#5B6470);font-variant-numeric:tabular-nums">{{ it.time }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  <div style="flex:none;padding:12px 16px 30px;background:var(--r-surface,#FFFFFF);border-top:1px solid var(--r-border,#E2DACB);display:flex;gap:10px">
+    <button onClick="{{ repeat }}" style="flex:1;height:56px;border:1.5px solid var(--r-border,#E2DACB);border-radius:999px;background:var(--r-surface,#FFFFFF);color:var(--r-text,#16191D);font:600 16px Inter, sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer"><dc-import name="Icon" icon="rotate-ccw" size="18" hint-size="18px,18px"></dc-import>Repetir</button>
+    <button onClick="{{ home }}" style="flex:1.4;height:56px;border:none;border-radius:999px;background:var(--r-primary,#1E4FA3);color:var(--r-on-primary,#FFFFFF);font:600 16px Inter, sans-serif;cursor:pointer">Ver otras rutas</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;result&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;finished&quot;,&quot;cancelled&quot;],&quot;default&quot;:&quot;finished&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onAction&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(a: string) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props, done = (p.result || 'finished') === 'finished', h = React.createElement;
+    const PAT = 'radial-gradient(circle at 0 0, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 100% 0, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 0 100%, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 100% 100%, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle, transparent 0 8px, #F7F3EC 8px 10px, transparent 10px) 0 0/40px 40px, conic-gradient(from 45deg, #1E4FA3 0 25%, #183F82 0 50%, #1E4FA3 0 75%, #183F82 0) 0 0/40px 40px';
+    const NEU = 'radial-gradient(circle, transparent 0 8px, var(--r-border,#E2DACB) 8px 10px, transparent 10px) 0 0/40px 40px, conic-gradient(from 45deg, var(--r-surface2,#EFE9DE) 0 25%, var(--r-bg,#F7F3EC) 0 50%, var(--r-surface2,#EFE9DE) 0 75%, var(--r-bg,#F7F3EC) 0) 0 0/40px 40px';
+    const N = ['Praça Rodrigues Lobo', 'Sé de Leiria', 'Castelo de Leiria', 'Igreja de São Pedro', 'Museu de Leiria', 'm|i|mo – Museu da Imagem', 'Santuário da Encarnação', 'Moinho do Papel', 'Jardim Luís de Camões', "Mercado de Sant'Ana", 'Teatro José Lúcio da Silva', 'Igreja da Misericórdia'];
+    const C = ['other', 'church', 'monument', 'church', 'museum', 'museum', 'viewpoint', 'culture', 'nature', 'food', 'culture', 'church'];
+    const T = ['17:02', '17:21', '17:44', '18:03', '18:20', '18:41', '18:58', '19:12', '19:30', '19:47', '20:05', '20:21'];
+    const XY = [[150, 170], [70, 140], [205, 120], [250, 90], [205, 60], [140, 75], [70, 95], [95, 45], [170, 30], [250, 35], [310, 55], [320, 120]];
+    const nDone = done ? 12 : 3;
+    const badge = h('div', { style: { width: 72, height: 72, borderRadius: '50%', background: done ? '#C4491F' : 'var(--r-surface,#FFFFFF)', border: '4px solid var(--r-bg,#F7F3EC)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(22,25,29,.18)', animation: done ? 'rPop 700ms cubic-bezier(.2,.8,.2,1) both' : 'none', fontSize: 0 } },
+      h('svg', { width: 32, height: 32, viewBox: '0 0 24 24', style: { fill: 'none', stroke: done ? '#FFFFFF' : 'var(--r-text,#16191D)', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' } },
+        done ? h('path', { d: 'M20 6 9 17l-5-5' }) : h('path', { d: 'M4 22V4h12l-2 4 2 4H4' })));
+    return {
+      headerBg: done ? PAT : NEU, badge,
+      title: done ? '¡Ruta completada!' : 'Recorrido terminado',
+      sub: done ? 'Leiria histórica · hoy, 20:21' : 'Leiria histórica · guardamos lo que hiciste',
+      planPts: XY.map(q => q.join(',')).join(' '), trackPts: XY.slice(0, nDone).map(q => q.join(',')).join(' '),
+      mapPts: XY.map((q, i) => ({ x: q[0], y: q[1], cat: C[i], kind: i < nDone ? 'completed' : 'active' })),
+      stats: [
+        { icon: 'clock', label: 'Tiempo', v: done ? '3:19:12' : '1:05:23' },
+        { icon: 'route', label: 'Distancia', v: done ? '3,6 km' : '1,1 km' },
+        { icon: 'map-pin', label: 'Puntos', v: nDone + '/12' },
+        done ? { icon: 'trophy', label: 'Puntuación', v: '650 pts' } : { icon: 'gauge', label: 'Vel. media', v: '1,0 km/h' }
+      ],
+      list: N.map((n, i) => ({ name: n, time: i < nDone ? T[i] : 'Sin visitar', op: i < nDone ? 1 : 0.6, bubble: i < nDone ? '#1A7F45' : 'var(--r-surface2,#EFE9DE)', icon: i < nDone ? 'check' : 'minus', ic: i < nDone ? '#FFFFFF' : '#8A94A0' })),
+      home: () => p.onAction && p.onAction('home'), repeat: () => p.onAction && p.onAction('repeat')
+    };
+  }
+}
+</script>
+</body>
+</html>

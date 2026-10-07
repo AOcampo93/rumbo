@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script></helmet>{{ svg }}
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:48,&quot;height&quot;:48},&quot;icon&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;castle&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:24,&quot;tsType&quot;:&quot;number&quot;},&quot;color&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#16191D&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    if (!window.lucide) this.t = setInterval(() => { if (window.lucide) { clearInterval(this.t); this.forceUpdate(); } }, 80);
+  }
+  componentWillUnmount() { clearInterval(this.t); }
+  renderVals() {
+    const p = this.props, h = React.createElement;
+    const size = +(p.size ?? 24), color = p.color ?? 'currentColor', sw = +(p.stroke ?? 2), name = p.icon ?? 'map-pin';
+    const style = { width: size, height: size, display: 'block', flex: 'none', stroke: color, fill: p.fill ?? 'none' };
+    if (name === 'flag-checkered') {
+      const sq = [[5, 3.5], [14, 3.5], [9.5, 8.5]].map(([x, y], i) => h('rect', { key: i, x, y, width: 4.5, height: 5, style: { fill: color, stroke: 'none' } }));
+      return { svg: h('svg', { width: size, height: size, viewBox: '0 0 24 24', style: { ...style, fill: 'none' } },
+        h('path', { d: 'M5 22V3.5', style: { strokeWidth: sw, strokeLinecap: 'round' } }),
+        h('rect', { x: 5, y: 3.5, width: 13.5, height: 10, style: { strokeWidth: sw * 0.75, strokeLinejoin: 'round', fill: 'none' } }), ...sq) };
+    }
+    const key = name.split('-').map(s => s[0].toUpperCase() + s.slice(1)).join('');
+    const node = window.lucide && window.lucide.icons && window.lucide.icons[key];
+    let kids = [];
+    if (node) { const arr = node[0] === 'svg' ? node[2] : node; kids = arr.map(([t, a], i) => h(t, { ...a, key: i })); }
+    return { svg: h('svg', { width: size, height: size, viewBox: '0 0 24 24', strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round', style }, kids) };
+  }
+}
+</script>
+</body>
+</html>

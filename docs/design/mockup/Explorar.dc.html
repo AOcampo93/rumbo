@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0}a{color:#1E4FA3}a:hover{color:#183F82}</style>
+</helmet>
+<div style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--r-bg,#F7F3EC);color:var(--r-text,#16191D);font-family:Inter, system-ui, sans-serif;display:flex;flex-direction:column">
+  <div style="padding:54px 16px 12px;display:flex;align-items:center;gap:8px;flex:none">
+    <div style="display:flex;align-items:flex-end;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:30px;line-height:32px;letter-spacing:-0.02em">
+      <span>rumb</span>
+      <span style="position:relative;display:inline-block;width:18px;height:18px;margin:0 0 4px 1px;border-radius:50%;border:3.5px solid var(--r-text,#16191D);box-sizing:border-box">
+        <span style="position:absolute;left:50%;top:50%;width:3px;height:11px;margin:-5.5px 0 0 -1.5px;background:#C4491F;border-radius:2px;transform:rotate(40deg)"></span>
+      </span>
+    </div>
+    <div style="flex:1"></div>
+    <button style="height:40px;padding:0 12px 0 14px;border-radius:999px;border:1px solid var(--r-border,#E2DACB);background:var(--r-surface,#FFFFFF);color:var(--r-text,#16191D);font:600 15px Inter, sans-serif;display:flex;align-items:center;gap:6px;cursor:pointer">
+      <dc-import name="Icon" icon="map-pin" size="16" color="var(--r-accent,#C4491F)" hint-size="16px,16px"></dc-import>Leiria<dc-import name="Icon" icon="chevron-down" size="16" hint-size="16px,16px"></dc-import>
+    </button>
+    <button aria-label="Buscar" style="width:44px;height:44px;border-radius:50%;border:1px solid var(--r-border,#E2DACB);background:var(--r-surface,#FFFFFF);color:var(--r-text,#16191D);display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <dc-import name="Icon" icon="search" size="20" hint-size="20px,20px"></dc-import>
+    </button>
+  </div>
+  <div style="padding:0 16px;flex:none">
+    <div style="display:flex;padding:4px;background:var(--r-surface2,#EFE9DE);border-radius:12px;gap:4px">
+      <button onClick="{{ setList }}" style="flex:1;height:40px;border:none;border-radius:9px;background:{{ listBg }};box-shadow:{{ listSh }};color:var(--r-text,#16191D);font:600 15px Inter, sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer"><dc-import name="Icon" icon="list" size="18" hint-size="18px,18px"></dc-import>Lista</button>
+      <button onClick="{{ setMap }}" style="flex:1;height:40px;border:none;border-radius:9px;background:{{ mapBg }};box-shadow:{{ mapSh }};color:var(--r-text,#16191D);font:600 15px Inter, sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer"><dc-import name="Icon" icon="map" size="18" hint-size="18px,18px"></dc-import>Mapa</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;padding:12px 16px;overflow-x:auto;flex:none">
+    <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+      <button onClick="{{ c.on }}" style="flex:none;height:36px;padding:0 14px;border-radius:10px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font:600 14px Inter, sans-serif;cursor:pointer">{{ c.label }}</button>
+    </sc-for>
+  </div>
+  <sc-if value="{{ offline }}" hint-placeholder-val="{{ false }}">
+    <div style="margin:0 16px 12px;padding:10px 12px;border-radius:10px;background:var(--r-warn-bg,#FFF1CC);color:var(--r-warn,#8A5A00);display:flex;align-items:center;gap:10px;font:500 14px/20px Inter, sans-serif;flex:none">
+      <dc-import name="Icon" icon="wifi-off" size="18" color="var(--r-warn,#8A5A00)" hint-size="18px,18px"></dc-import>
+      <span><strong style="font-weight:700">Sin conexión.</strong> Te mostramos tus rutas descargadas.</span>
+    </div>
+  </sc-if>
+  <div style="flex:1;position:relative;min-height:0">
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;inset:0;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:16px">
+        <sc-for list="{{ routes }}" as="r" hint-placeholder-count="2">
+          <div onClick="{{ r.open }}" style="flex:none;background:var(--r-surface,#FFFFFF);border-radius:14px;overflow:hidden;border:1px solid var(--r-border,#E2DACB);box-shadow:0 1px 2px rgba(22,25,29,.08);cursor:pointer">
+            <div style="position:relative;aspect-ratio:16/9;background:{{ r.cover }}">
+              <sc-if value="{{ r.hasImg }}" hint-placeholder-val="{{ true }}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 11px ui-monospace, Menlo, monospace;color:#5B6470;letter-spacing:.02em">{{ r.img }}</div>
+              </sc-if>
+              <div style="position:absolute;left:12px;top:12px;height:28px;padding:0 10px 0 8px;border-radius:6px;background:{{ r.badgeBg }};color:{{ r.badgeFg }};display:flex;align-items:center;gap:5px;font:700 13px Inter, sans-serif">
+                <dc-import name="Icon" icon="{{ r.badgeIcon }}" size="15" color="{{ r.badgeFg }}" hint-size="15px,15px"></dc-import>{{ r.modeLabel }}
+              </div>
+              <sc-if value="{{ r.showOffline }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:12px;top:12px;height:28px;padding:0 10px 0 8px;border-radius:6px;background:#FFFFFF;color:#1A7F45;display:flex;align-items:center;gap:5px;font:700 13px Inter, sans-serif"><dc-import name="Icon" icon="circle-check" size="15" color="#1A7F45" hint-size="15px,15px"></dc-import>Descargada</div>
+              </sc-if>
+            </div>
+            <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="flex:1;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:19px;line-height:24px">{{ r.name }}</div>
+                <div style="display:flex;align-items:center;gap:4px;font:600 13px Inter, sans-serif;color:var(--r-muted,#5B6470)"><dc-import name="Icon" icon="{{ r.actIcon }}" size="15" color="var(--r-muted,#5B6470)" hint-size="15px,15px"></dc-import>{{ r.act }}</div>
+              </div>
+              <div style="font:400 14px/20px Inter, sans-serif;color:var(--r-muted,#5B6470);text-wrap:pretty">{{ r.summary }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:4px;font:600 14px/20px Inter, sans-serif;font-variant-numeric:tabular-nums">
+                <sc-for list="{{ r.stats }}" as="s" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:6px"><dc-import name="Icon" icon="{{ s.icon }}" size="16" color="var(--r-muted,#5B6470)" hint-size="16px,16px"></dc-import><span>{{ s.v }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showLoading }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;padding:0 16px;display:flex;flex-direction:column;gap:16px">
+        <sc-for list="{{ skel }}" as="k" hint-placeholder-count="2">
+          <div style="flex:none;background:var(--r-surface,#FFFFFF);border-radius:14px;overflow:hidden;border:1px solid var(--r-border,#E2DACB)">
+            <div style="aspect-ratio:16/9;background:var(--r-surface2,#EFE9DE)"></div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+              <div style="height:18px;width:60%;border-radius:6px;background:var(--r-surface2,#EFE9DE)"></div>
+              <div style="height:12px;width:90%;border-radius:6px;background:var(--r-surface2,#EFE9DE)"></div>
+              <div style="height:12px;width:40%;border-radius:6px;background:var(--r-surface2,#EFE9DE)"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;padding:40px 32px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px">
+        <div style="width:120px;height:120px;border-radius:24px;margin-bottom:12px;background:radial-gradient(circle at 0 0, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 100% 0, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 0 100%, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 100% 100%, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle, transparent 0 8px, #F7F3EC 8px 10px, transparent 10px) 0 0/40px 40px, conic-gradient(from 45deg, #1E4FA3 0 25%, #183F82 0 50%, #1E4FA3 0 75%, #183F82 0) 0 0/40px 40px"></div>
+        <div style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:22px;line-height:28px">Aún no hay rutas en esta zona</div>
+        <div style="font:400 16px/24px Inter, sans-serif;color:var(--r-muted,#5B6470);text-wrap:pretty">Elige los lugares que quieres ver y preparamos la guía por ti.</div>
+        <button style="margin-top:8px;height:48px;padding:0 22px;border:none;border-radius:999px;background:var(--r-primary,#1E4FA3);color:var(--r-on-primary,#FFFFFF);font:600 16px Inter, sans-serif;display:flex;align-items:center;gap:8px;cursor:pointer"><dc-import name="Icon" icon="plus" size="20" color="var(--r-on-primary,#FFFFFF)" hint-size="20px,20px"></dc-import>Crea la tuya</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showMap }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;overflow:hidden">
+        <dc-import name="MapBase" z="15" w="390" h="560" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+        <svg width="390" height="560" style="position:absolute;left:0;top:0;pointer-events:none">
+          <sc-for list="{{ lines }}" as="l" hint-placeholder-count="0"><polyline points="{{ l.pts }}" style="fill:none;stroke:{{ l.color }};stroke-width:3px;stroke-opacity:.6;stroke-linecap:round;stroke-linejoin:round"></polyline></sc-for>
+        </svg>
+        <sc-for list="{{ markers }}" as="m" hint-placeholder-count="0">
+          <dc-import name="Marker" kind="route" color="{{ m.color }}" cat="{{ m.cat }}" on-tap="{{ m.tap }}" style="position:absolute;left:{{ m.x }}px;top:{{ m.y }}px" hint-size="0px,0px"></dc-import>
+        </sc-for>
+        <div style="position:absolute;right:16px;top:12px;display:flex;flex-direction:column;gap:12px">
+          <button aria-label="Filtro" style="width:48px;height:48px;border-radius:50%;border:none;background:var(--r-surface,#FFFFFF);color:var(--r-text,#16191D);box-shadow:0 6px 18px rgba(22,25,29,.12);display:flex;align-items:center;justify-content:center;cursor:pointer"><dc-import name="Icon" icon="list-filter" size="22" hint-size="22px,22px"></dc-import></button>
+          <button aria-label="Recentrar" style="width:48px;height:48px;border-radius:50%;border:none;background:var(--r-surface,#FFFFFF);color:var(--r-primary,#1E4FA3);box-shadow:0 6px 18px rgba(22,25,29,.12);display:flex;align-items:center;justify-content:center;cursor:pointer"><dc-import name="Icon" icon="locate-fixed" size="22" color="var(--r-primary,#1E4FA3)" hint-size="22px,22px"></dc-import></button>
+        </div>
+        <div style="position:absolute;left:12px;bottom:28px;padding:10px 12px;border-radius:12px;background:var(--r-surface,#FFFFFF);box-shadow:0 6px 18px rgba(22,25,29,.12);display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ legend }}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:8px;font:600 13px/16px Inter, sans-serif"><span style="width:12px;height:12px;border-radius:50%;background:{{ g.color }};border:2px solid #FFFFFF;box-shadow:0 0 0 1px {{ g.color }}"></span>{{ g.name }}</div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ hasPopup }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:{{ pop.left }}px;top:{{ pop.top }}px;width:264px;background:var(--r-surface,#FFFFFF);border-radius:14px;box-shadow:0 16px 40px rgba(22,25,29,.22);overflow:hidden">
+            <div style="position:relative;aspect-ratio:16/9;background:repeating-linear-gradient(135deg, #E9E2D4 0 10px, #EFE9DE 10px 20px);display:flex;align-items:center;justify-content:center;font:500 11px ui-monospace, Menlo, monospace;color:#5B6470">foto · {{ pop.name }}</div>
+            <button onClick="{{ closePop }}" aria-label="Cerrar" style="position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(22,25,29,.6);display:flex;align-items:center;justify-content:center;cursor:pointer"><dc-import name="Icon" icon="x" size="18" color="#FFFFFF" hint-size="18px,18px"></dc-import></button>
+            <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:17px;line-height:22px">{{ pop.name }}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span style="height:24px;padding:0 8px;border-radius:6px;background:var(--r-surface2,#EFE9DE);display:flex;align-items:center;gap:4px;font:600 12px Inter, sans-serif"><dc-import name="Icon" icon="{{ pop.icon }}" size="13" hint-size="13px,13px"></dc-import>{{ pop.catLabel }}</span>
+                <span style="height:24px;padding:0 8px;border-radius:6px;background:var(--r-surface2,#EFE9DE);display:flex;align-items:center;gap:6px;font:600 12px Inter, sans-serif"><span style="width:8px;height:8px;border-radius:50%;background:{{ pop.color }}"></span>{{ pop.route }}</span>
+              </div>
+              <div style="font:400 14px/20px Inter, sans-serif;color:var(--r-muted,#5B6470);font-variant-numeric:tabular-nums">a {{ pop.dist }} de ti</div>
+              <button onClick="{{ pop.open }}" style="height:44px;border:none;border-radius:999px;background:var(--r-primary,#1E4FA3);color:var(--r-on-primary,#FFFFFF);font:600 15px Inter, sans-serif;cursor:pointer">Ver ruta</button>
+            </div>
+          </div>
+        </sc-if>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:20px;padding:0 8px;background:rgba(255,255,255,.75);display:flex;align-items:center;justify-content:space-between;font:400 10px Inter, sans-serif;color:#3D444D">
+          <span>Esri, HERE, Garmin, © OpenStreetMap</span><span style="font-weight:600">Powered by Esri</span>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  <sc-if value="{{ miniRun }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;margin:8px 12px;height:56px;padding:0 8px 0 14px;border-radius:14px;background:var(--r-text,#16191D);color:var(--r-bg,#F7F3EC);display:flex;align-items:center;gap:10px;box-shadow:0 6px 18px rgba(22,25,29,.18)">
+      <span style="width:10px;height:10px;border-radius:50%;background:#F2875A;flex:none"></span>
+      <div style="flex:1;min-width:0;font:600 14px/18px Inter, sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Leiria histórica · <span style="font-weight:400">Castelo</span> <span style="font-variant-numeric:tabular-nums">340 m</span></div>
+      <button style="height:40px;padding:0 14px;border:none;border-radius:999px;background:#F2875A;color:#16191D;font:700 14px Inter, sans-serif;cursor:pointer">Volver</button>
+    </div>
+  </sc-if>
+  <div style="flex:none;height:84px;box-sizing:border-box;padding:6px 8px 26px;background:var(--r-surface,#FFFFFF);border-top:1px solid var(--r-border,#E2DACB);display:flex">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--r-primary,#1E4FA3);font:600 12px Inter, sans-serif"><dc-import name="Icon" icon="compass" size="24" color="var(--r-primary,#1E4FA3)" hint-size="24px,24px"></dc-import>Explorar</div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--r-muted,#5B6470);font:600 12px Inter, sans-serif"><dc-import name="Icon" icon="bookmark" size="24" color="var(--r-muted,#5B6470)" hint-size="24px,24px"></dc-import>Mis rutas</div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--r-text,#16191D);font:600 12px Inter, sans-serif"><div style="width:44px;height:32px;border-radius:12px;background:var(--r-accent,#C4491F);display:flex;align-items:center;justify-content:center"><dc-import name="Icon" icon="plus" size="22" color="#FFFFFF" stroke="2.5" hint-size="22px,22px"></dc-import></div>Crear</div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--r-muted,#5B6470);font:600 12px Inter, sans-serif"><dc-import name="Icon" icon="settings" size="24" color="var(--r-muted,#5B6470)" hint-size="24px,24px"></dc-import>Ajustes</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;list&quot;,&quot;map&quot;],&quot;default&quot;:&quot;list&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ok&quot;,&quot;loading&quot;,&quot;offline&quot;,&quot;empty&quot;],&quot;default&quot;:&quot;ok&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;popup&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;miniRun&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onOpenRoute&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(id: string) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = { view: this.props.view || 'list', filter: 'Todas', pop: this.props.popup ? 0 : -1 };
+  renderVals() {
+    const p = this.props, s = this.state, st = p.state || 'ok';
+    const PAT = 'radial-gradient(circle at 0 0, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 100% 0, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 0 100%, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle at 100% 100%, #F7F3EC 0 7px, transparent 8px) 0 0/40px 40px, radial-gradient(circle, transparent 0 8px, #F7F3EC 8px 10px, transparent 10px) 0 0/40px 40px, conic-gradient(from 45deg, #1E4FA3 0 25%, #183F82 0 50%, #1E4FA3 0 75%, #183F82 0) 0 0/40px 40px';
+    const STR = 'repeating-linear-gradient(135deg, #E9E2D4 0 10px, #EFE9DE 10px 20px)';
+    const free = { badgeBg: 'var(--r-free-soft,#D7ECEA)', badgeFg: 'var(--r-free-text,#0B6B66)', badgeIcon: 'compass', modeLabel: 'Libre' };
+    const chal = { badgeBg: 'var(--r-chal-soft,#F6D3C4)', badgeFg: 'var(--r-chal-text,#A33A12)', badgeIcon: 'flag', modeLabel: 'Reto' };
+    const open = id => () => p.onOpenRoute && p.onOpenRoute(id);
+    let routes = [
+      { id: 'leiria', name: 'Leiria histórica', summary: 'Del castillo a las plazas del centro, con fichas que se abren al llegar.', mode: 'free', ...free, act: 'A pie', actIcon: 'footprints', cover: STR, hasImg: true, img: 'foto · Castelo de Leiria', stats: [{ icon: 'route', v: '3,4 km' }, { icon: 'clock', v: '~2 h' }, { icon: 'map-pin', v: '12 puntos' }] },
+      { id: 'reto', name: 'Reto Ribeira do Lis', summary: 'Carrera junto al río cruzando sus puentes. Checkpoints en orden.', mode: 'challenge', ...chal, act: 'Correr', actIcon: 'activity', cover: STR, hasImg: true, img: 'foto · orilla del río Lis', stats: [{ icon: 'route', v: '6,2 km' }, { icon: 'timer', v: 'Límite 1 h 30' }, { icon: 'flag', v: '10 puntos' }] },
+      { id: 'bici', name: 'Leiria en bici', summary: 'Parques, molinos y miradores por los carriles bici de la ciudad.', mode: 'free', ...free, act: 'Bici', actIcon: 'bike', cover: PAT, hasImg: false, img: '', stats: [{ icon: 'route', v: '11,5 km' }, { icon: 'clock', v: '~1 h 10' }, { icon: 'map-pin', v: '8 puntos' }] }
+    ];
+    if (st === 'offline') routes = routes.slice(0, 1);
+    const F = s.filter;
+    routes = routes.filter(r => F === 'Todas' || (F === 'Libre' && r.mode === 'free') || (F === 'Reto' && r.mode === 'challenge') || (F === 'A pie' && r.act === 'A pie') || (F === 'Bici' && r.act === 'Bici'))
+      .map(r => ({ ...r, open: open(r.id), showOffline: st === 'offline' }));
+    const chips = ['Todas', 'Libre', 'Reto', 'A pie', 'Bici'].map(l => {
+      const on = l === F;
+      return { label: l, on: () => this.setState({ filter: l }), bg: on ? 'var(--r-text,#16191D)' : 'var(--r-surface,#FFFFFF)', fg: on ? 'var(--r-bg,#F7F3EC)' : 'var(--r-text,#16191D)', border: on ? 'var(--r-text,#16191D)' : 'var(--r-border,#E2DACB)' };
+    });
+    const R = [
+      { name: 'Leiria histórica', id: 'leiria', color: '#1E4FA3', pts: [['Castelo de Leiria', 'monument', 190, 400], ['Sé de Leiria', 'church', 150, 330], ['Igreja de São Pedro', 'church', 230, 345], ['Museu de Leiria', 'museum', 250, 280], ['m|i|mo', 'museum', 120, 260], ['Santuário da Encarnação', 'viewpoint', 285, 380], ['Mercado de Sant\'Ana', 'food', 175, 460], ['Jardim Luís de Camões', 'nature', 100, 350], ['Teatro José Lúcio da Silva', 'culture', 205, 225], ['Praça Rodrigues Lobo', 'other', 150, 200]] },
+      { name: 'Reto Ribeira do Lis', id: 'reto', color: '#C4491F', pts: [['Salida · Mercado', 'start', 40, 150], ['Ponte Hintze Ribeiro', 'checkpoint', 85, 110], ['Moinho do Papel', 'checkpoint', 140, 95], ['Ponte dos Caniços', 'checkpoint', 300, 150], ['Parque do Avião', 'checkpoint', 340, 225], ['Ponte da Portela', 'checkpoint', 345, 315], ['Meta · Estádio', 'finish', 325, 420]] },
+      { name: 'Leiria en bici', id: 'bici', color: '#0B7A75', pts: [['Parque do Lis', 'nature', 60, 420], ['Miradouro do Castelo', 'viewpoint', 110, 480], ['Moinho de Papel', 'culture', 215, 520], ['Mata dos Marrazes', 'nature', 280, 490], ['Alto de Santo António', 'viewpoint', 330, 80], ['Tasca do Rio', 'food', 30, 270]] }
+    ];
+    const CAT = { monument: 'Monumento', church: 'Iglesia', museum: 'Museo', viewpoint: 'Mirador', food: 'Gastronomía', nature: 'Naturaleza', culture: 'Cultura', other: 'Plaza', start: 'Salida', checkpoint: 'Checkpoint', finish: 'Meta' };
+    const ICON = { monument: 'castle', museum: 'landmark', church: 'church', viewpoint: 'binoculars', nature: 'trees', food: 'utensils', culture: 'drama', checkpoint: 'flag', start: 'circle-play', finish: 'flag-checkered', other: 'map-pin' };
+    const markers = []; let idx = 0;
+    R.forEach(r => r.pts.forEach(q => { const i = idx++; markers.push({ x: q[2], y: q[3], color: r.color, cat: q[1], name: q[0], r, tap: () => this.setState({ pop: i }) }); }));
+    let pop = null;
+    if (s.pop >= 0 && markers[s.pop]) {
+      const m = markers[s.pop], H = 316;
+      let top = m.y - 26 - H; if (top < 8) top = m.y + 26;
+      top = Math.max(8, Math.min(top, 560 - 20 - H - 8));
+      pop = { name: m.name, left: Math.max(12, Math.min(m.x - 132, 390 - 264 - 12)), top, icon: ICON[m.cat], catLabel: CAT[m.cat], route: m.r.name, color: m.r.color, dist: ['340 m', '1,2 km', '780 m'][s.pop % 3], open: open(m.r.id) };
+    }
+    const isList = s.view === 'list', sel = 'var(--r-surface,#FFFFFF)', sh = '0 1px 2px rgba(22,25,29,.12)';
+    return {
+      setList: () => this.setState({ view: 'list' }), setMap: () => this.setState({ view: 'map' }),
+      listBg: isList ? sel : 'transparent', listSh: isList ? sh : 'none', mapBg: isList ? 'transparent' : sel, mapSh: isList ? 'none' : sh,
+      chips, routes, offline: st === 'offline',
+      showList: isList && (st === 'ok' || st === 'offline'), showLoading: isList && st === 'loading', showEmpty: isList && st === 'empty', skel: [1, 2],
+      showMap: !isList, markers, lines: R.map(r => ({ color: r.color, pts: r.pts.map(q => q[2] + ',' + q[3]).join(' ') })),
+      legend: R.map(r => ({ name: r.name, color: r.color })),
+      hasPopup: !!pop, pop: pop || {}, closePop: () => this.setState({ pop: -1 }),
+      miniRun: !!p.miniRun
+    };
+  }
+}
+</script>
+</body>
+</html>
