@@ -366,7 +366,7 @@ export interface RouteBundle {          // lo que viaja entre API, caché y app
 
 - `normalizeRouteSpec(spec)`: aplica los valores por defecto según modo y actividad. **El motor solo acepta specs normalizados.**
 - `migrateRouteSpec(input)`: convierte versiones anteriores de `specVersion` a la actual.
-- `hashRouteSpec(spec)`: SHA-256 del JSON canónico de los campos que usa el motor: puntos, posiciones, radios, orden, ajustes, triggers y acciones, sin textos. Sirve para detectar cambios en snapshots y en runs. Corregir o traducir un texto no invalida los recorridos guardados.
+- `hashRouteSpec(spec)`: SHA-256 del JSON canónico de los campos que usa el motor: puntos, posiciones, radios, orden, ajustes, trazado y triggers. Deja fuera los textos y el contenido de las acciones. Sirve para detectar cambios en snapshots y en runs: corregir o traducir un texto, o ajustar un quiz, no invalida los recorridos guardados.
 - `resolveText(text, locale)`: devuelve el texto en el idioma pedido, siguiendo la cadena de respaldo del [ADR 0001](adr/0001-multilenguaje.md) (idioma pedido → `spec.locale` → `en` → `es` → `pt`), e indica qué idioma se usó.
 
 ### 6.4 Contrato de contenido: `PointContent`

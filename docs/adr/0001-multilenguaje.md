@@ -50,7 +50,7 @@ El plan inicial tenía la interfaz en español e inglés y dejaba el portugués 
 - **Ni el motor ni el sistema de eventos producen texto:**
   - `EngineState.target` ya no lleva `name`: la interfaz resuelve el nombre por `pointId`;
   - el sistema de eventos pasa claves de traducción con parámetros (`UiText`) al `UiAdapter` y al `FeedbackAdapter`, que traducen con el idioma activo. Incluye las notificaciones.
-- **`hashRouteSpec` cubre solo los campos que usa el motor:** puntos, posiciones, radios, orden, ajustes, triggers y acciones. Corregir o añadir una traducción no invalida los recorridos guardados.
+- **`hashRouteSpec` cubre solo los campos que usa el motor:** puntos, posiciones, radios, orden, ajustes, trazado y triggers. Deja fuera los textos y el contenido de las acciones: corregir o traducir un texto, o ajustar un quiz, no invalida los recorridos guardados.
 
 ### 4. IA generativa
 
