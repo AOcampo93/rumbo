@@ -259,6 +259,22 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@24.19.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15))
 
+  packages/route-builder:
+    dependencies:
+      '@rumbo/geo-utils':
+        specifier: workspace:*
+        version: link:../geo-utils
+      '@rumbo/route-spec':
+        specifier: workspace:*
+        version: link:../route-spec
+    devDependencies:
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@24.19.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(tsx@4.23.15))
+
   packages/route-spec:
     dependencies:
       '@noble/hashes':

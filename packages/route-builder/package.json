@@ -1,0 +1,22 @@
+{
+  "name": "@rumbo/route-builder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turns the route planner's draft into a valid RouteSpec and summarizes routes.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rumbo/geo-utils": "workspace:*",
+    "@rumbo/route-spec": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  }
+}
