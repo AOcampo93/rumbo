@@ -54,7 +54,7 @@ La web y la API comparten dominio. La PWA llama a `/api/v1/…` sin CORS, y el s
 
 ## Pendiente
 
-- [ ] DNS en Cloudflare: registro `A rumbo → IP del VPS`, «solo DNS» (nube gris), como el resto de subdominios.
+- [x] DNS en Cloudflare: registro `A rumbo → IP del VPS`, «solo DNS» (nube gris), como el resto de subdominios.
+- [x] Repositorio público (requisito del curso).
 - [ ] Primer despliegue de `rumbo-api` y `rumbo-web`, comprobando que la API informa del commit servido.
 - [ ] Backups programados de `rumbo-db` (diarios) en Coolify.
-- [ ] Hacer público el repositorio cuando se decida (requisito del curso).
