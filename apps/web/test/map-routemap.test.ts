@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { i18n } from '../src/i18n/index.ts';
 import RouteMap from '../src/map/RouteMap.vue';
 import { ZONE_LOOKS } from '../src/map/symbols.ts';
+import type { LatLng } from '@rumbo/geo-utils';
 import type { MapMarker, MapZoneItem, RouteMapApi } from '../src/map/types.ts';
 
 // RouteMap against a stand-in SDK: the creator's zones synced by id, the long
@@ -50,6 +51,19 @@ vi.mock('@arcgis/core/PopupTemplate.js', () => ({ default: sdk.Fake }));
 vi.mock('@arcgis/core/geometry/Circle.js', () => ({ default: sdk.Fake }));
 vi.mock('@arcgis/core/geometry/Extent.js', () => ({
   default: class extends sdk.Fake {
+    declare xmin: number;
+    declare xmax: number;
+    declare ymin: number;
+    declare ymax: number;
+    get width() {
+      return this.xmax - this.xmin;
+    }
+    get height() {
+      return this.ymax - this.ymin;
+    }
+    get center() {
+      return { longitude: (this.xmin + this.xmax) / 2, latitude: (this.ymin + this.ymax) / 2 };
+    }
     expand() {
       return this;
     }
@@ -138,7 +152,9 @@ afterEach(() => {
   mounted.clear();
 });
 
-function mountMap(props: { markers?: MapMarker[]; zones?: MapZoneItem[] } = {}) {
+function mountMap(
+  props: { markers?: MapMarker[]; zones?: MapZoneItem[]; fit?: LatLng[] | null } = {},
+) {
   const wrapper = mount(RouteMap, {
     props: { markers: [], label: 'Map', ...props },
     global: { plugins: [i18n] },
@@ -305,6 +321,36 @@ describe('RouteMap camera API', () => {
     view.goTo.mockRejectedValueOnce(new Error('interrupted'));
     await expect(api.goTo(target)).resolves.toBeUndefined();
     expect(api.center()).toEqual({ lat: 39.744, lng: -8.807 });
+  });
+
+  // A point-like extent is an invalid view for the SDK (mapview:invalid-extent).
+  it('opens on a single position with a centre and a zoom, not an extent', async () => {
+    const wrapper = mountMap({ fit: [target] });
+    await flushPromises();
+    const element = wrapper.find('arcgis-map').element as unknown as {
+      extent?: unknown;
+      center?: number[];
+      zoom?: number;
+    };
+    expect(element.extent).toBeUndefined();
+    expect(element.center).toEqual([-8.81, 39.75]);
+    expect(element.zoom).toBe(15);
+  });
+
+  it('opens on several positions with their extent', async () => {
+    const wrapper = mountMap({ fit: [target, { lat: 39.74, lng: -8.8 }] });
+    await flushPromises();
+    const element = wrapper.find('arcgis-map').element as unknown as { extent?: unknown };
+    expect(element.extent).toMatchObject({ xmin: -8.81, ymin: 39.74, xmax: -8.8, ymax: 39.75 });
+  });
+
+  it('frames positions without an area by their centre, close up', async () => {
+    const api = (await readyMap()).vm as unknown as RouteMapApi;
+    await api.fitTo([target, target]);
+    expect(view.goTo.mock.lastCall?.[0]).toEqual({
+      target: { latitude: 39.75, longitude: -8.81 },
+      zoom: 17,
+    });
   });
 });
 

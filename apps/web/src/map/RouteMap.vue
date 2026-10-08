@@ -126,6 +126,9 @@ let disposed = false;
 
 const point = (p: LatLng) => new Point({ latitude: p.lat, longitude: p.lng });
 
+/** False for a point-like extent: the SDK rejects one as a view (mapview:invalid-extent). */
+const hasArea = (extent: Extent) => extent.width > 0 && extent.height > 0;
+
 function extentOf(points: readonly LatLng[]): Extent | null {
   if (points.length === 0) return null;
   const lats = points.map((p) => p.lat);
@@ -389,12 +392,10 @@ async function fitTo(points: readonly LatLng[] | null = props.fit): Promise<void
   const extent = points ? extentOf(points) : null;
   if (!view || !extent) return;
   try {
-    await view.goTo(
-      points?.length === 1 ? { target: point(points[0] as LatLng), zoom: 17 } : extent.expand(1.25),
-      {
-        animate: !reduceMotion,
-      },
-    );
+    // Positions without an area (one, or all in the same place): their centre, close up.
+    await view.goTo(hasArea(extent) ? extent.expand(1.25) : { target: extent.center, zoom: 17 }, {
+      animate: !reduceMotion,
+    });
   } catch {
     // An interrupted animation is fine.
   }
@@ -506,9 +507,15 @@ onMounted(async () => {
     snapToZoom: false,
   } as typeof element.constraints;
   const initial = extentOf(props.fit ?? props.markers.map((m) => m.position));
-  if (initial) element.extent = initial.expand(1.25);
+  if (initial && hasArea(initial)) element.extent = initial.expand(1.25);
   else {
-    element.center = [-8.807, 39.744];
+    // One position (the creator's area) has no size: an extent would be an
+    // invalid view (mapview:invalid-extent), so centre on it instead.
+    const centre = initial?.center;
+    element.center =
+      centre?.longitude != null && centre.latitude != null
+        ? [centre.longitude, centre.latitude]
+        : [-8.807, 39.744];
     element.zoom = 15;
   }
 
