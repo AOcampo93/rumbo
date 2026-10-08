@@ -24,7 +24,7 @@ En orden de prioridad:
 7. **Adaptación a escritorio y tablet** de Explorar (mapa) y del Creador (vista dividida).
 8. **Exploración de marca:** logotipo/wordmark e icono de app (sección 4.4). Es provisional.
 
-**Estado (2026-10-07).** Entregado:
+**Estado (2026-10-08).** Entregado:
 - los fundamentos (paletas clara, oscura y «Sol», y la tipografía);
 - el set de marcadores;
 - el wordmark;
@@ -34,10 +34,13 @@ En orden de prioridad:
 
 Construido con este mismo sistema en la fase 4, sin mockup propio: el onboarding y el consentimiento, S02 Mis rutas (estado vacío), S11 Recuperar recorrido, S12 Ajustes y el panel de filtros.
 
+Construido con este mismo sistema en la fase 6, sin mockup propio: el creador (C1, C2, C4 y C5, con un Stepper de 3 pasos) y S02 Mis rutas completa (lista, editar, eliminar y estado de subida). El flujo C no tiene prototipo navegable.
+
 Falta, y se diseñará con este mismo sistema al construir cada pantalla:
-- el creador (C1–C5) y su flujo C;
+- C3 Contenido IA (fase 7);
+- el último recorrido de cada ruta en S02 (aplazado);
 - las variantes S06c, S06d y S06f (hay una primera versión en código);
-- tablet y escritorio;
+- tablet y escritorio, salvo el reparto en dos columnas de C2;
 - el tema «Sol» aplicado a pantallas;
 - el icono de la app.
 
@@ -139,7 +142,7 @@ La paleta toma referencias de Portugal (punto de partida en Leiria) pero sirve p
 | `--color-accent` | `#C4491F` (Terracota) | **Siguiente punto**, llegada, modo Reto (4,9:1 con blanco) |
 | `--color-accent-soft` | `#F6D3C4` | Fondos suaves de acento |
 | `--color-success` | `#1A7F45` | Punto completado (5,0:1 con blanco) |
-| `--color-warning` | `#8A5A00` sobre `#FFF1CC` | GPS débil, avisos |
+| `--color-warning` | `#8A5A00` sobre `#FFF1CC` | GPS débil, avisos. Los símbolos del mapa usan `#B07400` (§6.1) |
 | `--color-danger` | `#C0362C` | Terminar, errores (5,5:1 con blanco) |
 | `--color-locked` | `#8A94A0` | Puntos bloqueados (solo iconos y rellenos, nunca texto) |
 | `--color-user` | `#2F80ED` | Punto "estás aquí" |
@@ -278,6 +281,8 @@ Base común:
 
 - **Zona del objetivo:** cuando faltan ≤ 150 m, se dibuja el círculo del radio en Terracota al 10 % con borde del 40 %. Comunica "entra aquí".
 - **Mapa Explorar:** el relleno es el **color de la ruta** (no el estado), con el icono de categoría.
+- **Solapamiento (creador):** un lugar cuya zona se solapa con la de otro lleva un **aro ámbar** alrededor del marcador y una **insignia triangular «!»** arriba a la izquierda, frente a la insignia de orden, así que no depende solo del color (§12). Su círculo de radio se dibuja en el mismo ámbar (relleno al 20 %, borde al 90 %, 2 px). Los demás círculos del creador usan el estilo de la zona del objetivo (Terracota al 10 %, borde al 40 %).
+  - El ámbar del mapa es `#B07400`, no `--color-warning` (`#8A5A00`). Los símbolos del mapa son imágenes y no leen variables CSS, y `#8A5A00` queda por debajo de 3:1 sobre un gris oscuro como el del mapa base oscuro. `#B07400` da 3,9:1 con blanco y se distingue sobre el mapa claro y el oscuro.
 
 ### 6.2 Usuario, trazado y traza
 
@@ -311,7 +316,7 @@ Base común:
 | **ActivityBadge** | A pie · Correr · Bici |
 | **StatChip** | Icono + valor + etiqueta ("3,4 km", "~2 h", "12 puntos", "Límite 1 h 30") |
 | **RouteCard** | Portada 16:9, ModeBadge sobre la imagen, título Fraunces, fila de stats, etiqueta "Creada por ti" (rutas de usuario). Estados: normal, sin portada (patrón de marca), skeleton |
-| **PointListItem** | Burbuja de orden (color del estado), miniatura de 48 px, nombre, categoría · distancia. Estados: bloqueado (atenuado + candado), activo, **siguiente** (barra Terracota a la izquierda), completado (check + hora). Variante **arrastrable** (asa) para el creador |
+| **PointListItem** | Burbuja de orden (color del estado), miniatura de 48 px, nombre, categoría · distancia. Estados: bloqueado (atenuado + candado), activo, **siguiente** (barra Terracota a la izquierda), completado (check + hora). La variante del creador es la **PlaceListItem** (abajo) |
 | **HudTarget** | Tarjeta flotante superior: flecha de 40 px que **gira hacia el objetivo**, etiqueta "SIGUIENTE · 3/8", nombre, **distancia grande** + ETA. Estados: normal · acercándose (borde Terracota pulsante) · **confirmando llegada** (anillo de progreso + "Confirmando llegada…") · sin rumbo (punto cardinal "NE" en vez de flecha) · GPS débil (franja ámbar) · en pausa (atenuado) · modo Libre ("MÁS CERCANO", tocable para elegir otro) |
 | **GpsIndicator** | Chip: `good` (oculto o punto verde) · `weak` (ámbar "GPS débil") · `lost` (rojo "Sin señal") · `denied` (rojo + icono) · `waiting` ("Buscando señal…") |
 | **BottomSheet** | Puntos de anclaje: *peek* (96 px), medio y completo. Asa visible y cabecera fija |
@@ -322,12 +327,16 @@ Base común:
 | **VideoCard** | Miniatura + play + título + duración. Error ("Video no disponible") |
 | **ExternalLinkCard** | Dominio, título y aviso "Se abrirá en el navegador" |
 | **CheckpointToast** | "✅ Checkpoint 3 · 00:42:10 · +50 pts". Se cierra solo a los 3 s |
-| **Toast/Snackbar** | Info, éxito y aviso. Con acción opcional |
+| **Toast/Snackbar** | Info, éxito y aviso. Con acción opcional («Deshacer» al eliminar un lugar): el aviso con acción dura 6 s en vez de 3,5 s |
 | **Banner** | Sin conexión · Modo simulación (morado) · Instala la app (iOS) · GPS débil |
 | **PermissionRow** | Icono, título, descripción y estado (pendiente/concedido/denegado) + botón |
-| **Stepper** | 4 pasos con nombre (paso actual, completado y pendiente) |
+| **Stepper** | Pasos con nombre (actual, completado y pendiente), compacto en móvil. En la fase 6 son 3 (Datos · Lugares · Revisar); «Contenido» lo deja en 4 en la fase 7 |
 | **Inputs** | TextField, Select, SegmentedControl, Chip (filtro e interés, seleccionable), Toggle, Slider (radio con valor en metros) |
-| **PlaceSearch** | Campo con sugerencias (icono de categoría, nombre, dirección). Estados: escribiendo, cargando, sin resultados, error |
+| **PlaceSearch** | Combobox accesible (WAI-ARIA 1.2) con sugerencias: icono de categoría, nombre, descripción y distancia. Estados: en reposo, cargando, con resultados, sin resultados, error y sin conexión. En móvil la lista puede abrirse **hacia arriba**, sobre el mapa, para que el teclado no la tape |
+| **PlaceListItem** | Fila del creador, en dos líneas. Primera: asa de arrastre (48×48 px, no enfocable), burbuja de orden, nombre (hasta 2 líneas) y menú ⋯. Segunda, con sangría: dirección y chips que saltan de línea (radio, «Opcional», aviso de solapamiento con su texto). Se adapta al texto al 200 % |
+| **OverflowMenu** | Botón ⋯ con menú (`role="menu"`, foco con las flechas; Escape o tocar fuera lo cierra). Se dibuja en una capa aparte para que ninguna lista lo recorte, y se abre hacia arriba cerca del borde inferior |
+| **PlaceEditorSheet** | Hoja **no modal** del creador: sin velo, para que el mapa siga visible y vivo (el círculo cambia mientras se mueve el slider del radio) |
+| **RangeSlider** | Slider con etiqueta y el valor escrito («60 m») |
 | **EmptyState** | Ilustración/patrón, título, texto y llamada a la acción |
 | **MiniRunBar** | Barra persistente sobre la navegación inferior cuando hay un recorrido activo y el usuario está en otra pantalla: "● Leiria histórica · Castelo 340 m" + botón para volver |
 | **Dialog** | Confirmación destructiva |
@@ -357,6 +366,8 @@ Idioma ─► Onboarding ─► Inicio (Explorar) ─► Detalle de ruta ─► 
 
 Idioma y Onboarding solo aparecen en el primer arranque.
 
+En la fase 6 el creador no tiene el paso «Contenido IA»: el Stepper muestra tres pasos (Datos ► Lugares ► Revisar) y «Lista» queda fuera de él. Las pantallas conservan sus nombres C1 a C5.
+
 ### 8.2 Rutas (URL) y navegación global
 
 | Ruta | Pantalla | Navegación inferior |
@@ -369,13 +380,19 @@ Idioma y Onboarding solo aparecen en el primer arranque.
 | `/routes/:routeId/prepare` | S04 Preparación | No |
 | `/run` | S05 Recorrido (inmersivo) | No |
 | `/run/summary` | S10 Resumen | No |
-| `/create/details` · `/create/places` · `/create/content` · `/create/review` · `/create/done` | C1-C5 Creador | No (flecha atrás + Stepper) |
+| `/create/details` · `/create/places` · `/create/review` · `/create/done` | C1, C2, C4 y C5 Creador (C3 Contenido IA, `/create/content`, llega en la fase 7) | No (flecha atrás + Stepper) |
 | `/settings` | S12 Ajustes | **Sí** |
 
 - **Navegación inferior** (4 elementos): **Explorar** (brújula) · **Mis rutas** (marcador) · **Crear** (+, destacado) · **Ajustes** (engranaje).
 - **Las hojas no son pantallas:** llegada, decisión y pausa se apilan sobre `/run`. El gesto atrás cierra la hoja superior.
 - **Salir de `/run`:** con el gesto atrás aparece "¿Salir del mapa? La ruta sigue activa." Al salir, se muestra la **MiniRunBar** en el resto de pantallas.
 - **Desde una notificación:** abre `/run` con la ficha del punto ya desplegada.
+- **Creador:**
+  - `/create` retoma el borrador en el primer paso con algo pendiente. Cada paso exige los anteriores: sin nombre no se llega a Lugares, y sin 2 lugares no se llega a Revisar.
+  - `/create/content` redirige a Revisar hasta la fase 7.
+  - La flecha atrás lleva al paso anterior. En Datos sale del creador (el borrador queda guardado), y en Lista lleva a Mis rutas.
+  - El gesto atrás cierra primero el editor de lugar si está abierto, como con las hojas de `/run`.
+  - Editar una ruta no lleva parámetros en la URL (nada de `?edit=`): Mis rutas carga la ruta en el borrador y abre `/create/details`.
 
 ---
 
@@ -412,7 +429,7 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
 
 ### S01 · Inicio, Explorar (`/`)
 
-- **Entradas:** `RouteSummary[]` (nombre, resumen, modo, actividad, portada, nº de puntos, distancia, minutos estimados); para la vista Mapa, los puntos de todas las rutas curadas (nombre, categoría, ruta, posición, imagen).
+- **Entradas:** `RouteSummary[]` (nombre, resumen, modo, actividad, portada, nº de puntos, distancia, minutos estimados); para la vista Mapa, los puntos de todas las rutas curadas y de las creadas en este dispositivo (nombre, categoría, ruta, posición, imagen). Las tuyas llevan la etiqueta «Creada por ti».
 - **Salidas:** abrir ruta → `/routes/:routeId`; filtrar (Libre/Reto/A pie/Bici); alternar Lista/Mapa; tocar un marcador → popup → "Ver ruta".
 - **Layout:**
   - Cabecera con wordmark, chip de ciudad ("Leiria ▾") y búsqueda.
@@ -425,10 +442,22 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
 
 ### S02 · Mis rutas (`/my-routes`)
 
-- **Entradas:** rutas creadas por el usuario (resumen + estado local/sincronizada), último recorrido de cada una.
-- **Salidas:** abrir → detalle; Iniciar; Editar (→ creador); Eliminar (diálogo destructivo).
-- **Layout:** lista de RouteCards con etiqueta "Creada por ti" y menú ⋯.
-- **Estados:** vacío ("Crea tu primera ruta" + ilustración + botón Crear), carga y sin conexión.
+- **Entradas:** las rutas creadas por el usuario, que viven en el dispositivo (resumen + estado de subida). El **último recorrido de cada una** queda aplazado: no entra en la fase 6.
+- **Salidas:** abrir → detalle; Iniciar; **Nueva ruta** (→ creador); Editar (→ creador, con la ruta cargada); Eliminar (diálogo destructivo).
+- **Layout:**
+  - Cabecera con «Nueva ruta».
+  - Lista de RouteCards, la más nueva primero, con la etiqueta "Creada por ti", su línea de estado y un menú ⋯ (Editar, Eliminar) fuera del enlace de la tarjeta.
+- **Estado de subida** (una línea bajo la tarjeta):
+  - ya subida: sin línea de estado;
+  - pendiente: «Solo en este dispositivo · se subirá al conectar»;
+  - con error: el motivo según el código («El servidor rechazó la ruta. Edítala y guárdala de nuevo.», «Has llegado al máximo de rutas en el servidor.» o «No se pudo subir») y [Reintentar] o, si el servidor rechazó la ruta, [Editar].
+- **Editar:** si hay otro borrador con contenido, pide confirmar que se descarta («Tienes un borrador sin guardar»). Si la ruta es el recorrido en curso, avisa de que ese recorrido seguirá con la versión anterior.
+- **Eliminar:** diálogo destructivo («Se borrará de este dispositivo y del servidor. No se puede deshacer.»). Si la ruta es el recorrido en curso, avisa de que lo termina. Borra también la copia descargada y el último resumen de esa ruta, y confirma con el aviso «Ruta eliminada».
+- **Estados:**
+  - vacío ("Crea tu primera ruta" + ilustración + botón Crear);
+  - carga, con esqueleto: la lista sale del dispositivo, así que no espera a la API;
+  - sin conexión: la misma lista, con las pendientes marcadas;
+  - ruta ilegible («No podemos abrir esta ruta») con [Eliminar].
 
 ### S03 · Detalle de ruta (`/routes/:routeId`)
 
@@ -580,38 +609,50 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
 
 ### C1 · Crear: Datos (`/create/details`)
 
-- **Entradas:** borrador guardado (si existe).
-- **Salidas:** `name`, zona/ciudad, `mode`, `activity`, `interests[]` y `timeLimit` (reto) → Siguiente. El `locale` de la ruta es el idioma de la app.
+- **Entradas:** borrador guardado (si existe) o la ruta que se edita.
+- **Salidas:** `name`, zona/ciudad, `mode`, `activity` y `timeLimit` (reto) → Siguiente. El `locale` de la ruta es el idioma de la app (al editar, el de la ruta). Los intereses (`interests[]`) llegan con la fase 7; al editar se conservan los que ya tenga la ruta.
 - **Layout:**
-  - Stepper (1/4).
-  - Campo "Nombre de la ruta".
-  - Búsqueda de ciudad o zona.
+  - Stepper (1/3).
+  - Campo "Nombre de la ruta": obligatorio, hasta 80 caracteres, con contador.
+  - Búsqueda de ciudad o zona («Centra el mapa y busca lugares cerca»). La zona elegida queda como un chip que se puede quitar. Solo orienta el mapa y la búsqueda: no se guarda en la ruta.
   - **Dos tarjetas grandes de modo:** **Libre** ("Visita a tu ritmo, en el orden que quieras") / **Reto** ("Orden obligatorio, checkpoints y cronómetro").
   - SegmentedControl A pie · Correr · Bici.
-  - Sin selector de idioma: una línea informa «Las fichas se generarán en {idioma}», que es el de la app.
-  - Chips de intereses: Historia, Arte, Arquitectura, Gastronomía, Naturaleza, Religión, Curiosidades (la IA los usa).
-  - Límite de tiempo, solo en Reto.
-- **Estados:** validación en línea (nombre obligatorio).
+  - Límite de tiempo, solo en Reto: chips «Sin límite» y los límites de 30, 60, 90, 120 y 180 minutos.
+  - Pie fijo con **Siguiente**.
+  - *Fase 7:* sin selector de idioma, una línea informa «Las fichas se generarán en {idioma}», que es el de la app; y chips de intereses: Historia, Arte, Arquitectura, Gastronomía, Naturaleza, Religión, Curiosidades (la IA los usa).
+- **Estados:** validación en línea: el error del nombre aparece al salir del campo o al pulsar Siguiente.
 
 ### C2 · Crear: Lugares (`/create/places`)
 
-- **Entradas:** sugerencias de búsqueda (nombre, dirección, categoría, posición), lugares del borrador y resumen calculado (distancia total, duración estimada).
+- **Entradas:** sugerencias de búsqueda (nombre, descripción, categoría, posición, distancia), lugares del borrador y resumen calculado (distancia total, duración estimada).
 - **Salidas:**
-  - Añadir lugar (desde la búsqueda o con pulsación larga en el mapa: "Punto personalizado" + nombre).
-  - **Reordenar arrastrando.**
-  - Editar radio (slider de 20 a 200 m con el círculo visible en el mapa) y obligatoriedad.
-  - Eliminar.
-  - Siguiente (mínimo 2 lugares).
-- **Layout móvil:**
-  - Mapa arriba (50 %) con los marcadores numerados y una línea en el orden actual.
-  - **PlaceSearch** fijo.
-  - Lista arrastrable abajo, con asa, número, nombre, dirección, icono, chip de radio y menú.
-  - Barra de resumen: "6 lugares · 3,1 km · ~1 h 50".
-  - Chip de aviso ⚠ "2 zonas se solapan", que resalta las afectadas.
-- **Escritorio:** vista dividida, con la lista a la izquierda y el mapa a la derecha.
-- **Estados:** búsqueda sin resultados, error de búsqueda y lista vacía ("Busca un lugar o mantén pulsado el mapa").
+  - **Añadir un lugar**, de tres maneras:
+    - desde la búsqueda (se resuelve su dirección antes de añadirlo);
+    - con una **pulsación larga** en el mapa;
+    - con el botón **«Añadir el centro del mapa»**, que añade el punto bajo una mira situada en el centro del mapa. Es la alternativa para quien no puede mantener pulsado, por ejemplo con lector de pantalla.
+  - Un punto personalizado se llama «Punto personalizado {n}» (categoría «otro») y se abre en el editor, con un marcador provisional en el mapa que se quita si se cancela.
+  - **Reordenar:** arrastrando el asa, o con **Subir** y **Bajar** en el menú ⋯ de cada lugar. Se anuncia «{nombre}: posición 2 de 5» y el foco vuelve al lugar movido.
+  - **Editar un lugar** en una hoja no modal: nombre, tipo (solo en puntos personalizados; el de Wikidata ya viene puesto), radio (slider de 20 a 200 m, de 5 en 5, con el círculo cambiando en el mapa mientras se mueve) y obligatoriedad. Pie con [Cancelar] y [Guardar] o [Añadir], más [Eliminar] en un lugar que ya está en la lista. Al abrirla, el mapa se centra en el lugar, por encima de la hoja.
+  - **Eliminar:** sin confirmación, pero con el aviso «{nombre} eliminado» y [Deshacer], que lo devuelve a su posición.
+  - Siguiente (mínimo 2 lugares, máximo 30).
+- **Layout móvil** (la pantalla no se desplaza entera):
+  - Mapa fijo arriba (≈ 38 % de la altura, mínimo 220 px) con los marcadores numerados en el orden de la lista, la línea del recorrido y la zona de cada lugar. Mientras se escribe en la búsqueda, el mapa se encoge (≈ 140 px). La mira y el botón «Añadir el centro del mapa» solo aparecen con el mapa listo.
+  - Debajo, una sola columna con scroll: **PlaceSearch** primero (sus resultados se abren hacia arriba, sobre el mapa), la barra de resumen y la lista arrastrable, con el pie fijo «Siguiente» dentro de la columna.
+  - Barra de resumen: "6 lugares · 3,1 km · ~1 h 50" (sin la duración cuando no hay lugares).
+  - Chip de aviso ⚠ "2 zonas se solapan", que cuenta los lugares afectados, resalta las zonas y abre el primero. Avisa, no bloquea. La ayuda: «Reduce su radio (mínimo 20 m) o elimina uno de los dos».
+- **Escritorio** (≥ 1024 px): vista dividida, con una columna de 420 px a la izquierda (búsqueda, resumen y lista) y el mapa a la derecha, a toda la altura.
+- **Búsqueda:** da prioridad a lo que está cerca del centro del mapa; si el mapa no está listo, de la zona de C1, y si no hay zona, del centro de los lugares ya añadidos. Al elegir un resultado se añade, el mapa se centra en él, se anuncia en una región `aria-live` (no con un aviso, que taparía la flecha atrás), se vacía el campo y el foco se queda en él.
+- **Estados:**
+  - búsqueda sin resultados («No encontramos "x" cerca. Prueba con otro nombre o mantén pulsado el mapa.») y error de búsqueda;
+  - sin conexión: la búsqueda no funciona, y el aviso remite al mapa («mantén pulsado el mapa para añadir lugares») solo si el mapa está disponible;
+  - lista vacía ("Busca un lugar o mantén pulsado el mapa");
+  - mapa no disponible: caja atenuada «El mapa no está disponible ahora.» con [Reintentar]. La búsqueda y la lista siguen funcionando;
+  - 30 lugares: la búsqueda y el añadir quedan desactivados.
+- **Límite conocido:** un lugar ya añadido no se puede mover. Para cambiar su posición hay que eliminarlo y volver a añadirlo.
 
-### C3 · Crear: Contenido IA (`/create/content`)
+### C3 · Crear: Contenido IA (`/create/content`) · fase 7
+
+No existe en la fase 6: la URL redirige a Revisar y el Stepper tiene 3 pasos. Cuando llegue, será el paso 3 de 4, entre Lugares y Revisar.
 
 - **Entradas:** `PointContent` en borrador por lugar y estado de generación (`pending` · `generating` · `ready` · `error`).
 - **Salidas:**
@@ -634,14 +675,27 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
 - **Entradas:** spec construido (modo, puntos, distancia y duración), resultado de la validación (errores y avisos).
 - **Salidas:** **Probar ruta** → `/run` en **modo simulación**; editar → volver al paso; **Guardar ruta**.
 - **Layout:**
-  - Mapa con la ruta completa.
-  - Resumen (ModeBadge, stats).
-  - Checklist: ✓ "Todos los lugares tienen ficha" · ⚠ "2 zonas se solapan" (con enlace para arreglarlo).
-  - Botones: Probar ruta (secundario) y **Guardar ruta** (primario).
+  - Stepper (3/3).
+  - Mapa con la ruta completa (con la misma caja de «mapa no disponible» que C2 si no carga).
+  - Nombre de la ruta (`h1`), ModeBadge, ActivityBadge y StatChips.
+  - Checklist «Comprobaciones»:
+    - ✓ «{n} lugares, en el orden que quieras» (en Reto, «{n} checkpoints, en el orden de la lista»);
+    - ✓ «Las zonas no se solapan» o ⚠ «{n} zonas se solapan», con [Corregir], que vuelve a Lugares;
+    - ✓ «Cada lugar muestra su ficha con nombre y dirección» o ⓘ «{n} lugares sin dirección: sus fichas mostrarán solo el nombre»;
+    - en Reto, ⚠ si el límite de tiempo es menor que la duración estimada;
+    - una línea de error bloqueante («La ruta tiene errores: revisa los pasos anteriores») si la ruta no se puede construir o sus acciones no son válidas.
+  - Botones: **Probar ruta** (secundario, tono de simulación) con la ayuda «La recorres en simulación; no se guarda nada», y **Guardar ruta** (primario; «Guardando…» mientras se escribe en el dispositivo).
+- **Probar ruta:**
+  - Siempre en simulación, aunque Ajustes la tenga desactivada, y con la ruta tal como está en el borrador, sin guardarla.
+  - Si hay un recorrido real en curso, pide confirmar («Tienes un recorrido en curso · Lo pausamos para probar esta ruta y podrás continuarlo después» · [Pausar y probar]). Al terminar la prueba, ese recorrido vuelve a ofrecerse.
+  - En `/run`, el banner morado de simulación lleva el chip **«Prueba»** y el botón **«Volver al editor»**, y el panel SimControls empieza desplegado. Una prueba no deja resumen, no cuenta en las estadísticas ni aparece en la MiniRunBar.
+  - Al terminar, al pulsar «Volver al editor» o al salir de la pantalla, se vuelve a Revisar con un aviso: «Prueba completada: 3 de 4 lugares» o «Prueba terminada».
+- **Guardar ruta:** guarda en el dispositivo (funciona sin conexión) y pasa a C5. Si no puede guardarla en el dispositivo, se queda en C4 con «No pudimos guardar la ruta en este dispositivo.».
 
 ### C5 · Crear: Lista (`/create/done`)
 
-- "Tu ruta está lista" + RouteCard.
+- "Tu ruta está lista" + RouteCard. Queda fuera del Stepper, y la flecha atrás lleva a Mis rutas.
+- Una línea de estado, que cambia sola cuando termina la subida: «Guardada. Puedes recorrerla cuando quieras.» o, si aún no se ha subido, «Guardada en este dispositivo. La subiremos cuando vuelva la conexión.»
 - [Iniciar ahora] → `/routes/:routeId/prepare` · [Ver mis rutas] · Compartir enlace *(futuro)*.
 
 ### S12 · Ajustes (`/settings`)
@@ -650,7 +704,7 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
   - **Avisos:** sonido, vibración (oculto si no hay soporte), notificaciones (estado + botón).
   - **Pantalla:** tema (Sistema/Claro/Oscuro) y **alto contraste "Sol"**.
   - **General:** idioma y unidades (km/mi). El idioma usa las mismas tarjetas que S00 y el cambio se aplica al instante, sin recargar. Las fichas ya generadas por IA se quedan en su idioma.
-  - **Privacidad:** estadísticas anónimas (toggle) y "Borrar mis datos locales".
+  - **Privacidad:** estadísticas anónimas (toggle) y "Borrar mis datos locales". El diálogo cuenta cuántas rutas creadas se borrarán también del servidor (las ya subidas, que la app intenta eliminar antes) y cuántas se perderán por no haberse subido.
   - **Demo:** **Modo simulación**.
   - **Acerca de:** versión y créditos (Esri/ArcGIS, Wikipedia/Wikimedia, fuentes).
 
@@ -659,6 +713,7 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
 - Banner superior morado: "Modo simulación: tu ubicación es simulada".
 - Punto de usuario morado con la etiqueta "SIM".
 - Panel SimControls plegable.
+- En «Probar ruta» (C4), el banner añade el chip «Prueba» y el botón «Volver al editor», y el panel empieza desplegado.
 - Nunca debe poder confundirse con el GPS real.
 
 ---
@@ -693,6 +748,8 @@ Puntos: Castelo de Leiria, Sé de Leiria, Igreja de São Pedro, Praça Rodrigues
 Los catálogos `apps/web/src/i18n/{es,en,pt}.json` son la fuente de verdad; esta tabla es la referencia en español. Las últimas filas recogen textos que aparecen en los mockups.
 
 Las claves que entrega el sistema de eventos (`run.*`, `decision.*`, `end.confirm.*`, `notify.*`, `redirect.*`) están en `UI_TEXT_KEYS` de `@rumbo/event-system`, y los tres catálogos deben tenerlas todas. Sus parámetros: `name` es el nombre del punto (un `LocalizedText` que la UI resuelve en el idioma activo), `distance` va en metros y `minutes` es un número; la UI los formatea según el idioma.
+
+Las filas `create.content.*` y `create.details.aiLanguage` son de la fase 7 y aún no están en los catálogos.
 
 | Clave | Texto |
 |---|---|
@@ -756,15 +813,26 @@ Las claves que entrega el sistema de eventos (`run.*`, `decision.*`, `end.confir
 | `redirect.title` | Vas a abrir una web externa |
 | `redirect.body` | {label} · {host} |
 | `redirect.open` / `redirect.later` | Abrir / Ahora no |
+| `create.steps.details` / `.places` / `.review` | Datos / Lugares / Revisar |
 | `create.mode.free` | Visita a tu ritmo, en el orden que quieras |
 | `create.mode.challenge` | Orden obligatorio, checkpoints y cronómetro |
 | `create.places.empty` | Busca un lugar o mantén pulsado el mapa |
 | `create.places.overlap` | {n} zonas se solapan |
+| `create.places.overlapRow` | Su zona se solapa con otra |
+| `create.places.overlapHint` | Reduce su radio (mínimo 20 m) o elimina uno de los dos. |
+| `create.places.addCenter` | Añadir el centro del mapa |
+| `create.places.removed` / `create.places.undo` | {name} eliminado / Deshacer |
 | `create.content.intro` | Preparamos una ficha de cada lugar con información de Wikipedia. Revísala antes de guardar. |
 | `create.content.basic` | Usar ficha básica sin IA |
 | `create.review.test` | Probar ruta |
 | `create.review.save` | Guardar ruta |
+| `create.review.testHint` | La recorres en simulación; no se guarda nada. |
+| `create.review.noAddress` | {n} lugar sin dirección: su ficha mostrará solo el nombre \| {n} lugares sin dirección: sus fichas mostrarán solo el nombre |
+| `create.trial.back` | Volver al editor |
+| `create.trial.finished` | Prueba completada: {done} de {total} lugares |
 | `create.done.title` | Tu ruta está lista |
+| `create.done.synced` / `create.done.local` | Guardada. Puedes recorrerla cuando quieras. / Guardada en este dispositivo. La subiremos cuando vuelva la conexión. |
+| `myRoutes.sync.pending` | Solo en este dispositivo · se subirá al conectar |
 | `sim.banner` | Modo simulación: tu ubicación es simulada |
 | `consent.body` | Ayúdanos a mejorar con estadísticas anónimas. Nunca guardamos tu ubicación. |
 | `ios.install` | Instala Rumbo para recibir avisos al llegar |
@@ -794,6 +862,11 @@ Las claves que entrega el sistema de eventos (`run.*`, `decision.*`, `end.confir
 - **Región `aria-live`:**
   - Anuncia "Llegaste a {name}", las interrupciones y los cambios de distancia **cada 50 m**, nunca en cada actualización.
   - El orden de foco de las hojas empieza en el título, y el foco vuelve al cerrar.
+- **Creador:**
+  - al cambiar de paso, el foco va al título de la pantalla (un solo `h1` por paso), se actualiza el título del documento y una región `aria-live` anuncia «Paso 2 de 3 · Lugares»;
+  - añadir un lugar y reordenar tienen alternativa sin gestos: «Añadir el centro del mapa» y «Subir» y «Bajar» en el menú del lugar;
+  - la búsqueda es un combobox (WAI-ARIA 1.2) y los menús ⋯ se recorren con las flechas;
+  - el aviso de solapamiento lleva icono y texto, nunca solo color.
 - **Tamaño de texto:** la UI soporta hasta el 200 % sin romperse. El HUD se reorganiza en dos líneas.
 - **Movimiento reducido y hápticos** desactivables.
 - **Videos** con subtítulos (los de YouTube).
@@ -809,7 +882,7 @@ Las claves que entrega el sistema de eventos (`run.*`, `decision.*`, `end.confir
   - Detalle en vista dividida (mapa | información).
 - **Escritorio** (1440×900):
   - Explorar: mapa a la izquierda (60 %) y lista a la derecha.
-  - Creador: vista dividida (lista | mapa), con el Stepper arriba.
+  - Creador: vista dividida (columna de 420 px con la lista | mapa a toda la altura, desde 1024 px), con el Stepper arriba.
   - Recorrido: panel de ancho móvil centrado sobre el mapa. En escritorio se usa sobre todo para demostraciones en simulación.
 - **Textos más largos:** cada pantalla se revisa en los tres idiomas a 360 px. El español y el portugués ocupan en torno a un 30 % más que el inglés.
   - En el mockup, la etiqueta del HUD («MÁS CERCANO · 3/12») ya salta de línea a 390 px, y en portugués («MAIS PRÓXIMO») será peor.
