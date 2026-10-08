@@ -1,0 +1,687 @@
+[
+  {
+    "url": "https://es.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=39.744%7C-8.807&ggsradius=2700&ggslimit=50&ggsnamespace=0&prop=coordinates%7Cpageprops%7Cdescription&coprop=type&colimit=max&ppprop=wikibase_item%7Cdisambiguation&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 218788,
+            "ns": 0,
+            "title": "Distrito de Leiría",
+            "index": -1,
+            "coordinates": [
+              {
+                "lat": 39.74388889,
+                "lon": -8.80694444,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q244512"
+            },
+            "description": "distrito de Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 431616,
+            "ns": 0,
+            "title": "Leiría",
+            "index": 0,
+            "coordinates": [
+              {
+                "lat": 39.74305556,
+                "lon": -8.80694444,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q206933"
+            },
+            "description": "municipio de Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 2422029,
+            "ns": 0,
+            "title": "Estadio Dr. Magalhães Pessoa",
+            "index": 1,
+            "coordinates": [
+              {
+                "lat": 39.74861111,
+                "lon": -8.81305556,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q1056864"
+            }
+          },
+          {
+            "pageid": 3126600,
+            "ns": 0,
+            "title": "Marrazes",
+            "index": 2,
+            "coordinates": [
+              {
+                "lat": 39.76527778,
+                "lon": -8.80777778,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q1343635"
+            },
+            "description": "antigua freguesia portuguesa del municipio y distrito de Leiría",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 3126643,
+            "ns": 0,
+            "title": "Leiría (freguesia)",
+            "index": 3,
+            "coordinates": [
+              {
+                "lat": 39.74444444,
+                "lon": -8.80722222,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q2368485"
+            },
+            "description": "antigua freguesia portuguesa del municipio y distrito de Leiría",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 4762848,
+            "ns": 0,
+            "title": "Catedral de Leiría",
+            "index": 4,
+            "coordinates": [
+              {
+                "lat": 39.7461,
+                "lon": -8.80675,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q8342841"
+            }
+          },
+          {
+            "pageid": 4824888,
+            "ns": 0,
+            "title": "Castillo de Leiría",
+            "index": 5,
+            "coordinates": [
+              {
+                "lat": 39.747,
+                "lon": -8.81,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q2969701"
+            },
+            "description": "castillo medieval localizado en la ciudad de Leiría, Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 5225820,
+            "ns": 0,
+            "title": "Estación de Leiría",
+            "index": 6,
+            "coordinates": [
+              {
+                "lat": 39.756598,
+                "lon": -8.827733,
+                "primary": true,
+                "type": "railwaystation"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q8840924"
+            }
+          },
+          {
+            "pageid": 11263076,
+            "ns": 0,
+            "title": "Instituto Politécnico de Leiria",
+            "index": 7,
+            "coordinates": [
+              {
+                "lat": 39.7375679,
+                "lon": -8.8138905,
+                "primary": true,
+                "type": "edu"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q7227031"
+            },
+            "description": "Universidad pública situada en Leiria, Caldas da Rainha y Peniche: Portugal",
+            "descriptionsource": "central"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://pt.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=39.744%7C-8.807&ggsradius=2700&ggslimit=50&ggsnamespace=0&prop=coordinates%7Cpageprops%7Cdescription&coprop=type&colimit=max&ppprop=wikibase_item%7Cdisambiguation&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 710,
+            "ns": 0,
+            "title": "Distrito de Leiria",
+            "index": -1,
+            "coordinates": [
+              {
+                "lat": 39.75,
+                "lon": -8.8,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q244512"
+            },
+            "description": "distrito de Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 13297,
+            "ns": 0,
+            "title": "Leiria",
+            "index": 0,
+            "coordinates": [
+              {
+                "lat": 39.74306,
+                "lon": -8.80694,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q206933"
+            },
+            "description": "município de Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 93270,
+            "ns": 0,
+            "title": "Castelo de Leiria",
+            "index": 1,
+            "coordinates": [
+              {
+                "lat": 39.74695,
+                "lon": -8.809633,
+                "primary": true,
+                "type": "castle"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q2969701"
+            },
+            "description": "castelo medieval em Leiria",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 520773,
+            "ns": 0,
+            "title": "Estádio Dr. Magalhães Pessoa",
+            "index": 2,
+            "coordinates": [
+              {
+                "lat": 39.74861,
+                "lon": -8.81306,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q1056864"
+            },
+            "description": "estádio de futebol em Leiria, Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 800398,
+            "ns": 0,
+            "title": "Capela de Nossa Senhora da Encarnação (Leiria)",
+            "index": 3,
+            "coordinates": [
+              {
+                "lat": 39.73876111,
+                "lon": -8.79986944,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q17125229"
+            }
+          },
+          {
+            "pageid": 2731892,
+            "ns": 0,
+            "title": "Igreja e convento de Santo Agostinho (Leiria)",
+            "index": 4,
+            "coordinates": [
+              {
+                "lat": 39.74178611,
+                "lon": -8.80235833,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q10300969"
+            },
+            "description": "edifícios religiosos e históricos em Leiria",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 2772308,
+            "ns": 0,
+            "title": "Moinho do Papel",
+            "index": 5,
+            "coordinates": [
+              {
+                "lat": 39.74027778,
+                "lon": -8.80066944,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q10331516"
+            },
+            "description": "antigo moinho de papel na margem esquerda do rio Lis e actual museu em Leiria, Pousos, Barreira e Cortes, Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 2773663,
+            "ns": 0,
+            "title": "Banco de Portugal (Leiria)",
+            "index": 6,
+            "coordinates": [
+              {
+                "lat": 39.7450056,
+                "lon": -8.8071472,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q9645433"
+            },
+            "description": "antiga agência do Banco de Portugal em Leiria",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 2774033,
+            "ns": 0,
+            "title": "Igreja e Convento de São Francisco (Leiria)",
+            "index": 7,
+            "coordinates": [
+              {
+                "lat": 39.74833,
+                "lon": -8.80333,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q10300966"
+            },
+            "description": "antigo convento e igreja em Leiria, Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 2774161,
+            "ns": 0,
+            "title": "Torre Sineira (Leiria)",
+            "index": 8,
+            "coordinates": [
+              {
+                "lat": 39.746145,
+                "lon": -8.806572,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q10383715"
+            }
+          },
+          {
+            "pageid": 2775419,
+            "ns": 0,
+            "title": "Fonte das Três Bicas (Leiria)",
+            "index": 9,
+            "coordinates": [
+              {
+                "lat": 39.742994,
+                "lon": -8.805648,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q10283313"
+            },
+            "description": "Fonte em estilo barroco do século 18 situado na cidade de Leiria, Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 3382377,
+            "ns": 0,
+            "title": "Estação Ferroviária de Leiria",
+            "index": 10,
+            "coordinates": [
+              {
+                "lat": 39.7566444,
+                "lon": -8.8279306,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q8840924"
+            },
+            "description": "estação ferroviária em Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 4365352,
+            "ns": 0,
+            "title": "Leiria, Pousos, Barreira e Cortes",
+            "index": 11,
+            "coordinates": [
+              {
+                "lat": 39.7444,
+                "lon": -8.80722,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q18468276"
+            },
+            "description": "freguesia do município de Leiria, Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 4367194,
+            "ns": 0,
+            "title": "Marrazes e Barosa",
+            "index": 12,
+            "coordinates": [
+              {
+                "lat": 39.76528,
+                "lon": -8.80778,
+                "primary": true,
+                "type": "city"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q18468311"
+            },
+            "description": "freguesia do município de Leiria, Portugal",
+            "descriptionsource": "central"
+          },
+          {
+            "pageid": 5824994,
+            "ns": 0,
+            "title": "Arquivo Distrital de Leiria",
+            "index": 13,
+            "coordinates": [
+              {
+                "lat": 39.744108,
+                "lon": -8.81122,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q56648510"
+            }
+          },
+          {
+            "pageid": 7793430,
+            "ns": 0,
+            "title": "Edifício da Caixa Geral de Depósitos (Leiria)",
+            "index": 14,
+            "coordinates": [
+              {
+                "lat": 39.7438111,
+                "lon": -8.807611,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q138547088"
+            }
+          },
+          {
+            "pageid": 7794261,
+            "ns": 0,
+            "title": "Teatro José Lúcio da Silva",
+            "index": 15,
+            "coordinates": [
+              {
+                "lat": 39.746778,
+                "lon": -8.803917,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q139969696"
+            }
+          },
+          {
+            "pageid": 7794294,
+            "ns": 0,
+            "title": "Museu da Imagem em Movimento (Leiria)",
+            "index": 16,
+            "coordinates": [
+              {
+                "lat": 39.747444,
+                "lon": -8.807194,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q120492085"
+            },
+            "description": "Edifício onde está instalado o Museu de Imagem em Movimento de Leiria, que serviu de cavalariças na época medieval",
+            "descriptionsource": "central"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=39.744%7C-8.807&ggsradius=2700&ggslimit=50&ggsnamespace=0&prop=coordinates%7Cpageprops%7Cdescription&coprop=type&colimit=max&ppprop=wikibase_item%7Cdisambiguation&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 307625,
+            "ns": 0,
+            "title": "Leiria",
+            "index": -1,
+            "coordinates": [
+              {
+                "lat": 39.75,
+                "lon": -8.8,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q206933"
+            },
+            "description": "City in Central Portugal",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 496425,
+            "ns": 0,
+            "title": "Leiria District",
+            "index": 0,
+            "coordinates": [
+              {
+                "lat": 39.74388889,
+                "lon": -8.80694444,
+                "primary": true,
+                "type": "adm2nd"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q244512"
+            },
+            "description": "District of Portugal",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 945827,
+            "ns": 0,
+            "title": "Leiria Football Association",
+            "index": 1,
+            "coordinates": [
+              {
+                "lat": 39.739776,
+                "lon": -8.816271,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q6520209"
+            },
+            "description": "District football association",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 984567,
+            "ns": 0,
+            "title": "Estádio Dr. Magalhães Pessoa",
+            "index": 2,
+            "coordinates": [
+              {
+                "lat": 39.74861111,
+                "lon": -8.81305556,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q1056864"
+            },
+            "description": "Football stadium in Leiria, Portugal",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 15699852,
+            "ns": 0,
+            "title": "Diocese of Leiria–Fátima",
+            "index": 3,
+            "coordinates": [
+              {
+                "lat": 39.7461,
+                "lon": -8.807,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q871171"
+            },
+            "description": "Roman Catholic diocese in Portugal",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 17327485,
+            "ns": 0,
+            "title": "Castle of Leiria",
+            "index": 4,
+            "coordinates": [
+              {
+                "lat": 39.747,
+                "lon": -8.81,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q2969701"
+            },
+            "description": "Castle in Leiria, Portugal",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 33259652,
+            "ns": 0,
+            "title": "Igreja de São Pedro (Leiria)",
+            "index": 5,
+            "coordinates": [
+              {
+                "lat": 39.7472613,
+                "lon": -8.8095805,
+                "primary": true,
+                "type": "landmark"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q10300821"
+            },
+            "description": "Chapel in Leiria, Portugal",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 51503753,
+            "ns": 0,
+            "title": "Our Lady of the Immaculate Conception Cathedral, Leiria",
+            "index": 6,
+            "coordinates": [
+              {
+                "lat": 39.7461,
+                "lon": -8.8067,
+                "primary": true
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q8342841"
+            },
+            "description": "Church in Leiria, Portugal",
+            "descriptionsource": "local"
+          },
+          {
+            "pageid": 82308026,
+            "ns": 0,
+            "title": "Marrazes e Barosa",
+            "index": 7,
+            "coordinates": [
+              {
+                "lat": 39.76527778,
+                "lon": -8.80777778,
+                "primary": true,
+                "type": "adm1st"
+              }
+            ],
+            "pageprops": {
+              "wikibase_item": "Q18468311"
+            },
+            "description": "Civil parish in Centro, Portugal",
+            "descriptionsource": "local"
+          }
+        ]
+      }
+    }
+  }
+]

@@ -30,6 +30,28 @@ export interface AppConfig {
   wikimediaUserAgent: string;
   /** Server-side ArcGIS key for address search (not used yet); never logged. */
   arcgisApiKeyServer: string | null;
+  /**
+   * Generative AI (phase 7). 'none' when AI_PROVIDER is empty or 'anthropic'
+   * has no key: the AI endpoints then answer 503 ai_unavailable.
+   */
+  aiProvider: 'anthropic' | 'none';
+  /** The provider's secret key; never logged, never in an error message. */
+  aiApiKey: string | null;
+  aiModel: string;
+  /** How hard the model thinks: 'none' sends no setting (for models without one). */
+  aiEffort: 'low' | 'medium' | 'high' | 'none';
+  /** Estimated spend per UTC day (USD) after which no new generation starts. */
+  aiDailyBudgetUsd: number;
+  /** Generations one device may start per UTC day (cache hits are free). */
+  aiMaxGenerationsPerDevicePerDay: number;
+  /** Prices behind the cost estimate: USD per million tokens, and per web search. */
+  aiPriceInputPerMtok: number;
+  aiPriceOutputPerMtok: number;
+  aiPricePerWebSearch: number;
+  /** Card generations per minute per client address. */
+  contentRateLimitPerMinute: number;
+  /** Place suggestions per minute per client address. */
+  suggestRateLimitPerMinute: number;
 }
 
 /** A positive integer from the environment, or the default when unset or invalid. */
@@ -38,7 +60,18 @@ function positiveInteger(value: string | undefined, fallback: number): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+/** A positive number from the environment, or the default when unset or invalid. */
+function positiveNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(value ?? fallback);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 const GEOCODING_PROVIDERS = ['wikidata', 'none'] as const;
+const AI_PROVIDERS = ['anthropic', 'none'] as const;
+const AI_EFFORTS = ['low', 'medium', 'high', 'none'] as const;
+
+/** The model behind the cards and the suggestions unless AI_MODEL says otherwise. */
+export const DEFAULT_AI_MODEL = 'claude-sonnet-5-5';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const port = Number(env.PORT ?? 3000);
@@ -49,6 +82,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (!(GEOCODING_PROVIDERS as readonly string[]).includes(geocodingProvider)) {
     throw new Error(`Invalid GEOCODING_PROVIDER: ${geocodingProvider} (use wikidata or none)`);
   }
+  const aiProvider = env.AI_PROVIDER?.trim().toLowerCase() || 'none';
+  if (!(AI_PROVIDERS as readonly string[]).includes(aiProvider)) {
+    throw new Error(`Invalid AI_PROVIDER: ${aiProvider} (use anthropic or none)`);
+  }
+  const aiEffort = env.AI_EFFORT?.trim().toLowerCase() || 'low';
+  if (!(AI_EFFORTS as readonly string[]).includes(aiEffort)) {
+    throw new Error(`Invalid AI_EFFORT: ${aiEffort} (use low, medium, high or none)`);
+  }
+  const aiApiKey = env.AI_API_KEY?.trim() || null;
   return {
     host: env.HOST ?? '0.0.0.0',
     port,
@@ -65,5 +107,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     wikimediaUserAgent:
       env.WIKIMEDIA_USER_AGENT || `Rumbo/${VERSION} (https://github.com/AOcampo93/rumbo)`,
     arcgisApiKeyServer: env.ARCGIS_API_KEY_SERVER || null,
+    // 'anthropic' without a key is the same as no provider; the server says so on start.
+    aiProvider: aiProvider === 'anthropic' && aiApiKey ? 'anthropic' : 'none',
+    aiApiKey,
+    aiModel: env.AI_MODEL?.trim() || DEFAULT_AI_MODEL,
+    aiEffort: aiEffort as AppConfig['aiEffort'],
+    aiDailyBudgetUsd: positiveNumber(env.AI_DAILY_BUDGET_USD, 5),
+    aiMaxGenerationsPerDevicePerDay: positiveInteger(env.AI_MAX_GENERATIONS_PER_DEVICE_PER_DAY, 40),
+    // Claude Sonnet 5.5's prices: change them together with AI_MODEL.
+    aiPriceInputPerMtok: positiveNumber(env.AI_PRICE_INPUT_PER_MTOK, 2),
+    aiPriceOutputPerMtok: positiveNumber(env.AI_PRICE_OUTPUT_PER_MTOK, 10),
+    aiPricePerWebSearch: positiveNumber(env.AI_PRICE_PER_WEB_SEARCH, 0.01),
+    contentRateLimitPerMinute: positiveInteger(env.CONTENT_RATE_LIMIT_PER_MINUTE, 30),
+    suggestRateLimitPerMinute: positiveInteger(env.SUGGEST_RATE_LIMIT_PER_MINUTE, 20),
   };
 }

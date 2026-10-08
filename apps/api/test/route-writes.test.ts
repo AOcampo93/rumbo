@@ -166,7 +166,7 @@ describe('POST /api/v1/routes', () => {
     expect(res.statusCode).toBe(422);
     expect(res.json().code).toBe('invalid_route');
     expect(res.json().details.map((detail: { path: string }) => detail.path)).toEqual(
-      expect.arrayContaining(['contents', 'spec.path', 'spec.coverImage']),
+      expect.arrayContaining(['contents.castelo', 'spec.path', 'spec.coverImage']),
     );
     const curated = await post(bundle({ ...spec, source: 'curated' }));
     expect(curated.statusCode).toBe(422);

@@ -14,8 +14,8 @@ import {
 
 // Database schema (docs/PROJECT_PLAN.md §11.2). The route's `spec` (jsonb) is
 // the source of truth; the other columns are copies to list and filter
-// without opening the JSON. AI tables (content_cache, ai_generations) arrive
-// with phase 7.
+// without opening the JSON. The AI tables (ai_contents, ai_generations) are
+// phase 7's: the cards the server wrote, and what each AI call used.
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -126,4 +126,50 @@ export const analyticsEvents = pgTable(
     serverTs: timestamp('server_ts', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('analytics_events_name_ts_idx').on(t.name, t.serverTs)],
+);
+
+/**
+ * Every card the AI pipeline wrote, by what it was asked for: asking again is
+ * free, and a user route may only carry cards that are in here (by hash).
+ */
+export const aiContents = pgTable('ai_contents', {
+  /** `<QID or custom:<hash>>:<locale>:<prompt version>:<interests>`. */
+  cacheKey: text('cache_key').primaryKey(),
+  /** The card without its `id` (the client sets that to the place's contentRef). */
+  content: jsonb('content').notNull(),
+  /** SHA-256 (hex) of contentHashInput(content): what POST and PUT /routes look up. */
+  contentHash: text('content_hash').notNull().unique(),
+  /** wikipedia | web | none */
+  grounding: text('grounding').notNull(),
+  /** Times it was served from the cache. */
+  hits: integer('hits').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** One row per AI generation: the spend of the day is the sum of `cost_usd`. */
+export const aiGenerations = pgTable(
+  'ai_generations',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    deviceId: uuid('device_id'),
+    /** card | suggest */
+    kind: text('kind').notNull(),
+    cacheKey: text('cache_key'),
+    locale: text('locale').notNull(),
+    model: text('model').notNull(),
+    promptVersion: text('prompt_version'),
+    inputTokens: integer('input_tokens').notNull(),
+    outputTokens: integer('output_tokens').notNull(),
+    webSearches: integer('web_searches').notNull(),
+    /** Estimated from the token counts and the configured prices. */
+    costUsd: doublePrecision('cost_usd').notNull(),
+    /** ok | failed */
+    status: text('status').notNull(),
+    latencyMs: integer('latency_ms').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('ai_generations_created_idx').on(t.createdAt),
+    index('ai_generations_device_created_idx').on(t.deviceId, t.createdAt),
+  ],
 );

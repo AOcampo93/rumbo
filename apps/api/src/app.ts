@@ -8,6 +8,9 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
+import { createAiBudget } from './ai/budget.js';
+import { createGrounding, type Grounding } from './ai/grounding.js';
+import type { AiProvider } from './ai/provider.js';
 import type { AppConfig } from './config.js';
 import type { Database } from './db/index.js';
 import { deviceIdFrom } from './device.js';
@@ -15,6 +18,8 @@ import { installErrorHandling } from './errors.js';
 import type { GeocodingProvider } from './geo/provider.js';
 import { trustProxyHop } from './limits.js';
 import { analyticsRoutes } from './routes/analytics.js';
+import { contentRoutes } from './routes/content.js';
+import { suggestRoutes } from './routes/suggest.js';
 import { geoRoutes } from './routes/geo.js';
 import { healthRoutes } from './routes/health.js';
 import { routeRoutes } from './routes/routes.js';
@@ -28,6 +33,10 @@ export interface AppDeps {
   data: () => Database | null;
   /** Place search; null or absent: /geo answers 503 geocoding_unavailable. */
   geocoder?: GeocodingProvider | null;
+  /** Generative AI; null or absent: the AI endpoints answer 503 ai_unavailable. */
+  ai?: AiProvider | null;
+  /** Wikidata, Wikipedia and Commons for the AI cards; the real ones unless a test brings its own. */
+  grounding?: Grounding;
 }
 
 export interface BuildOptions {
@@ -111,6 +120,24 @@ export async function buildApp(
   await app.register(geoRoutes, {
     geocoder: deps.geocoder ?? null,
     rateLimitPerMinute: config.geoRateLimitPerMinute,
+  });
+
+  // Phase 7: one budget for every AI endpoint, over the database once it is ready.
+  const aiBudget = createAiBudget(() => deps.data()?.db ?? null, config);
+  await app.register(contentRoutes, {
+    database: deps.data,
+    ai: deps.ai ?? null,
+    grounding: deps.grounding ?? createGrounding({ userAgent: config.wikimediaUserAgent }),
+    budget: aiBudget,
+    model: config.aiModel,
+    rateLimitPerMinute: config.contentRateLimitPerMinute,
+  });
+  await app.register(suggestRoutes, {
+    ai: deps.ai ?? null,
+    budget: aiBudget,
+    userAgent: config.wikimediaUserAgent,
+    rateLimitPerMinute: config.suggestRateLimitPerMinute,
+    model: config.aiModel,
   });
   return app;
 }

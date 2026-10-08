@@ -1,0 +1,118 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q112568674&props=sitelinks%7Clabels%7Cdescriptions&sitefilter=eswiki%7Cenwiki%7Cptwiki&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q112568674": {
+          "type": "item",
+          "id": "Q112568674",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Banco das Artes Galeria"
+            }
+          },
+          "descriptions": {
+            "pt": {
+              "language": "pt",
+              "value": "Galeria Municipal de Arte Contemporânea em Leiria"
+            }
+          },
+          "sitelinks": {}
+        }
+      },
+      "success": 1
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=Q112568674&property=P18&format=json&formatversion=2",
+    "body": {
+      "claims": {
+        "P18": [
+          {
+            "rank": "normal",
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P18",
+              "datavalue": {
+                "value": "Banco das Artes Galeria Leiria 01.jpg",
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=Q112568674&property=P31&format=json&formatversion=2",
+    "body": {
+      "claims": {
+        "P31": [
+          {
+            "rank": "normal",
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P31",
+              "datavalue": {
+                "value": {
+                  "entity-type": "item",
+                  "numeric-id": 1007870,
+                  "id": "Q1007870"
+                },
+                "type": "wikibase-entityid"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://commons.wikimedia.org/w/api.php?action=query&titles=File%3ABanco+das+Artes+Galeria+Leiria+01.jpg&prop=imageinfo&iiprop=url%7Cextmetadata%7Cmime%7Csize&iiurlwidth=960&iiextmetadatafilter=Artist%7CCredit%7CLicenseShortName&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 119273809,
+            "ns": 6,
+            "title": "File:Banco das Artes Galeria Leiria 01.jpg",
+            "imagerepository": "local",
+            "imageinfo": [
+              {
+                "size": 794216,
+                "width": 1807,
+                "height": 1355,
+                "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Banco_das_Artes_Galeria_Leiria_01.jpg/960px-Banco_das_Artes_Galeria_Leiria_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "thumbwidth": 960,
+                "thumbheight": 720,
+                "responsiveUrls": {
+                  "2": "https://upload.wikimedia.org/wikipedia/commons/5/53/Banco_das_Artes_Galeria_Leiria_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+                },
+                "url": "https://upload.wikimedia.org/wikipedia/commons/5/53/Banco_das_Artes_Galeria_Leiria_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+                "descriptionurl": "https://commons.wikimedia.org/wiki/File:Banco_das_Artes_Galeria_Leiria_01.jpg",
+                "extmetadata": {
+                  "Credit": {
+                    "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                    "source": "commons-desc-page"
+                  },
+                  "Artist": {
+                    "value": "<a href=\"//commons.wikimedia.org/wiki/User:GualdimG\" title=\"User:GualdimG\">GualdimG</a>",
+                    "source": "commons-desc-page"
+                  },
+                  "LicenseShortName": {
+                    "value": "CC BY-SA 4.0",
+                    "source": "commons-desc-page",
+                    "hidden": ""
+                  }
+                },
+                "mime": "image/jpeg"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+]

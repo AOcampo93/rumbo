@@ -1,0 +1,23 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q999999999999&props=sitelinks%7Clabels%7Cdescriptions&sitefilter=eswiki%7Cenwiki%7Cptwiki&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "error": {
+        "code": "no-such-entity",
+        "info": "Could not find an entity with the ID \"Q999999999999\"."
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q99999999&props=sitelinks%7Clabels%7Cdescriptions&sitefilter=eswiki%7Cenwiki%7Cptwiki&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q99999999": {
+          "id": "Q99999999",
+          "missing": ""
+        }
+      },
+      "success": 1
+    }
+  }
+]

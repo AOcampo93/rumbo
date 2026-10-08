@@ -5,6 +5,7 @@ import {
   type ActionHandler,
   aiTemplateHandler,
   BUILTIN_ACTION_TYPES,
+  CARD_QUIZ_POINTS,
   decisionHandler,
   type HandlerContext,
   infoSheetHandler,
@@ -151,6 +152,39 @@ describe('ai_template', () => {
 
   it('needs a contentRef', () => {
     expect(accepts(aiTemplateHandler, {})).toBe(false);
+  });
+
+  describe('trivia', () => {
+    const quizCard: PointContent = {
+      ...CARD,
+      quiz: { question: '¿Quién?', options: ['D. Dinis', 'D. Afonso Henriques'], correctIndex: 1 },
+    };
+    const run = (data: unknown) =>
+      aiTemplateHandler.run(
+        { contentRef: 'castelo' },
+        setup({ outcome: { data }, contents: { castelo: { pt: quizCard } } }).context,
+      );
+
+    it('scores a right answer from the card shown', async () => {
+      expect(await run({ answerIndex: 1, locale: 'pt' })).toEqual({
+        status: 'done',
+        score: CARD_QUIZ_POINTS,
+        data: { answerIndex: 1, correct: true },
+      });
+    });
+
+    it('a wrong answer scores nothing', async () => {
+      expect(await run({ answerIndex: 0, locale: 'pt' })).toMatchObject({
+        score: 0,
+        data: { correct: false },
+      });
+    });
+
+    it('no score without an answer, or for a language the card lacks', async () => {
+      expect(await run({ locale: 'pt' })).toEqual({ status: 'done', data: { locale: 'pt' } });
+      expect(await run({ answerIndex: 1, locale: 'en' })).not.toHaveProperty('score');
+      expect(await run({ answerIndex: 1, locale: 'xx' })).not.toHaveProperty('score');
+    });
   });
 });
 

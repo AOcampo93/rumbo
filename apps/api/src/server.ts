@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { createAnthropicProvider } from './ai/anthropic.js';
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDatabase, type Database } from './db/index.js';
@@ -21,9 +22,20 @@ const geocoder =
     ? createWikidataGeocoder({ userAgent: config.wikimediaUserAgent })
     : null;
 
-const app = await buildApp(config, { database, data: () => ready, geocoder });
+const ai =
+  config.aiProvider === 'anthropic' && config.aiApiKey
+    ? createAnthropicProvider({
+        apiKey: config.aiApiKey,
+        model: config.aiModel,
+        ...(config.aiEffort !== 'none' ? { effort: config.aiEffort } : {}),
+      })
+    : null;
+
+const app = await buildApp(config, { database, data: () => ready, geocoder, ai });
 if (!database) app.log.warn('DATABASE_URL is not set: running without a database');
 if (!geocoder) app.log.warn('GEOCODING_PROVIDER=none: place search is off');
+if (!ai)
+  app.log.warn('Generative AI is off: set AI_PROVIDER=anthropic and AI_API_KEY to turn it on');
 
 /**
  * Migrations, then the curated routes. If the database is down at boot the API

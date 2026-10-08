@@ -25,6 +25,8 @@ describe('the API', () => {
         '/v1/analytics/batch',
         '/v1/geo/suggest',
         '/v1/geo/resolve',
+        '/v1/content/generate',
+        '/v1/suggest/places',
       ]),
     );
     expect(Object.keys(doc.paths['/v1/routes'])).toEqual(expect.arrayContaining(['get', 'post']));

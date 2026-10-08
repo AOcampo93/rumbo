@@ -43,6 +43,8 @@ export interface DraftPlace {
 /** Everything the planner collects before building the route. */
 export interface RouteDraft {
   name: string;
+  /** A line about the route (the AI suggests one with its places); at most 280 characters. */
+  summary?: string;
   /** The app's language when the route was created; it is not asked (ADR 0001). */
   locale: Locale;
   mode: RouteMode;
@@ -150,10 +152,12 @@ export function buildRouteSpec(draft: RouteDraft, options: BuildOptions): BuiltR
     ...(draft.mode === 'challenge' && draft.timeLimit ? { timeLimit: draft.timeLimit } : {}),
   };
 
+  const summary = cleanText(draft.summary ?? '');
   const spec: RouteSpec = {
     specVersion: 1,
     id: options.id ?? newRouteId(name, options.idFactory ?? newIdSuffix),
     name,
+    ...(summary ? { summary } : {}),
     locale: draft.locale,
     mode: draft.mode,
     activity: draft.activity,

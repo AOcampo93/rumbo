@@ -87,26 +87,27 @@ describe('checkUserRoute: what the creator makes', () => {
 });
 
 describe('checkUserRoute: refuses what the creator never makes', () => {
-  it('a route that is not a user route, or has cards', () => {
+  it('a route that is not a user route, or a card no action uses', () => {
     const bundle = userRoute();
     bundle.spec.source = 'curated';
     bundle.contents = { 'c-castelo': {} };
-    expect(paths(bundle)).toEqual(['contents', 'spec.source']);
+    expect(paths(bundle)).toEqual(['spec.source', 'contents.c-castelo', 'contents.c-castelo']);
     expect(paths({ ...userRoute(), contents: [] })).toEqual(['contents']);
   });
 
-  it('a path, a cover image, a description or a summary', () => {
+  it('a path, a cover image, a description, or a summary that is not plain text', () => {
     const bundle = userRoute();
     bundle.spec.path = [start, destination(start, 0, 100)];
     bundle.spec.coverImage = { url: 'https://example.com/pixel.png', alt: 'x' };
     bundle.spec.description = 'Una descripción';
-    bundle.spec.summary = 'Un resumen';
+    bundle.spec.summary = { es: 'Un resumen' };
     expect(paths(bundle)).toEqual([
+      'spec.summary',
       'spec.path',
       'spec.coverImage',
       'spec.description',
-      'spec.summary',
     ]);
+    expect(paths(userRoute({ summary: 'Castillo, sé y río' }))).toEqual([]);
   });
 
   it('route meta other than up to 10 short interests', () => {
@@ -244,5 +245,53 @@ describe('checkUserRoute: refuses what the creator never makes', () => {
       },
     };
     expect(paths(odd)).toEqual(['spec.actions.b.params']);
+  });
+});
+
+describe('checkUserRoute: AI cards', () => {
+  const REF = 'card-k3x9q2m7p1';
+  const card = (overrides: Record<string, unknown> = {}) => ({
+    id: REF,
+    locale: 'es',
+    title: 'Castillo de Leiria',
+    summary: 'Una fortaleza medieval sobre la ciudad.',
+    facts: ['Lo mandó construir D. Afonso Henriques.'],
+    images: [
+      { url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Castelo.jpg', alt: 'Castelo' },
+    ],
+    sources: [
+      { title: 'Castillo de Leiria', url: 'https://es.wikipedia.org/wiki/Castillo_de_Leiria' },
+    ],
+    generated: { by: 'ai', model: 'claude-sonnet-5-5', at: '2026-10-08T10:00:00.000Z' },
+    status: 'approved',
+    ...overrides,
+  });
+  /** The first place gets an AI card; the others keep the basic sheet. */
+  function withCard(contents: object): { spec: RouteSpec; contents: object } {
+    const [first, ...rest] = draft().places;
+    return { ...userRoute({ places: [{ ...first!, contentRef: REF }, ...rest] }), contents };
+  }
+
+  it('accepts the AI card of each ai_template action', () => {
+    const bundle = withCard({ [REF]: { es: card() } });
+    expect(validateRouteBundle(bundle).errors).toEqual([]);
+    expect(checkUserRoute(bundle)).toEqual([]);
+  });
+
+  it('a missing card, or one in another language', () => {
+    expect(paths(withCard({}))).toEqual([`contents.${REF}`]);
+    expect(paths(withCard({ [REF]: { en: card({ locale: 'en' }) } }))).toEqual([`contents.${REF}`]);
+  });
+
+  it('a card the AI did not write, or with images from elsewhere', () => {
+    const human = card({ generated: { by: 'human', at: '2026-10-08T10:00:00.000Z' } });
+    expect(paths(withCard({ [REF]: { es: human } }))).toEqual([`contents.${REF}.es.generated`]);
+    const pixel = card({ images: [{ url: 'https://example.com/pixel.png', alt: 'x' }] });
+    expect(paths(withCard({ [REF]: { es: pixel } }))).toEqual([`contents.${REF}.es.images[0].url`]);
+  });
+
+  it('no more than 30 cards', () => {
+    const many = Object.fromEntries(Array.from({ length: 31 }, (_, i) => [`c${i}`, {}]));
+    expect(paths(withCard({ ...many, [REF]: { es: card() } }))).toContain('contents');
   });
 });

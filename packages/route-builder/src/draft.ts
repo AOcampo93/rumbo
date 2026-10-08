@@ -56,6 +56,7 @@ export function draftFromSpec(spec: RouteSpec): RouteDraft {
     });
   return {
     name: text(spec.name),
+    ...(spec.summary ? { summary: text(spec.summary) } : {}),
     locale: spec.locale,
     mode: spec.mode,
     activity: spec.activity ?? 'walk',

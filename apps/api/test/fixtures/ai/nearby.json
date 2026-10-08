@@ -1,0 +1,289 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=rio+lis+haswbstatement%3AP625+nearcoord%3A2km%2C39.744%2C-8.807&srnamespace=0&srlimit=10&srprop=&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "searchinfo": {
+          "totalhits": 7
+        },
+        "search": [
+          {
+            "ns": 0,
+            "title": "Q109654275",
+            "pageid": 104768517
+          },
+          {
+            "ns": 0,
+            "title": "Q516024",
+            "pageid": 485360
+          },
+          {
+            "ns": 0,
+            "title": "Q109654037",
+            "pageid": 104768321
+          },
+          {
+            "ns": 0,
+            "title": "Q109654381",
+            "pageid": 104768622
+          },
+          {
+            "ns": 0,
+            "title": "Q109654926",
+            "pageid": 104769112
+          },
+          {
+            "ns": 0,
+            "title": "Q109654751",
+            "pageid": 104768977
+          },
+          {
+            "ns": 0,
+            "title": "Q10331516",
+            "pageid": 11636273
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q109654275%7CQ516024%7CQ109654037%7CQ109654381%7CQ109654926%7CQ109654751%7CQ10331516&props=labels%7Caliases&languages=es%7Cpt%7Cen%7Cmul&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q109654275": {
+          "type": "item",
+          "id": "Q109654275",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Ponte do Arrabalde"
+            },
+            "en": {
+              "language": "en",
+              "value": "Ponte do Arrabalde"
+            },
+            "es": {
+              "language": "es",
+              "value": "Ponte do Arrabalde"
+            }
+          },
+          "aliases": {
+            "pt": [
+              {
+                "language": "pt",
+                "value": "Ponte dos Arcos"
+              }
+            ],
+            "es": [
+              {
+                "language": "es",
+                "value": "puente del Arrabalde"
+              },
+              {
+                "language": "es",
+                "value": "Ponte dos Arcos"
+              },
+              {
+                "language": "es",
+                "value": "puente de los Arcos"
+              }
+            ]
+          }
+        },
+        "Q516024": {
+          "type": "item",
+          "id": "Q516024",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Rio Lena"
+            },
+            "es": {
+              "language": "es",
+              "value": "Lena"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Lena"
+            }
+          },
+          "aliases": {}
+        },
+        "Q109654037": {
+          "type": "item",
+          "id": "Q109654037",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Ponte da Fonte Quente"
+            },
+            "en": {
+              "language": "en",
+              "value": "Ponte da Fonte Quente"
+            }
+          },
+          "aliases": {}
+        },
+        "Q109654381": {
+          "type": "item",
+          "id": "Q109654381",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Ponte do Bairro dos Anjos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Ponte do Bairro dos Anjos"
+            }
+          },
+          "aliases": {}
+        },
+        "Q109654926": {
+          "type": "item",
+          "id": "Q109654926",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Ponte Francisco Sá Carneiro"
+            },
+            "en": {
+              "language": "en",
+              "value": "Ponte Francisco Sá Carneiro"
+            }
+          },
+          "aliases": {}
+        },
+        "Q109654751": {
+          "type": "item",
+          "id": "Q109654751",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Ponte Engenheiro Afonso Zúquete"
+            },
+            "en": {
+              "language": "en",
+              "value": "Ponte Engenheiro Afonso Zúquete"
+            }
+          },
+          "aliases": {}
+        },
+        "Q10331516": {
+          "type": "item",
+          "id": "Q10331516",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Moinho de Papel de Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Moinho de Papel de Leiria"
+            }
+          },
+          "aliases": {
+            "pt": [
+              {
+                "language": "pt",
+                "value": "Moinho dos Caniços"
+              },
+              {
+                "language": "pt",
+                "value": "Museu do Papel"
+              },
+              {
+                "language": "pt",
+                "value": "Moinho do Papel"
+              },
+              {
+                "language": "pt",
+                "value": "Moinho do Papel de Leiria"
+              }
+            ]
+          }
+        }
+      },
+      "success": 1
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=castelo+de+leiria+haswbstatement%3AP625+nearcoord%3A2km%2C39.747%2C-8.810&srnamespace=0&srlimit=10&srprop=&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "searchinfo": {
+          "totalhits": 2
+        },
+        "search": [
+          {
+            "ns": 0,
+            "title": "Q2969701",
+            "pageid": 2839898
+          },
+          {
+            "ns": 0,
+            "title": "Q109661393",
+            "pageid": 104774753
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q2969701%7CQ109661393&props=labels%7Caliases&languages=es%7Cpt%7Cen%7Cmul&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q2969701": {
+          "type": "item",
+          "id": "Q2969701",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Castle of Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Leiria"
+            },
+            "es": {
+              "language": "es",
+              "value": "Castillo de Leiria"
+            }
+          },
+          "aliases": {
+            "pt": [
+              {
+                "language": "pt",
+                "value": "Castelo de leiria"
+              }
+            ],
+            "en": [
+              {
+                "language": "en",
+                "value": "Leiria Castle"
+              }
+            ]
+          }
+        },
+        "Q109661393": {
+          "type": "item",
+          "id": "Q109661393",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Monumento comemorativo a D. Afonso Henriques"
+            },
+            "en": {
+              "language": "en",
+              "value": "Monumento comemorativo a D. Afonso Henriques"
+            }
+          },
+          "aliases": {}
+        }
+      },
+      "success": 1
+    }
+  }
+]

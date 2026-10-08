@@ -78,6 +78,16 @@ describe('draftFromSpec', () => {
     expect(rebuild(draftFromSpec(spec), spec.id).spec).toStrictEqual(spec);
   });
 
+  it('keeps the summary (cleaned) through a round trip, and leaves a blank one out', () => {
+    const base = draftFromSpec(savedRoute());
+    const built = rebuild({ ...base, summary: '  Castillo,\tsé y río  ' }, 'with-summary').spec;
+    expect(built.summary).toBe('Castillo, sé y río');
+    expect(draftFromSpec(built).summary).toBe('Castillo, sé y río');
+    expect(rebuild({ ...base, summary: '   ' }, 'blank-summary').spec).not.toHaveProperty(
+      'summary',
+    );
+  });
+
   it('turns points back into places, in order, keeping their ids', () => {
     const spec = savedRoute();
     const result = draftFromSpec(spec);

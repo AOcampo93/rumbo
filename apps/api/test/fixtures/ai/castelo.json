@@ -1,0 +1,229 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q2969701&props=sitelinks%7Clabels%7Cdescriptions&sitefilter=eswiki%7Cenwiki%7Cptwiki&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q2969701": {
+          "type": "item",
+          "id": "Q2969701",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Castle of Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Leiria"
+            },
+            "es": {
+              "language": "es",
+              "value": "Castillo de Leiria"
+            },
+            "mul": {
+              "value": "Castle of Leiria",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "building in Leiria, Leiria District, Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "castillo medieval localizado en la ciudad de Leiría, Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "castelo medieval em Leiria"
+            },
+            "mul": {
+              "value": "building in Leiria, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "sitelinks": {
+            "enwiki": {
+              "site": "enwiki",
+              "title": "Castle of Leiria",
+              "badges": []
+            },
+            "eswiki": {
+              "site": "eswiki",
+              "title": "Castillo de Leiría",
+              "badges": []
+            },
+            "ptwiki": {
+              "site": "ptwiki",
+              "title": "Castelo de Leiria",
+              "badges": []
+            }
+          }
+        }
+      },
+      "success": 1
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=Q2969701&property=P18&format=json&formatversion=2",
+    "body": {
+      "claims": {
+        "P18": [
+          {
+            "rank": "normal",
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P18",
+              "datavalue": {
+                "value": "CASTELO DE LEIRIA.jpg",
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=Q2969701&property=P31&format=json&formatversion=2",
+    "body": {
+      "claims": {
+        "P31": [
+          {
+            "rank": "normal",
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P31",
+              "datavalue": {
+                "value": {
+                  "entity-type": "item",
+                  "numeric-id": 23413,
+                  "id": "Q23413"
+                },
+                "type": "wikibase-entityid"
+              }
+            }
+          },
+          {
+            "rank": "normal",
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P31",
+              "datavalue": {
+                "value": {
+                  "entity-type": "item",
+                  "numeric-id": 210272,
+                  "id": "Q210272"
+                },
+                "type": "wikibase-entityid"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://es.wikipedia.org/w/api.php?action=query&prop=extracts%7Cinfo%7Cpageprops%7Cpageimages&explaintext=1&exsectionformat=wiki&exlimit=1&inprop=url&ppprop=disambiguation&piprop=name&titles=Castillo+de+Leir%C3%ADa&redirects=1&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 4824888,
+            "ns": 0,
+            "title": "Castillo de Leiría",
+            "extract": "El castillo de Leiría se localiza en la ciudad, freguesia, municipio y Beira Litoral, en Portugal.\nEdificado en posición dominante sobre la primitiva población y el río Lis, este bello e imponente castillo medieval, donde se contrastan las bellezas del patrimonio edificado y las del paisaje natural recibe anualmente unos 70 000 turistas. Considerado el mejor ejemplo de transformación residencial de un castillo en el país, el monumento comprende otras atracciones arquitectónicas, históricas y arqueológicas.",
+            "pagelanguage": "es",
+            "fullurl": "https://es.wikipedia.org/wiki/Castillo_de_Leir%C3%ADa",
+            "pageimage": "CASTELO_DE_LEIRIA.jpg"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://en.wikipedia.org/w/api.php?action=query&prop=extracts%7Cinfo%7Cpageprops%7Cpageimages&explaintext=1&exsectionformat=wiki&exlimit=1&inprop=url&ppprop=disambiguation&piprop=name&titles=Castle+of+Leiria&redirects=1&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 17327485,
+            "ns": 0,
+            "title": "Castle of Leiria",
+            "extract": "The Castle of Leiria (Portuguese: Castelo de Leiria) is a medieval castle in the civil parish of Leiria, Pousos, Barreira e Cortes, municipality of Leiria, Beira Litoral.\n\n\n== History ==\n\nThe castle of Leiria was built by D. Afonso Henriques for the purpose of creating a line of defense against the Arabs. In 1142 he reinforced the defense of the castle after regaining Leiria. D. Sancho I ordered erection of the walls of the castle in 1195. In 1324 D. Dinis ordered construction of the keep (Tower of Menagem) which was completed only during the reign of D. Afonso IV. In the early 16th century D. Manuel ordered a sacristy to be built between the main chapel and the bell tower.\nThroughout the centuries the castle gradually lost its military value. It was badly damaged during the French invasion. At the end of the 19th century restoration of the castle started in 1915 by the initiative of Liga dos Amigos do Castelo. The restoration project was directed by Ernesto Korrodi between 1921 and 1933, and then by Baltazar de Vastro.\nThe castle hosted important events as the meetings of the first courts called by D. Afonso III; became the residence of D. Denis and Queen Elizabeth; transformed into a meeting venue for the new court in the reign of D. Ferdinand I and the marriage of D. João I's son D. Afonso was celebrated in this castle as well.\nIt has been listed as a National monument since 1910.\nThe castle was damaged by the 1969 earthquake.\nIn 2026, the castle was severely damaged by Storm Kristin with a reported damage of €10 million. \n\n\n== Architecture ==\nThe present configuration of the castle of Leiria was influenced by the 4 major construction periods: the 12th century's Romanesque, the 14th century's Gothic Dionysus, the early 15th century's Gothic Johannine and the restoration trends of late 19th and early 20th century.\nThe shape of the castle is irregular polygonal with solid walls and towers. Paços Reais (Royal Palace), the Church of Nossa Senhora da Pena, Menagem Tower, the former Collegiate space, and medieval barns are located inside the complex. The castle has 4 floors; the lower two floors are hardly seen from outside and are intended for domestic services. There is a large loggia with eight arches of twin capitals. The loggia has the panorama over the city and was used as a place for leisure and socializing. The loggia is accessed through a room called Royal Hall or Noble Hall which has a total area of 130 square meters used for receptions by monarchs.\nStonemasonry, brick and concrete were used in the construction.\n\n\n== Gallery ==\n\n\n== See also ==\nCastles in Portugal\nCastle of Alcobaça\nCastle of Alfeizerão\n\n\n== References ==\n\n\n== External links ==\nLeiria Castle (Municipality of Leiria) (in Portuguese)",
+            "pagelanguage": "en",
+            "fullurl": "https://en.wikipedia.org/wiki/Castle_of_Leiria",
+            "pageimage": "CASTELO_DE_LEIRIA.jpg"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://pt.wikipedia.org/w/api.php?action=query&prop=extracts%7Cinfo%7Cpageprops%7Cpageimages&explaintext=1&exsectionformat=wiki&exlimit=1&inprop=url&ppprop=disambiguation&piprop=name&titles=Castelo+de+Leiria&redirects=1&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 93270,
+            "ns": 0,
+            "title": "Castelo de Leiria",
+            "extract": "O Castelo de Leiria localiza-se freguesia de Leiria, Pousos, Barreira e Cortes, na cidade e município de Leiria, na Beira Litoral, em Portugal.\nEdificado em posição dominante a norte sobre a povoação e o rio Lis, este belo e imponente castelo medieval, onde se contrastam as belezas do património edificado e as da paisagem natural, é um dos \"ex-libris\" da cidade, recebendo, anualmente, entre 50 e 70 mil turistas. No ano 2011 recebeu a visita de 54303 pessoas. Considerado o melhor exemplo de transformação residencial de um castelo no país, o monumento compreende outras atracções arquitectónicas, históricas e arqueológicas.\nO Castelo de Leiria está classificado como Monumento Nacional desde 1910.\n\n\n== História ==\n\n\n=== Antecedentes ===\nNão existem informações seguras acerca da primitiva ocupação humana do sítio do castelo, embora a região de Leiria seja rica em testemunhos arqueologicos pré-históricos e romanos. Apenas se sabe que antes da construção do mesmo poderá ter existido uma ermida e uma alcáçova no local. No entanto é do conhecimento que à época da Reconquista cristã da Península Ibérica, a região constituía, no século XII, um ponto nevrálgico da defesa da fronteira sul do Condado Portucalense. Viria a tornar-se um próspero centro económico medieval, graças ao comércio de cereais e produtos alimentares (trigo, azeite, vinho, frutas), de madeiras (pinhal de Leiria), de minérios (ferro, carvão, sal-gema, calcário) e de produtos artesanais (lanifícios e tecelagens, couros, olarias, ferragens).\n\n\n=== O castelo medieval ===\n\nAo consolidar o seu governo a partir de 1128, o jovem D. Afonso Henriques (1112-1185), planeou alargar os seus domínios, então limitados a norte pelo rio Minho a sudoeste pela serra da Estrela e a sul pelo rio Mondego. Para esse fim, a partir de 1130, invadiu por diversas vezes o território vizinho da Galiza a norte, ao mesmo tempo em que se mantinha atento à fronteira sul, constantemente atacada pelos muçulmanos.\nPara defesa desta linde sul, estrategicamente fez erguer, de raiz, um novo castelo entre Coimbra e Santarém (1135), no alto de uma elevação rochosa, um pouco ao sul da confluência do rio Lis com o rio Lena, a cuja guarnição, sob o comando de D. Paio Guterres, foi confiada a defesa da nova fronteira que ali tentava firmar (cf. Brevis historia Gothorum). À povoação que também iniciava, e que passaria a designar o respectivo castelo, chamou de Leiria. Dois anos mais tarde, a povoação e o seu castelo foram assaltados pelo Califado Almóada, que se aproveitaram de uma investida das forças de D. Afonso Henriques à Galiza (1137). Após uma encarniçada resistência, Paio Guterres e seus homens foram forçados a abandonar as suas posições.\nDe volta ao reino, o monarca organizou uma contra-ofensiva para conter o avanço dos mouros, cujas forças combinadas derrotou na épica Batalha de Ourique (25 de Julho de 1139). Ao final desse mesmo ano, os muçulmanos, cientes de que o monarca Português havia encetado nova campanha contra o rei de Leão, na Galiza, atacaram e novamente conquistaram Leiria e seu castelo, cujos defensores, na ocasião, sofreram pesadas baixas, vindo seu alcaide, D. Paio Guterres a cair prisioneiro. De volta às mãos de D. Afonso Henriques (1142), o monarca outorgou Carta de Foral à povoação, determinando a reconstrução e reforço da estrutura do castelo, no qual fez erguer uma Capela sob invocação de Nossa Senhora da Pena (entre 1144 e 1147).\nDepois de 2 vezes perdido e 2 vezes reconquistado, o castelo de Leiria pertenceria de forma permanente ao Condado Portucalense, ajudando na conquista de Santarém e Lisboa e, logo, na construção do país.\nO seu sucessor, D. Sancho I (1185-1211), concedeu novo foral à vila (1195), determinando erguer-lhe uma cerca amuralhada. O desenvolvimento da vila era tão expressivo à época, que a fez sede das Cortes de 1254, convocadas por D. Afonso III (1248-1279).\n\nOutros monarcas dedicaram atenção a Leiria, destacando-se D. Dinis (1279-1325), que ali residiu por diversas ocasiões, vindo a doar, em Julho de 1300, à rainha Santa Isabel, a vila e o seu castelo, escolhidos para a criação de seu herdeiro, o príncipe D. Afonso (nesta altura os Paços localizavam-se no antigo seminário). É a D. Dinis que se atribui a adaptação do castelo à função de palácio, a reconstrução da capela de Nossa Senhora da Pena e o início da construção da poderosa Torre de Menagem (8 de Maio de 1324), poucos meses antes do seu falecimento. Esta torre foi concluída no reinado de seu sucessor, conforme inscrição epigráfica no seu exterior.\nA vila desenvolveu-se de tal forma que foi lá que se deu as Cortes de 1254, convocadas por D. Afonso III, as primeiras cortes onde foram chamados representantes da nobreza, clero e povo. Desde então o local foi muita vez escolhido para a realização de Cortes, a base sobre a qual se construiria o que hoje é o Parlamento.\nSob o reinado de D. Fernando (1367-1383), quando aqui se reuniram as Cortes de 1372, a vila encontrava-se em expansão até às margens do rio Lis.\nSob D. João I (1385-1433), que aqui celebrou, em 1401, o casamento de seu filho D. Afonso (futuro conde de Barcelos e duque de Bragança), iniciaram-se os trabalhos de edificação dos chamados Paços da Rainha ou Paços Novos, nos quais se destacam os vãos góticos e o espaço de suas salas e câmaras.D. Manuel I (1495-1521) concedeu Foral Novo a Leiria (1510), alçada, em 1545, à condição de cidade por D. João III (1521-1557).\n\n\n=== Da Restauração da independência aos nossos dias ===\n\nAo raiar a Restauração da Independência (1640), o Castelo de Leiria foi uma das primeiras fortificações a erguer o pendão de Portugal. Sem valor militar, entretanto, mergulharia progressivamente no abandono, vindo a se arruinar.\nNo contexto da Guerra Peninsular, no início do século XIX, as tropas francesas provocaram extensos danos à cidade e aos seus monumentos, nomeadamente a Sé e o castelo. O castelo, em ruínas, perdeu o seu valor militar e fora dotado ao abandono.\nJá no final do século XIX, por iniciativa da Liga dos Amigos do Castelo, que pretendia fazer um estudo do castelo e iniciar a sua reconstrução. O arquitecto Ernesto Korrodi elaborou um projecto de restauro das ruínas do castelo (Zurique, 1898), que foram classificadas como Monumento Nacional por Decreto publicado em 23 de Junho de 1910.\nFinalmente, em 1915, a Liga iniciou as obras de restauro pleiteadas, com fundos próprios e o auxílio do poder público, através da Direcção-Geral dos Edifícios e Monumentos Nacionais (DGEMN). Este órgão, entretanto, não aceitou o nome do arquitecto suíço para a direção das obras, paralisadas no ano seguinte. De 1916 a 1921 começa-se com a consolidação das ruínas, melhoramento dos acessos e reconstrução da torre de menagem e da muralha (esta que é concluída em 1937). Os trabalhos mais interventivos foram retomados, a partir de 1921, quando uma derrocada parcial nos muros lhes imprimiu caráter de urgência. Korrodi foi finalmente nomeado diretor das obras, à frente de uma comissão sujeita à DGEMN. O seu trabalho desenvolveu-se até 1934, quando ele sai do projecto. As obras, porém, prosseguiram na década de 1930, com base nos seus desenhos.  As campanhas de recuperação foram retomadas pela DGEMN em meados da década de 1950, prosseguindo nas duas décadas seguintes. Em 1955 a 69 a igreja da Pena é recuperada, e do projecto também faz parte a reconstrução dos Paços Novos. Novas campanhas se sucederam a partir de meados da década de 1980, prosseguindo pela década de 1990. \nEm 2020 e 2021, o castelo sofreu obras de requalificação de grande parte do espaço, que permitiram não só valorizar ainda mais a sua riqueza patrimonial e aumentar o seu potencial turístico, como torná-lo mais inclusivo e aberto a todos os cidadãos, através da construção de dois elevadores (no lado norte e no lado sul), que são de utilização gratuita.\nO castelo encontra-se aberto à visitação pública, apresentando como destaque a torre, requalificada como espaço museológico, onde podem ser apreciados artefatos arqueológicos encontrados no local e armaria medieval.\n\n\n== Características ==\n\nOs estudiosos atribuem a atual configuração do Castelo de Leiria à soma de quatro grandes períodos construtivos:\n\no Românico do século XII;\no Gótico dionisino, da primeira metade do século XIV;\no Gótico joanino, de inícios do século XV, e\nas correntes restauradoras de finais do século XIX e primeira metade do século XX.\nAlgumas das intervenções promovidas por Korrodi foram posteriormente desfeitas, considerando-se que o seu projecto pecava por excesso de romantismo, sem respeitar o real perfil (original) do monumento. Prova disso serão as falsas ruínas que ainda existem no pátio interior e perto da porta da traição.",
+            "pagelanguage": "pt",
+            "fullurl": "https://pt.wikipedia.org/wiki/Castelo_de_Leiria",
+            "pageimage": "CASTELO_DE_LEIRIA.jpg"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://commons.wikimedia.org/w/api.php?action=query&titles=File%3ACASTELO+DE+LEIRIA.jpg&prop=imageinfo&iiprop=url%7Cextmetadata%7Cmime%7Csize&iiurlwidth=960&iiextmetadatafilter=Artist%7CCredit%7CLicenseShortName&format=json&formatversion=2",
+    "body": {
+      "batchcomplete": true,
+      "query": {
+        "pages": [
+          {
+            "pageid": 10797932,
+            "ns": 6,
+            "title": "File:CASTELO DE LEIRIA.jpg",
+            "imagerepository": "local",
+            "imageinfo": [
+              {
+                "size": 320718,
+                "width": 886,
+                "height": 591,
+                "thumburl": "https://upload.wikimedia.org/wikipedia/commons/1/10/CASTELO_DE_LEIRIA.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "thumbwidth": 960,
+                "thumbheight": 640,
+                "url": "https://upload.wikimedia.org/wikipedia/commons/1/10/CASTELO_DE_LEIRIA.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+                "descriptionurl": "https://commons.wikimedia.org/wiki/File:CASTELO_DE_LEIRIA.jpg",
+                "extmetadata": {
+                  "Credit": {
+                    "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                    "source": "commons-desc-page"
+                  },
+                  "Artist": {
+                    "value": "<a href=\"//commons.wikimedia.org/wiki/User:JMFH4778\" title=\"User:JMFH4778\">JMFH4778</a>",
+                    "source": "commons-desc-page"
+                  },
+                  "LicenseShortName": {
+                    "value": "CC BY-SA 3.0",
+                    "source": "commons-desc-page",
+                    "hidden": ""
+                  }
+                },
+                "mime": "image/jpeg"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+]

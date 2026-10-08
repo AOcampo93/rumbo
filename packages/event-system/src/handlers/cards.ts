@@ -3,6 +3,7 @@ import {
   AiTemplateParamsSchema,
   type InfoSheetParams,
   InfoSheetParamsSchema,
+  LOCALES,
 } from '@rumbo/route-spec';
 import type { ActionHandler, ViewOutcome } from '../types.ts';
 import { fromOutcome, pointProps } from './shared.ts';
@@ -33,9 +34,14 @@ export const infoSheetHandler: ActionHandler<InfoSheetParams> = {
   },
 };
 
+/** Points for a card's trivia question answered right. */
+export const CARD_QUIZ_POINTS = 10;
+
 /**
  * The generated card of a user route (§12). Without its content it fails, so
- * the dispatcher shows the basic sheet instead and the route goes on.
+ * the dispatcher shows the basic sheet instead and the route goes on. When
+ * the card shown has a trivia question, the view reports the answer and the
+ * card's language (`data.answerIndex`, `data.locale`) and a right one scores.
  */
 export const aiTemplateHandler: ActionHandler<AiTemplateParams> = {
   type: 'ai_template',
@@ -48,6 +54,16 @@ export const aiTemplateHandler: ActionHandler<AiTemplateParams> = {
       { ...pointProps(context), content },
       { variant: 'sheet', signal: context.signal },
     );
-    return fromOutcome(outcome);
+    const result = fromOutcome(outcome);
+    const answer = outcome?.data as { answerIndex?: unknown; locale?: unknown } | undefined;
+    const locale = LOCALES.find((candidate) => candidate === answer?.locale);
+    const quiz = locale ? content[locale]?.quiz : undefined;
+    if (!quiz || typeof answer?.answerIndex !== 'number') return result;
+    const correct = answer.answerIndex === quiz.correctIndex;
+    return {
+      ...result,
+      score: correct ? CARD_QUIZ_POINTS : 0,
+      data: { answerIndex: answer.answerIndex, correct },
+    };
   },
 };

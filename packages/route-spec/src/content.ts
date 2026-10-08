@@ -34,6 +34,19 @@ export const PointContentSchema = z.strictObject({
     })
     .optional(),
   tip: z.string().trim().max(200).optional(),
+  /** A trivia question answered on arrival (the card's own language, like every field). */
+  quiz: z
+    .strictObject({
+      question: z.string().trim().min(1).max(300),
+      options: z.array(z.string().trim().min(1).max(120)).min(2).max(4),
+      correctIndex: z.number().int().min(0),
+      explanation: z.string().trim().max(500).optional(),
+    })
+    .refine((quiz) => quiz.correctIndex < quiz.options.length, {
+      message: 'correctIndex must point to one of the options',
+      path: ['correctIndex'],
+    })
+    .optional(),
   /** Sources the text was grounded on. */
   sources: z.array(
     z.strictObject({ title: z.string().trim().min(1).max(200), url: HttpUrlSchema }),

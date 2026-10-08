@@ -1,0 +1,1175 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q244512%7CQ206933%7CQ1056864%7CQ1343635%7CQ2368485%7CQ8342841%7CQ2969701%7CQ8840924%7CQ7227031%7CQ17125229&props=claims%7Clabels&languages=es%7Cpt%7Cen&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q244512": {
+          "type": "item",
+          "id": "Q244512",
+          "labels": {
+            "es": {
+              "language": "es",
+              "value": "Leiría"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 3032141,
+                      "id": "Q3032141"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 192611,
+                      "id": "Q192611"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q206933": {
+          "type": "item",
+          "id": "Q206933",
+          "labels": {
+            "es": {
+              "language": "es",
+              "value": "Leiría"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 13217644,
+                      "id": "Q13217644"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q1056864": {
+          "type": "item",
+          "id": "Q1056864",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Estádio Dr. Magalhães Pessoa"
+            },
+            "es": {
+              "language": "es",
+              "value": "Estádio Dr. Magalhães Pessoa"
+            },
+            "en": {
+              "language": "en",
+              "value": "Estádio Dr. Magalhães Pessoa"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 483110,
+                      "id": "Q483110"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q1343635": {
+          "type": "item",
+          "id": "Q1343635",
+          "labels": {
+            "es": {
+              "language": "es",
+              "value": "Marrazes"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Marrazes"
+            },
+            "en": {
+              "language": "en",
+              "value": "Marrazes"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 56046844,
+                      "id": "Q56046844"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q2368485": {
+          "type": "item",
+          "id": "Q2368485",
+          "labels": {
+            "es": {
+              "language": "es",
+              "value": "Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 56046844,
+                      "id": "Q56046844"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q8342841": {
+          "type": "item",
+          "id": "Q8342841",
+          "labels": {
+            "es": {
+              "language": "es",
+              "value": "Catedral de Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Sé de Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Our Lady of the Immaculate Conception Cathedral, Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 2977,
+                      "id": "Q2977"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q2969701": {
+          "type": "item",
+          "id": "Q2969701",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Castle of Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Leiria"
+            },
+            "es": {
+              "language": "es",
+              "value": "Castillo de Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 23413,
+                      "id": "Q23413"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q8840924": {
+          "type": "item",
+          "id": "Q8840924",
+          "labels": {
+            "es": {
+              "language": "es",
+              "value": "Estación de Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Estação Ferroviária de Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Leiria train station"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 55488,
+                      "id": "Q55488"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q7227031": {
+          "type": "item",
+          "id": "Q7227031",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "University of Leiria and Oeste"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Universidade de Leiria e Oeste"
+            },
+            "es": {
+              "language": "es",
+              "value": "Universidad de Leiria y Oeste"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 1371037,
+                      "id": "Q1371037"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q17125229": {
+          "type": "item",
+          "id": "Q17125229",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Capela de Nossa Senhora da Encarnação"
+            },
+            "en": {
+              "language": "en",
+              "value": "Capela de Nossa Senhora da Encarnação"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 108325,
+                      "id": "Q108325"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 697295,
+                      "id": "Q697295"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q10300969%7CQ10331516%7CQ9645433%7CQ10300966%7CQ10383715%7CQ10283313%7CQ18468276%7CQ18468311%7CQ56648510%7CQ138547088&props=claims%7Clabels&languages=es%7Cpt%7Cen&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q10300969": {
+          "type": "item",
+          "id": "Q10300969",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Convento de Santo Agostinho e antigo seminário"
+            },
+            "en": {
+              "language": "en",
+              "value": "Convento de Santo Agostinho e antigo seminário"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 1128397,
+                      "id": "Q1128397"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q10331516": {
+          "type": "item",
+          "id": "Q10331516",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Moinho de Papel de Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Moinho de Papel de Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 185187,
+                      "id": "Q185187"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 33506,
+                      "id": "Q33506"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q9645433": {
+          "type": "item",
+          "id": "Q9645433",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Edifício do Banco de Portugal em Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Edifício do Banco de Portugal em Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 41176,
+                      "id": "Q41176"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q10300966": {
+          "type": "item",
+          "id": "Q10300966",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Igreja e Convento de São Francisco (restos)"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Igreja e Convento de São Francisco (restos)"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 1128397,
+                      "id": "Q1128397"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 16970,
+                      "id": "Q16970"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q10383715": {
+          "type": "item",
+          "id": "Q10383715",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Torre Sineira (Leiria)"
+            },
+            "en": {
+              "language": "en",
+              "value": "Torre Sineira (Leiria)"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 200334,
+                      "id": "Q200334"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q10283313": {
+          "type": "item",
+          "id": "Q10283313",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Fonte das Três Bicas"
+            },
+            "en": {
+              "language": "en",
+              "value": "Fonte das Três Bicas"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 483453,
+                      "id": "Q483453"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q18468276": {
+          "type": "item",
+          "id": "Q18468276",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Leiria, Pousos, Barreira e Cortes"
+            },
+            "en": {
+              "language": "en",
+              "value": "Leiria, Pousos, Barreira e Cortes"
+            },
+            "es": {
+              "language": "es",
+              "value": "Leiría, Pousos, Barreira e Cortes"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 1131296,
+                      "id": "Q1131296"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q18468311": {
+          "type": "item",
+          "id": "Q18468311",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Marrazes e Barosa"
+            },
+            "en": {
+              "language": "en",
+              "value": "Marrazes e Barosa"
+            },
+            "es": {
+              "language": "es",
+              "value": "Marrazes e Barosa"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 1131296,
+                      "id": "Q1131296"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q56648510": {
+          "type": "item",
+          "id": "Q56648510",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Arquivo Distrital de Leiria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Arquivo Distrital de Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 10296259,
+                      "id": "Q10296259"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q138547088": {
+          "type": "item",
+          "id": "Q138547088",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Edifício da Caixa Geral de Depósitos"
+            }
+          },
+          "claims": {}
+        }
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q139969696%7CQ120492085%7CQ6520209%7CQ871171%7CQ10300821&props=claims%7Clabels&languages=es%7Cpt%7Cen&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q139969696": {
+          "type": "item",
+          "id": "Q139969696",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Teatro José Lúcio da Silva"
+            }
+          },
+          "claims": {}
+        },
+        "Q120492085": {
+          "type": "item",
+          "id": "Q120492085",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Celeiros da Mitra"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 1415133,
+                      "id": "Q1415133"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 214252,
+                      "id": "Q214252"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 114768,
+                      "id": "Q114768"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q6520209": {
+          "type": "item",
+          "id": "Q6520209",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Leiria Football Association"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Associação de Futebol de Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 43229,
+                      "id": "Q43229"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q871171": {
+          "type": "item",
+          "id": "Q871171",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Roman Catholic Diocese of Leiria-Fátima"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Diocese de Leiria-Fátima"
+            },
+            "es": {
+              "language": "es",
+              "value": "diócesis de Leiria-Fátima"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 3146899,
+                      "id": "Q3146899"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 373074,
+                      "id": "Q373074"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        },
+        "Q10300821": {
+          "type": "item",
+          "id": "Q10300821",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Capela de São Pedro"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Capela de São Pedro"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 108325,
+                      "id": "Q108325"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              },
+              {
+                "mainsnak": {
+                  "snaktype": "value",
+                  "property": "P31",
+                  "datavalue": {
+                    "value": {
+                      "entity-type": "item",
+                      "numeric-id": 210272,
+                      "id": "Q210272"
+                    },
+                    "type": "wikibase-entityid"
+                  }
+                },
+                "type": "statement",
+                "rank": "normal"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

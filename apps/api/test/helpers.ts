@@ -24,12 +24,14 @@ const ROOMY_LIMITS: Partial<AppConfig> = {
   writeRateLimitPerMinute: 10_000,
   writeRateLimitPerDay: 100_000,
   geoRateLimitPerMinute: 10_000,
+  contentRateLimitPerMinute: 10_000,
+  suggestRateLimitPerMinute: 10_000,
 };
 
 /** The API on the test database, with everything empty. */
 export async function setupApi(
   overrides: Partial<AppConfig> = {},
-  deps: Pick<AppDeps, 'geocoder'> = {},
+  deps: Pick<AppDeps, 'geocoder' | 'ai' | 'grounding'> = {},
 ) {
   const database = createDatabase(inject('databaseUrl'), () => {});
   await resetDatabase(database);
@@ -52,7 +54,7 @@ export async function setupApi(
 
 export async function resetDatabase(database: Database): Promise<void> {
   await database.db.execute(
-    sql`truncate analytics_events, runs, point_contents, routes, devices restart identity cascade`,
+    sql`truncate analytics_events, runs, point_contents, routes, devices, ai_contents, ai_generations restart identity cascade`,
   );
 }
 

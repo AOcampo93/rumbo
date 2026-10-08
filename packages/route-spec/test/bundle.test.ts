@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveContent, validateRouteBundle } from '../src/index.ts';
+import { PointContentSchema, resolveContent, validateRouteBundle } from '../src/index.ts';
 import { card, freeRoute } from './fixtures.ts';
 
 const ALL = ['es', 'en', 'pt'] as const;
@@ -115,5 +115,28 @@ describe('resolveContent', () => {
       isFallback: true,
     });
     expect(resolveContent(undefined, 'en', 'es')).toBeNull();
+  });
+});
+
+describe('PointContent quiz', () => {
+  const quiz = {
+    question: '¿En qué siglo se levantó la torre de menagem?',
+    options: ['XII', 'XIV', 'XVI'],
+    correctIndex: 1,
+    explanation: 'Se reconstruyó en el siglo XIV.',
+  };
+
+  it('accepts a card with a trivia question', () => {
+    const result = PointContentSchema.safeParse({ ...card('c', 'es'), quiz });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a correctIndex outside the options', () => {
+    const result = PointContentSchema.safeParse({
+      ...card('c', 'es'),
+      quiz: { ...quiz, correctIndex: 3 },
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(['quiz', 'correctIndex']);
   });
 });

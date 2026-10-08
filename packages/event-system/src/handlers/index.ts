@@ -4,7 +4,7 @@ import { aiTemplateHandler, infoSheetHandler } from './cards.ts';
 import { quizHandler, redirectHandler, threeSceneHandler, videoHandler } from './media.ts';
 import { decisionHandler, toastHandler } from './notices.ts';
 
-export { aiTemplateHandler, infoSheetHandler } from './cards.ts';
+export { aiTemplateHandler, CARD_QUIZ_POINTS, infoSheetHandler } from './cards.ts';
 export { quizHandler, redirectHandler, threeSceneHandler, videoHandler } from './media.ts';
 export { decisionHandler, toastHandler } from './notices.ts';
 

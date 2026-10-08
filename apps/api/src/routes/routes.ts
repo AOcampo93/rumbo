@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import {
   checkUserRoute,
+  contentHashInput,
   EDIT_TOKEN_HEADER,
   RouteBundleBodySchema,
   RouteIdParamsSchema,
@@ -16,12 +18,12 @@ import {
   type RouteSpec,
   validateRouteBundle,
 } from '@rumbo/route-spec';
-import { and, asc, count, eq, ne, type SQL } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, ne, type SQL } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import type { Database, Db } from '../db/index.js';
-import { pointContents, routes } from '../db/schema.js';
+import { aiContents, pointContents, routes } from '../db/schema.js';
 import { requireDeviceId, touchDevice } from '../device.js';
 import { editTokenFrom, editTokenMatches, hashEditToken, requireEditToken } from '../edit-token.js';
 import { fail, isDataException } from '../errors.js';
@@ -86,6 +88,46 @@ function userRouteFrom(body: unknown): { authored: RouteSpec; bundle: RouteBundl
   const issues = checkUserRoute(body);
   if (issues.length > 0) throw fail(422, 'invalid_route', issues);
   return { authored: (body as { spec: RouteSpec }).spec, bundle: validation.bundle };
+}
+
+/**
+ * A user route may only carry cards this server generated: each card's
+ * SHA-256 (contentHashInput, the card without its id) must be one the AI
+ * pipeline stored. Nobody can forge a card that looks AI-written from
+ * Wikipedia, or bring images and links of their own through one.
+ */
+async function verifyCards(db: Db, contents: RouteBundle['contents']): Promise<void> {
+  const cards = Object.entries(contents).flatMap(([ref, byLocale]) =>
+    Object.entries(byLocale).flatMap(([locale, card]) =>
+      card
+        ? [
+            {
+              path: `contents.${ref}.${locale}`,
+              hash: createHash('sha256').update(contentHashInput(card)).digest('hex'),
+            },
+          ]
+        : [],
+    ),
+  );
+  if (cards.length === 0) return;
+  const known = await db
+    .select({ hash: aiContents.contentHash })
+    .from(aiContents)
+    .where(
+      inArray(
+        aiContents.contentHash,
+        cards.map((card) => card.hash),
+      ),
+    );
+  const generated = new Set(known.map((row) => row.hash));
+  const unverified = cards.filter((card) => !generated.has(card.hash));
+  if (unverified.length > 0) {
+    throw fail(
+      422,
+      'unverified_content',
+      unverified.map(({ path }) => ({ path, message: 'Not a card this server generated' })),
+    );
+  }
 }
 
 /**
@@ -275,6 +317,7 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       const owner = requireDeviceId(request);
       const { db } = requireDatabase(options);
       const { authored, bundle } = userRouteFrom(request.body);
+      await verifyCards(db, bundle.contents);
       const { id } = bundle.spec;
       await checkQuotas(db, owner, id, options.userRoutesMax);
       await touchDevice(db, owner, request.headers['user-agent']);
@@ -329,6 +372,7 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       const token = requireEditToken(request);
       const { db } = requireDatabase(options);
       const { authored, bundle } = userRouteFrom(request.body);
+      await verifyCards(db, bundle.contents);
       const { id } = request.params;
       const written = await storing(() =>
         db.transaction(async (tx) => {
