@@ -34,10 +34,12 @@ En orden de prioridad:
 
 Construido con este mismo sistema en la fase 4, sin mockup propio: el onboarding y el consentimiento, S02 Mis rutas (estado vacío), S11 Recuperar recorrido, S12 Ajustes y el panel de filtros.
 
-Construido con este mismo sistema en la fase 6, sin mockup propio: el creador (C1, C2, C4 y C5, con un Stepper de 3 pasos) y S02 Mis rutas completa (lista, editar, eliminar y estado de subida). El flujo C no tiene prototipo navegable.
+Construido con este mismo sistema en la fase 6, sin mockup propio: el creador (C1, C2, C4 y C5) y S02 Mis rutas completa (lista, editar, eliminar y estado de subida). El flujo C no tiene prototipo navegable.
+
+Construido con este mismo sistema en la fase 7, sin mockup propio: C3 Fichas, los intereses y «Usar mi ubicación» de C1, la hoja «Sugerir lugares» de C2, la línea de fichas de C4 y la pregunta rápida de S06. El Stepper del creador pasó a 4 pasos.
 
 Falta, y se diseñará con este mismo sistema al construir cada pantalla:
-- C3 Contenido IA (fase 7);
+- el editor de fichas de C3 (texto, datos, carrusel de imágenes y URL de video; aplazado);
 - el último recorrido de cada ruta en S02 (aplazado);
 - las variantes S06c, S06d y S06f (hay una primera versión en código);
 - tablet y escritorio, salvo el reparto en dos columnas de C2;
@@ -330,7 +332,7 @@ Base común:
 | **Toast/Snackbar** | Info, éxito y aviso. Con acción opcional («Deshacer» al eliminar un lugar): el aviso con acción dura 6 s en vez de 3,5 s |
 | **Banner** | Sin conexión · Modo simulación (morado) · Instala la app (iOS) · GPS débil |
 | **PermissionRow** | Icono, título, descripción y estado (pendiente/concedido/denegado) + botón |
-| **Stepper** | Pasos con nombre (actual, completado y pendiente), compacto en móvil. En la fase 6 son 3 (Datos · Lugares · Revisar); «Contenido» lo deja en 4 en la fase 7 |
+| **Stepper** | Pasos con nombre (actual, completado y pendiente), compacto en móvil. En el creador son 4: Datos · Lugares · Fichas · Revisar |
 | **Inputs** | TextField, Select, SegmentedControl, Chip (filtro e interés, seleccionable), Toggle, Slider (radio con valor en metros) |
 | **PlaceSearch** | Combobox accesible (WAI-ARIA 1.2) con sugerencias: icono de categoría, nombre, descripción y distancia. Estados: en reposo, cargando, con resultados, sin resultados, error y sin conexión. En móvil la lista puede abrirse **hacia arriba**, sobre el mapa, para que el teclado no la tape |
 | **PlaceListItem** | Fila del creador, en dos líneas. Primera: asa de arrastre (48×48 px, no enfocable), burbuja de orden, nombre (hasta 2 líneas) y menú ⋯. Segunda, con sangría: dirección y chips que saltan de línea (radio, «Opcional», aviso de solapamiento con su texto). Se adapta al texto al 200 % |
@@ -343,6 +345,9 @@ Base común:
 | **FilterPanel / MapLegend** | Chips por ruta, categoría, modo y estado. Leyenda de colores e iconos |
 | **SimControls** | Panel flotante morado: "Toca el mapa para moverte", "Caminar al siguiente punto", velocidad 1× / 5× / 20×, interruptor "GPS débil" |
 | **AiBadge** | "✦ Generado con IA · Fuentes: Wikipedia" (pequeño, discreto) |
+| **TriviaCard** | «Pregunta rápida» dentro de la ficha de llegada (S06): pregunta, 2-4 opciones grandes, un solo intento, ✓ o ✕ con texto, explicación y «+10 pts». No es el QuizCard de la acción `quiz` |
+| **CardStatusRow** | Fila de C3: nombre del lugar, estado de su ficha («Ficha lista · 3 fuentes», «Preparando la ficha…», error…) y sus acciones. Nunca enseña el texto de la ficha |
+| **SuggestSheet** | Hoja de C2 para pedir ideas a la IA: tiempo (chips), intereses, lista de lugares sugeridos con casilla, anécdota y distancia, y «Añadir N lugares» |
 | **ImageCredit** | Superposición mínima con autor y licencia de la imagen |
 | **Skeletons** | Tarjetas, listas y ficha |
 
@@ -360,13 +365,13 @@ Idioma ─► Onboarding ─► Inicio (Explorar) ─► Detalle de ruta ─► 
                            │                                    Hojas: Llegada · Interrupción · Pausa
                            │                                    (Continuar · Pausar · Terminar)
                            ├─► Mis rutas ─► Detalle de ruta
-                           ├─► Crear: 1 Datos ► 2 Lugares ► 3 Contenido IA ► 4 Revisar y simular ► 5 Lista
+                           ├─► Crear: 1 Datos ► 2 Lugares ► 3 Fichas ► 4 Revisar y simular ► 5 Lista
                            └─► Ajustes (aquí se cambia el idioma después)
 ```
 
 Idioma y Onboarding solo aparecen en el primer arranque.
 
-En la fase 6 el creador no tiene el paso «Contenido IA»: el Stepper muestra tres pasos (Datos ► Lugares ► Revisar) y «Lista» queda fuera de él. Las pantallas conservan sus nombres C1 a C5.
+El Stepper del creador muestra cuatro pasos (Datos ► Lugares ► Fichas ► Revisar) y «Lista» queda fuera de él. Las pantallas se llaman C1 a C5, y C3 es «Fichas».
 
 ### 8.2 Rutas (URL) y navegación global
 
@@ -380,7 +385,7 @@ En la fase 6 el creador no tiene el paso «Contenido IA»: el Stepper muestra tr
 | `/routes/:routeId/prepare` | S04 Preparación | No |
 | `/run` | S05 Recorrido (inmersivo) | No |
 | `/run/summary` | S10 Resumen | No |
-| `/create/details` · `/create/places` · `/create/review` · `/create/done` | C1, C2, C4 y C5 Creador (C3 Contenido IA, `/create/content`, llega en la fase 7) | No (flecha atrás + Stepper) |
+| `/create/details` · `/create/places` · `/create/content` · `/create/review` · `/create/done` | C1, C2, C3, C4 y C5 Creador | No (flecha atrás + Stepper) |
 | `/settings` | S12 Ajustes | **Sí** |
 
 - **Navegación inferior** (4 elementos): **Explorar** (brújula) · **Mis rutas** (marcador) · **Crear** (+, destacado) · **Ajustes** (engranaje).
@@ -388,8 +393,8 @@ En la fase 6 el creador no tiene el paso «Contenido IA»: el Stepper muestra tr
 - **Salir de `/run`:** con el gesto atrás aparece "¿Salir del mapa? La ruta sigue activa." Al salir, se muestra la **MiniRunBar** en el resto de pantallas.
 - **Desde una notificación:** abre `/run` con la ficha del punto ya desplegada.
 - **Creador:**
-  - `/create` retoma el borrador en el primer paso con algo pendiente. Cada paso exige los anteriores: sin nombre no se llega a Lugares, y sin 2 lugares no se llega a Revisar.
-  - `/create/content` redirige a Revisar hasta la fase 7.
+  - `/create` retoma el borrador en el primer paso con algo pendiente. Cada paso exige los anteriores: sin nombre no se llega a Lugares, y sin 2 lugares no se llega a Fichas ni a Revisar.
+  - `/create/content` (Fichas) nunca bloquea el paso siguiente. `/create` lo abre mientras algún lugar no tenga ficha, esté pendiente o espere conexión.
   - La flecha atrás lleva al paso anterior. En Datos sale del creador (el borrador queda guardado), y en Lista lleva a Mis rutas.
   - El gesto atrás cierra primero el editor de lugar si está abierto, como con las hojas de `/run`.
   - Editar una ruta no lleva parámetros en la URL (nada de `?edit=`): Mis rutas carga la ruta en el borrador y abre `/create/details`.
@@ -531,10 +536,11 @@ Se abre con el evento `enter` y el handler `ai_template` o `info_sheet`.
   - `facts[]`.
   - `images[]` (con `credit` y `license`).
   - `video`, `tip`.
+  - `quiz` (la trivia, opcional).
   - `sources[]`.
   - `generated.by`.
   - Además: orden del punto, total de puntos y puntuación.
-- **Salidas:** **Continuar ruta** → completa el punto; menú ⋯ → **Pausar** / **Terminar recorrido**; reproducir el video; abrir las fuentes.
+- **Salidas:** **Continuar ruta** → completa el punto; menú ⋯ → **Pausar** / **Terminar recorrido**; reproducir el video; abrir las fuentes; responder la pregunta rápida (la respuesta sale con Continuar, Pausar o Terminar, y una correcta suma 10 puntos).
 - **Momento de llegada:**
   - Ondas que salen del marcador (700 ms) y vibración + sonido.
   - La hoja sube al 85 %.
@@ -547,6 +553,11 @@ Se abre con el evento `enter` y el handler `ai_template` o `info_sheet`.
   - Sección **"Datos curiosos"** (viñetas).
   - VideoCard.
   - Tarjeta **"Consejo"**.
+  - Sección **«Pregunta rápida»** (solo si la ficha trae `quiz`), entre el consejo y las fuentes:
+    - la pregunta y de 2 a 4 opciones grandes (≥ 48 px; el texto largo salta de línea);
+    - un solo intento: al responder, todas las opciones se bloquean;
+    - la correcta lleva ✓ y la elegida, si falla, ✕, además del texto «¡Correcto! +10 pts» o «No es esa. La correcta: {respuesta}», y debajo la explicación, si la hay. Nunca solo color;
+    - el veredicto se anuncia en una región `aria-live`, y la hoja se desplaza para que se vea.
   - Fuentes (enlaces pequeños).
   - **AiBadge** si `generated.by === 'ai'`.
   - Pie fijo: **Continuar ruta** (primario) + ⋯.
@@ -556,7 +567,9 @@ Se abre con el evento `enter` y el handler `ai_template` o `info_sheet`.
   - **S06d Web externa:** "Vas a abrir una web externa: visitleiria.pt" [Abrir] [Ahora no].
   - **S06e Checkpoint de reto sin contenido:** CheckpointToast (no bloquea).
   - **S06f Experiencia 3D/RA** *(futuro)*: pantalla completa con un botón de cerrar. En v1 solo se diseña el placeholder "Próximamente".
-- **Estados:** carga de la imagen (skeleton), sin imagen (patrón de marca), video no disponible, ficha mínima (solo nombre + texto).
+  - **Vista previa (desde C3):** el mismo marco sin la etiqueta «LLEGASTE» y con un solo botón **Cerrar**, que cierra sin resultado. La pregunta rápida funciona, pero no puntúa ni se registra.
+- **Estados:** carga de la imagen (skeleton), sin imagen (patrón de marca), video no disponible, ficha mínima (solo nombre + texto) y ficha breve de la IA (sin datos, consejo ni pregunta: «no hemos encontrado información fiable»).
+- **Límite conocido:** si se cierra la hoja con el gesto de deslizar o con Escape después de responder, la respuesta no se puntúa.
 
 ### S07 · Interrupciones (DecisionSheet sobre `/run`)
 
@@ -610,17 +623,21 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
 ### C1 · Crear: Datos (`/create/details`)
 
 - **Entradas:** borrador guardado (si existe) o la ruta que se edita.
-- **Salidas:** `name`, zona/ciudad, `mode`, `activity` y `timeLimit` (reto) → Siguiente. El `locale` de la ruta es el idioma de la app (al editar, el de la ruta). Los intereses (`interests[]`) llegan con la fase 7; al editar se conservan los que ya tenga la ruta.
+- **Salidas:** `name`, zona/ciudad, `mode`, `activity`, `timeLimit` (reto) e `interests[]` (opcional) → Siguiente. El `locale` de la ruta es el idioma de la app (al editar, el de la ruta).
 - **Layout:**
-  - Stepper (1/3).
+  - Stepper (1/4).
   - Campo "Nombre de la ruta": obligatorio, hasta 80 caracteres, con contador.
   - Búsqueda de ciudad o zona («Centra el mapa y busca lugares cerca»). La zona elegida queda como un chip que se puede quitar. Solo orienta el mapa y la búsqueda: no se guarda en la ruta.
+  - Botón **«Usar mi ubicación»**, bajo la búsqueda: lee la posición una sola vez, al pulsar («Buscando tu ubicación…»), la redondea a 3 decimales (unos 110 m) y la pone como zona («Tu ubicación»). No se ve si el navegador no tiene geolocalización o si ya hay una zona.
   - **Dos tarjetas grandes de modo:** **Libre** ("Visita a tu ritmo, en el orden que quieras") / **Reto** ("Orden obligatorio, checkpoints y cronómetro").
   - SegmentedControl A pie · Correr · Bici.
   - Límite de tiempo, solo en Reto: chips «Sin límite» y los límites de 30, 60, 90, 120 y 180 minutos.
+  - **Intereses** (opcional): chips que se activan y se desactivan, de varios en varios: Historia, Arte, Arquitectura, Gastronomía, Naturaleza, Religión, Curiosidades. Ayuda: «Opcional. La IA adapta las sugerencias y las fichas a lo que te interesa.»
+  - Una línea informa «Las fichas se generarán en {idioma}.», que es el de la app (al editar, el de la ruta). No hay selector de idioma.
   - Pie fijo con **Siguiente**.
-  - *Fase 7:* sin selector de idioma, una línea informa «Las fichas se generarán en {idioma}», que es el de la app; y chips de intereses: Historia, Arte, Arquitectura, Gastronomía, Naturaleza, Religión, Curiosidades (la IA los usa).
-- **Estados:** validación en línea: el error del nombre aparece al salir del campo o al pulsar Siguiente.
+- **Estados:**
+  - validación en línea: el error del nombre aparece al salir del campo o al pulsar Siguiente;
+  - ubicación denegada («No podemos ver tu ubicación. Activa el permiso en el navegador o busca una ciudad.») o que falla («No pudimos obtener tu ubicación. Inténtalo de nuevo o busca una ciudad.»).
 
 ### C2 · Crear: Lugares (`/create/places`)
 
@@ -631,6 +648,7 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
     - con una **pulsación larga** en el mapa;
     - con el botón **«Añadir el centro del mapa»**, que añade el punto bajo una mira situada en el centro del mapa. Es la alternativa para quien no puede mantener pulsado, por ejemplo con lector de pantalla.
   - Un punto personalizado se llama «Punto personalizado {n}» (categoría «otro») y se abre en el editor, con un marcador provisional en el mapa que se quita si se cancela.
+  - **«Sugerir lugares»** (IA), un botón bajo la búsqueda: abre la hoja de sugerencias (más abajo) y añade los lugares elegidos, en el orden sugerido.
   - **Reordenar:** arrastrando el asa, o con **Subir** y **Bajar** en el menú ⋯ de cada lugar. Se anuncia «{nombre}: posición 2 de 5» y el foco vuelve al lugar movido.
   - **Editar un lugar** en una hoja no modal: nombre, tipo (solo en puntos personalizados; el de Wikidata ya viene puesto), radio (slider de 20 a 200 m, de 5 en 5, con el círculo cambiando en el mapa mientras se mueve) y obligatoriedad. Pie con [Cancelar] y [Guardar] o [Añadir], más [Eliminar] en un lugar que ya está en la lista. Al abrirla, el mapa se centra en el lugar, por encima de la hoja.
   - **Eliminar:** sin confirmación, pero con el aviso «{nombre} eliminado» y [Deshacer], que lo devuelve a su posición.
@@ -642,51 +660,69 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
   - Chip de aviso ⚠ "2 zonas se solapan", que cuenta los lugares afectados, resalta las zonas y abre el primero. Avisa, no bloquea. La ayuda: «Reduce su radio (mínimo 20 m) o elimina uno de los dos».
 - **Escritorio** (≥ 1024 px): vista dividida, con una columna de 420 px a la izquierda (búsqueda, resumen y lista) y el mapa a la derecha, a toda la altura.
 - **Búsqueda:** da prioridad a lo que está cerca del centro del mapa; si el mapa no está listo, de la zona de C1, y si no hay zona, del centro de los lugares ya añadidos. Al elegir un resultado se añade, el mapa se centra en él, se anuncia en una región `aria-live` (no con un aviso, que taparía la flecha atrás), se vacía el campo y el foco se queda en él.
+- **Hoja «Sugerir lugares»** (SuggestSheet, sobre C2):
+  - **Entradas:** la posición (el centro del mapa, o la zona, o el centro de los lugares ya añadidos, tal como están al abrir la hoja), los intereses del borrador y los lugares que la ruta ya tiene (no se vuelven a sugerir).
+  - **Pedir:** chips de tiempo (30 min · 1 h · 2 h · 3 h · 4 h; 2 h por defecto) y los intereses (los de C1: lo que cambies se guarda en el borrador). «Dinos cuánto tiempo tienes y qué te interesa. La IA propone lugares reales de la zona que estás viendo.» → **Sugerir**.
+  - **Esperar:** «Buscando ideas…» y «Puede tardar unos segundos» (suele tardar de 6 a 9 s; la web espera 60 s como máximo).
+  - **Resultado:**
+    - una «Idea de ruta» (título y resumen sugeridos) con **«Usar el título sugerido»**, que rellena el nombre y el resumen de la ruta una sola vez («Título aplicado»);
+    - la lista «Lugares sugeridos»: casilla (todos marcados, hasta los que caben en la ruta), nombre, anécdota (por qué ir, nunca qué vas a aprender) y distancia.
+  - **Salidas:** **«Añadir N lugares»** los añade en el orden sugerido y salta los repetidos («{n} lugares añadidos»); **«Cambiar»** vuelve a elegir tiempo e intereses. Atrás cierra la hoja antes de salir del paso, y cerrarla cancela la petición.
+  - **Estados:** sin resultados («No encontramos lugares que sugerir por aquí. Prueba con más tiempo u otra zona.»), ruta casi llena («La ruta solo admite {n} lugares más.») y los errores de la IA con los textos de `errors.ai.*` (sin conexión, no disponible, límite de hoy y fallo).
 - **Estados:**
   - búsqueda sin resultados («No encontramos "x" cerca. Prueba con otro nombre o mantén pulsado el mapa.») y error de búsqueda;
   - sin conexión: la búsqueda no funciona, y el aviso remite al mapa («mantén pulsado el mapa para añadir lugares») solo si el mapa está disponible;
   - lista vacía ("Busca un lugar o mantén pulsado el mapa");
   - mapa no disponible: caja atenuada «El mapa no está disponible ahora.» con [Reintentar]. La búsqueda y la lista siguen funcionando;
   - 30 lugares: la búsqueda y el añadir quedan desactivados.
+  - «Sugerir lugares» desactivado mientras no haya mapa, zona ni lugares: «Elige una ciudad o zona en el primer paso, o espera a que cargue el mapa, para recibir sugerencias.»
 - **Límite conocido:** un lugar ya añadido no se puede mover. Para cambiar su posición hay que eliminarlo y volver a añadirlo.
 
-### C3 · Crear: Contenido IA (`/create/content`) · fase 7
+### C3 · Crear: Fichas (`/create/content`)
 
-No existe en la fase 6: la URL redirige a Revisar y el Stepper tiene 3 pasos. Cuando llegue, será el paso 3 de 4, entre Lugares y Revisar.
+La app prepara con la IA una ficha de cada lugar y **no la enseña**: lo bueno de un lugar es descubrirlo al llegar (sin spoilers). Esta pantalla solo cuenta cómo va cada ficha.
 
-- **Entradas:** `PointContent` en borrador por lugar y estado de generación (`pending` · `generating` · `ready` · `error`).
+- **Entradas:** los lugares del borrador y, de cada uno, el estado de su ficha: en espera · preparándose · lista (con su número de fuentes) · breve (la IA no encontró información fiable) · básica (nombre y dirección) · error. El texto y las imágenes de la ficha **no se muestran** en ningún estado.
 - **Salidas:**
-  - **Generar todo** o por lugar.
-  - Abrir el editor de un lugar: título, resumen, datos curiosos (añadir/quitar), elegir imagen en el carrusel de candidatas con licencia, URL de video y consejo.
-  - Regenerar.
-  - Aprobar.
-  - **"Usar ficha básica sin IA".**
-  - Siguiente.
+  - **Siguiente**, siempre activo: un lugar sin ficha lista usa la ficha básica.
+  - Por lugar: **Ver ficha**, **Regenerar**, **Usar ficha básica**, **Reintentar** y **Generar con IA**.
 - **Layout:**
   - Stepper (3/4).
-  - Texto explicativo: "Preparamos una ficha de cada lugar con información de Wikipedia. Revísala antes de guardar."
-  - Lista de tarjetas: miniatura, título, primeras líneas del resumen y chip de estado. Mientras se genera: shimmer.
-  - El **editor** es una hoja a pantalla completa con vista previa en vivo de la ficha (S06).
-  - AiBadge visible.
-- **Estados:** generando, error ("No pudimos preparar esta ficha" [Reintentar] [Usar básica]), límite diario alcanzado ("Has alcanzado el límite de hoy: usa fichas básicas o vuelve mañana").
+  - Texto explicativo: «Preparamos una ficha de cada lugar con información de Wikipedia o de la web. No la verás aquí: la descubrirás al llegar, y se guarda para que funcione sin conexión.» y una nota: «Las fichas las escribe una IA a partir de fuentes reales, que aparecen en cada ficha.»
+  - Progreso: «Preparando fichas 2 de 5» con una barra. Al terminar, «5 de 5 fichas listas», y una región `aria-live` educada anuncia «Fichas preparadas: 5 de 5 con IA.»
+  - Lista «Fichas de los lugares», con una fila por lugar (CardStatusRow): su nombre y su estado en texto: «En espera» · «Preparando la ficha…» · «**Ficha lista · 3 fuentes**» · «Ficha breve: no encontramos información fiable» · «Ficha básica: nombre y dirección» · el error.
+  - Menú ⋯ de cada fila: **Regenerar** y **Usar ficha básica**. En una ficha básica, **Generar con IA**. En un error, **Reintentar** y **Usar ficha básica**.
+  - Pie fijo con **Siguiente** y la pista «Los lugares sin ficha lista usarán la ficha básica.»
+- **«Ver ficha» y los spoilers:** antes de abrirla sale un diálogo: «¿Ver la ficha? Te adelantará lo que descubrirás al llegar.» [Mejor no] [Ver ficha]. Si se confirma, se abre la hoja de llegada (S06) en vista previa, con un solo botón **Cerrar**.
+- **Regenerar:** pide una ficha nueva y cuenta como una generación del día. Mientras llega, la fila dice «Actualizando la ficha…» y la anterior sigue valiendo; si falla, se queda la anterior («No pudimos regenerar la ficha. Conservamos la anterior.»).
+- **Estados:**
+  - sin conexión: «Se preparará cuando tengas conexión.», y se reintenta sola al volver;
+  - error de una ficha: «No pudimos preparar esta ficha.» [Reintentar] [Usar ficha básica];
+  - IA no disponible: «La IA no está disponible ahora. Puedes usar fichas básicas y seguir.»;
+  - límite de uso del día: «Hoy hemos llegado al límite de uso de la IA. Usa fichas básicas o vuelve mañana.»;
+  - límite del dispositivo: «Has alcanzado el límite de hoy: usa fichas básicas o vuelve mañana.»;
+  - en estos tres últimos, un banner ofrece **«Usar fichas básicas»**, que lo aplica a todos los lugares sin ficha lista («{n} lugares con ficha básica»).
+- **Aplazado:** el editor de la ficha (título, resumen, datos, carrusel de imágenes con licencia y URL de video). Por ahora una ficha se acepta, se regenera o se cambia por la básica.
 
 ### C4 · Crear: Revisar y simular (`/create/review`)
 
 - **Entradas:** spec construido (modo, puntos, distancia y duración), resultado de la validación (errores y avisos).
 - **Salidas:** **Probar ruta** → `/run` en **modo simulación**; editar → volver al paso; **Guardar ruta**.
 - **Layout:**
-  - Stepper (3/3).
+  - Stepper (4/4).
   - Mapa con la ruta completa (con la misma caja de «mapa no disponible» que C2 si no carga).
   - Nombre de la ruta (`h1`), ModeBadge, ActivityBadge y StatChips.
   - Checklist «Comprobaciones»:
     - ✓ «{n} lugares, en el orden que quieras» (en Reto, «{n} checkpoints, en el orden de la lista»);
     - ✓ «Las zonas no se solapan» o ⚠ «{n} zonas se solapan», con [Corregir], que vuelve a Lugares;
-    - ✓ «Cada lugar muestra su ficha con nombre y dirección» o ⓘ «{n} lugares sin dirección: sus fichas mostrarán solo el nombre»;
+    - ✓ «Cada lugar muestra su ficha con nombre y dirección» o ⓘ «{n} lugares sin dirección: sus fichas mostrarán solo el nombre» (solo cuenta los lugares que mostrarán la ficha básica);
+    - una línea de fichas: «{n} fichas con IA · {m} básicas» o, si no hay ninguna con IA, «Sin fichas con IA: cada lugar mostrará su nombre y dirección.»;
+    - ⚠ mientras haya fichas en preparación: «{n} fichas aún en preparación: si guardas ahora, usarán la ficha básica.», con [Ver fichas], que vuelve a Fichas;
     - en Reto, ⚠ si el límite de tiempo es menor que la duración estimada;
     - una línea de error bloqueante («La ruta tiene errores: revisa los pasos anteriores») si la ruta no se puede construir o sus acciones no son válidas.
   - Botones: **Probar ruta** (secundario, tono de simulación) con la ayuda «La recorres en simulación; no se guarda nada», y **Guardar ruta** (primario; «Guardando…» mientras se escribe en el dispositivo).
 - **Probar ruta:**
-  - Siempre en simulación, aunque Ajustes la tenga desactivada, y con la ruta tal como está en el borrador, sin guardarla.
+  - Siempre en simulación, aunque Ajustes la tenga desactivada, y con la ruta tal como está en el borrador (con sus fichas), sin guardarla.
   - Si hay un recorrido real en curso, pide confirmar («Tienes un recorrido en curso · Lo pausamos para probar esta ruta y podrás continuarlo después» · [Pausar y probar]). Al terminar la prueba, ese recorrido vuelve a ofrecerse.
   - En `/run`, el banner morado de simulación lleva el chip **«Prueba»** y el botón **«Volver al editor»**, y el panel SimControls empieza desplegado. Una prueba no deja resumen, no cuenta en las estadísticas ni aparece en la MiniRunBar.
   - Al terminar, al pulsar «Volver al editor» o al salir de la pantalla, se vuelve a Revisar con un aviso: «Prueba completada: 3 de 4 lugares» o «Prueba terminada».
@@ -749,7 +785,7 @@ Los catálogos `apps/web/src/i18n/{es,en,pt}.json` son la fuente de verdad; esta
 
 Las claves que entrega el sistema de eventos (`run.*`, `decision.*`, `end.confirm.*`, `notify.*`, `redirect.*`) están en `UI_TEXT_KEYS` de `@rumbo/event-system`, y los tres catálogos deben tenerlas todas. Sus parámetros: `name` es el nombre del punto (un `LocalizedText` que la UI resuelve en el idioma activo), `distance` va en metros y `minutes` es un número; la UI los formatea según el idioma.
 
-Las filas `create.content.*` y `create.details.aiLanguage` son de la fase 7 y aún no están en los catálogos.
+Los textos de la fase 7 (`create.details.*`, `create.interests.*`, `create.suggest.*`, `create.content.*`, `create.review.cards*`, `errors.ai.*` y `arrival.trivia.*`) ya están en los tres catálogos; la tabla recoge los principales.
 
 | Clave | Texto |
 |---|---|
@@ -779,6 +815,8 @@ Las filas `create.content.*` y `create.details.aiLanguage` son de la fase 7 y a�
 | `arrival.facts` | Datos curiosos |
 | `arrival.tip` | Consejo |
 | `arrival.aiBadge` | Generado con IA · Fuentes: {sources} |
+| `arrival.trivia.title` | Pregunta rápida |
+| `arrival.trivia.correct` / `.wrong` | ¡Correcto! +{points} pts / No es esa. La correcta: {answer} |
 | `decision.deviation.title` | Te alejaste de la ruta |
 | `decision.deviation.body` | Estás a {distance} del camino hacia {name}. |
 | `decision.deviation.primary` | Volver a la ruta |
@@ -813,7 +851,7 @@ Las filas `create.content.*` y `create.details.aiLanguage` son de la fase 7 y a�
 | `redirect.title` | Vas a abrir una web externa |
 | `redirect.body` | {label} · {host} |
 | `redirect.open` / `redirect.later` | Abrir / Ahora no |
-| `create.steps.details` / `.places` / `.review` | Datos / Lugares / Revisar |
+| `create.steps.details` / `.places` / `.content` / `.review` | Datos / Lugares / Fichas / Revisar |
 | `create.mode.free` | Visita a tu ritmo, en el orden que quieras |
 | `create.mode.challenge` | Orden obligatorio, checkpoints y cronómetro |
 | `create.places.empty` | Busca un lugar o mantén pulsado el mapa |
@@ -822,8 +860,42 @@ Las filas `create.content.*` y `create.details.aiLanguage` son de la fase 7 y a�
 | `create.places.overlapHint` | Reduce su radio (mínimo 20 m) o elimina uno de los dos. |
 | `create.places.addCenter` | Añadir el centro del mapa |
 | `create.places.removed` / `create.places.undo` | {name} eliminado / Deshacer |
-| `create.content.intro` | Preparamos una ficha de cada lugar con información de Wikipedia. Revísala antes de guardar. |
-| `create.content.basic` | Usar ficha básica sin IA |
+| `create.details.interests` / `.interestsHint` | Intereses / Opcional. La IA adapta las sugerencias y las fichas a lo que te interesa. |
+| `create.interests.history` / `.art` / `.architecture` / `.food` / `.nature` / `.religion` / `.curiosities` | Historia / Arte / Arquitectura / Gastronomía / Naturaleza / Religión / Curiosidades |
+| `create.details.cardsLanguage` | Las fichas se generarán en {language}. |
+| `create.details.myLocation` / `.locationName` | Usar mi ubicación / Tu ubicación |
+| `create.details.locationDenied` | No podemos ver tu ubicación. Activa el permiso en el navegador o busca una ciudad. |
+| `create.suggest.open` | Sugerir lugares |
+| `create.suggest.intro` | Dinos cuánto tiempo tienes y qué te interesa. La IA propone lugares reales de la zona que estás viendo. |
+| `create.suggest.time` / `.interests` / `.submit` | ¿Cuánto tiempo tienes? / ¿Qué te interesa? / Sugerir |
+| `create.suggest.searching` / `.searchingHint` | Buscando ideas… / Puede tardar unos segundos. |
+| `create.suggest.useTitle` | Usar el título sugerido |
+| `create.suggest.add` | Añadir {n} lugar \| Añadir {n} lugares |
+| `create.suggest.empty` | No encontramos lugares que sugerir por aquí. Prueba con más tiempo u otra zona. |
+| `create.content.intro` | Preparamos una ficha de cada lugar con información de Wikipedia o de la web. No la verás aquí: la descubrirás al llegar, y se guarda para que funcione sin conexión. |
+| `create.content.progress` | Preparando fichas {n} de {total} |
+| `create.content.waiting` / `.generating` | En espera / Preparando la ficha… |
+| `create.content.ready` / `.sources` | Ficha lista · {sources} / {n} fuente \| {n} fuentes |
+| `create.content.thin` | Ficha breve: no encontramos información fiable |
+| `create.content.basic` | Ficha básica: nombre y dirección |
+| `create.content.offline` | Se preparará cuando tengas conexión. |
+| `create.content.failed` | No pudimos preparar esta ficha. |
+| `create.content.blocked.unavailable` | La IA no está disponible ahora. Puedes usar fichas básicas y seguir. |
+| `create.content.blocked.budget` | Hoy hemos llegado al límite de uso de la IA. Usa fichas básicas o vuelve mañana. |
+| `create.content.blocked.deviceLimit` | Has alcanzado el límite de hoy: usa fichas básicas o vuelve mañana. |
+| `create.content.view` / `.regenerate` / `.useBasic` / `.generate` | Ver ficha / Regenerar / Usar ficha básica / Generar con IA |
+| `create.content.useBasicAll` | Usar fichas básicas |
+| `create.content.spoilerTitle` / `.spoilerBody` | ¿Ver la ficha? / Te adelantará lo que descubrirás al llegar. |
+| `create.content.spoilerConfirm` / `.spoilerCancel` | Ver ficha / Mejor no |
+| `create.content.refreshing` / `.refreshFailed` | Actualizando la ficha… / No pudimos regenerar la ficha. Conservamos la anterior. |
+| `create.review.cardsAi` / `.cardsBasic` | {n} ficha con IA \| {n} fichas con IA / {n} básica \| {n} básicas |
+| `create.review.cardsNone` | Sin fichas con IA: cada lugar mostrará su nombre y dirección. |
+| `create.review.cardsPreparing` / `.fixCards` | {n} ficha aún en preparación: si guardas ahora, usará la ficha básica. \| {n} fichas aún en preparación: si guardas ahora, usarán la ficha básica. / Ver fichas |
+| `errors.ai.offline` | Sin conexión: no podemos usar la IA ahora. |
+| `errors.ai.unavailable` | La IA no está disponible ahora. |
+| `errors.ai.budgetExceeded` | Hoy hemos llegado al límite de uso de la IA. Vuelve mañana. |
+| `errors.ai.deviceLimit` | Has alcanzado tu límite de hoy. Vuelve mañana. |
+| `errors.ai.failed` | No pudimos obtener respuesta ahora. Inténtalo de nuevo. |
 | `create.review.test` | Probar ruta |
 | `create.review.save` | Guardar ruta |
 | `create.review.testHint` | La recorres en simulación; no se guarda nada. |
@@ -849,7 +921,6 @@ Las filas `create.content.*` y `create.details.aiLanguage` son de la fase 7 y a�
 | `pause.body` | El cronómetro está detenido. No te avisaremos al llegar. |
 | `quiz.correct` / `quiz.wrong` | ¡Correcto! / Casi. Era {answer}. |
 | `content.fallbackLanguage` | Contenido disponible en {language} |
-| `create.details.aiLanguage` | Las fichas se generarán en {language} |
 
 ---
 
@@ -863,10 +934,13 @@ Las filas `create.content.*` y `create.details.aiLanguage` son de la fase 7 y a�
   - Anuncia "Llegaste a {name}", las interrupciones y los cambios de distancia **cada 50 m**, nunca en cada actualización.
   - El orden de foco de las hojas empieza en el título, y el foco vuelve al cerrar.
 - **Creador:**
-  - al cambiar de paso, el foco va al título de la pantalla (un solo `h1` por paso), se actualiza el título del documento y una región `aria-live` anuncia «Paso 2 de 3 · Lugares»;
+  - al cambiar de paso, el foco va al título de la pantalla (un solo `h1` por paso), se actualiza el título del documento y una región `aria-live` anuncia «Paso 2 de 4 · Lugares»;
   - añadir un lugar y reordenar tienen alternativa sin gestos: «Añadir el centro del mapa» y «Subir» y «Bajar» en el menú del lugar;
   - la búsqueda es un combobox (WAI-ARIA 1.2) y los menús ⋯ se recorren con las flechas;
-  - el aviso de solapamiento lleva icono y texto, nunca solo color.
+  - el aviso de solapamiento lleva icono y texto, nunca solo color;
+  - los chips de intereses son botones con `aria-pressed` y un icono de visto cuando están activos;
+  - el estado de cada ficha va siempre en texto, una región `aria-live` educada anuncia cuántas se han preparado y «Ver ficha» pide confirmación en un diálogo.
+- **Pregunta rápida (S06):** botones nativos de al menos 48 px, agrupados y etiquetados por la pregunta. El veredicto va en una región `role="status"` que siempre está en el DOM, y lleva ✓ o ✕ y texto además del color. Tras responder el foco no se pierde: el siguiente Tab llega al primer enlace de debajo.
 - **Tamaño de texto:** la UI soporta hasta el 200 % sin romperse. El HUD se reorganiza en dos líneas.
 - **Movimiento reducido y hápticos** desactivables.
 - **Videos** con subtítulos (los de YouTube).

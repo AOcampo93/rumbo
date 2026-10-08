@@ -75,10 +75,10 @@ La web y la API comparten dominio. La PWA llama a `/api/v1/…` sin CORS, y el s
 Las reglas completas sobre secretos están en [`docs/SECURITY.md`](SECURITY.md).
 
 - En producción se gestionan en Coolify, **nunca en el repo**. En local, en `apps/*/.env`, que git ignora. Las plantillas son los `.env.example`.
-- **API:** `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Todas las demás son opcionales y tienen valor por defecto (tabla de abajo). Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen.
+- **API:** `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Todas las demás son opcionales y tienen valor por defecto (tabla de abajo). Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen. Para encender la guía con IA (fase 7) hacen falta además `AI_PROVIDER=anthropic` y `AI_API_KEY` (sección «IA (fase 7)»).
 - **Web:** las `VITE_*` se inyectan en el bundle durante el build. Son públicas por definición: nunca secretos.
 
-Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto, salvo `ARCGIS_API_KEY_SERVER`:
+Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto, salvo `ARCGIS_API_KEY_SERVER` y `AI_API_KEY`:
 
 | Variable | Por defecto | Para qué |
 |---|---|---|
@@ -91,9 +91,62 @@ Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto,
 | `WIKIMEDIA_USER_AGENT` | `Rumbo/<versión> (https://github.com/AOcampo93/rumbo)` | `User-Agent` con el que la API consulta Wikidata; Wikimedia exige que lleve datos de contacto. Para añadir un email, ponerlo en Coolify, nunca en el repo |
 | `ANALYTICS_ENABLED` | `true` | Con `false`, los lotes de analytics se aceptan (`202`) pero no se guardan |
 | `ARCGIS_API_KEY_SERVER` | vacía | **Secreto** (solo de ejecución). Clave de ArcGIS para buscar direcciones: la API ya la lee, pero todavía no la usa. Nunca la misma que la de la web |
+| `AI_PROVIDER` | vacía (IA apagada) | `anthropic` enciende la guía con IA. Vacía o `none` la apaga: `POST /content/generate` y `POST /suggest/places` responden `503 ai_unavailable`. Cualquier otro valor impide arrancar la API |
+| `AI_API_KEY` | vacía | **Secreto** (solo de ejecución). La clave del proveedor de IA. Sin ella, `anthropic` se queda apagado y la API avisa al arrancar |
+| `AI_MODEL` | `claude-sonnet-5-5` | El modelo de las fichas y las sugerencias |
+| `AI_EFFORT` | `low` | Cuánto piensa el modelo: `low`, `medium` o `high`. `none` no envía el ajuste (para modelos que no lo admiten). Cualquier otro valor impide arrancar la API |
+| `AI_DAILY_BUDGET_USD` | `5` | Gasto estimado por día UTC a partir del cual no empieza ninguna generación nueva (`429 ai_budget_exceeded`) |
+| `AI_MAX_GENERATIONS_PER_DEVICE_PER_DAY` | `40` | Generaciones que un dispositivo puede empezar por día UTC (`429 ai_device_limit`) |
+| `AI_PRICE_INPUT_PER_MTOK` y `AI_PRICE_OUTPUT_PER_MTOK` | `2` y `10` | USD por millón de tokens de entrada y de salida, con los que se estima el gasto. Opcionales: son los del modelo por defecto, así que cámbialos junto con `AI_MODEL` |
+| `AI_PRICE_PER_WEB_SEARCH` | `0.01` | USD por búsqueda web de una ficha. Opcional |
+| `CONTENT_RATE_LIMIT_PER_MINUTE` | `30` | Fichas (`/content/generate`) por minuto y por IP |
+| `SUGGEST_RATE_LIMIT_PER_MINUTE` | `20` | Sugerencias (`/suggest/places`) por minuto y por IP |
 
-- Una variable numérica con un valor que no sea un entero positivo se ignora y se usa el de por defecto.
+- Una variable numérica con un valor que no sea un entero positivo (un número positivo, en el presupuesto y los precios) se ignora y se usa el de por defecto.
 - El límite de 50 rutas por dispositivo no es una variable: es una constante del código (`ROUTES_PER_DEVICE`).
+
+## IA (fase 7)
+
+La guía con IA (sugerencias de lugares, fichas y trivia) vive en la API. Se enciende con dos variables de `rumbo-api` en Coolify: `AI_PROVIDER=anthropic` y `AI_API_KEY`. Qué hace y cuánto cuesta está en [`docs/PROJECT_PLAN.md`](PROJECT_PLAN.md) §12, y qué se envía al proveedor, en [`docs/SECURITY.md`](SECURITY.md).
+
+**Activarla**
+
+1. El responsable del proyecto escribe la clave en `apps/api/.env` (`AI_API_KEY=…`). Nunca en un chat ni en el repo.
+2. Se carga en Coolify leyéndola de ese `.env` y enviándola por la API de Coolify a la app `rumbo-api`, **solo de ejecución** y sin mostrarla nunca en la salida. Lo mismo con `AI_PROVIDER=anthropic` (esa no es secreta).
+3. Se despliega o se reinicia `rumbo-api`. Las demás variables tienen valor por defecto.
+
+**Sin clave la API arranca igual.** Avisa en el log, y `POST /content/generate` y `POST /suggest/places` responden `503 ai_unavailable`. La web lo sabe: el creador ofrece las fichas básicas y sigue.
+
+**Migración 0001** (`ai_contents` y `ai_generations`): se aplica sola al arrancar, como las anteriores. Solo crea dos tablas, así que no toca nada que exista y volver a la imagen anterior de la API es seguro: las tablas se quedan sin usar. Ninguna de las dos se poda.
+
+**Web y API a la vez.** Una API vieja rechaza con `422 invalid_route` una ruta con fichas, porque no admite `contents`. Si alguien guarda una ruta con fichas justo mientras la web nueva habla con la API vieja, la ruta queda en `error` («El servidor rechazó la ruta. Edítala y guárdala de nuevo.») y se arregla guardándola otra vez. La ventana dura segundos.
+
+**Tiempos.** Una ficha tarda de 5 a 12 s, y su plazo máximo es de 90 s en la API y de 120 s en la web. Traefik no corta peticiones largas por defecto. Si el DNS pasara algún día por el proxy de Cloudflare («nube naranja»), habría que revisar también su plazo de respuesta, que ronda los 100 s.
+
+**Vigilar el gasto.** `ai_generations` guarda una fila por llamada, con su coste estimado. El gasto de hoy (día UTC, el mismo que usa el presupuesto), por tipo:
+
+```bash
+ssh vmi
+docker exec -i <uuid de rumbo-db> sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+SELECT kind, status, count(*) AS calls, round(sum(cost_usd)::numeric, 3) AS usd
+FROM ai_generations
+WHERE created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+GROUP BY kind, status ORDER BY kind, status;
+SQL
+```
+
+El gasto es una estimación a partir de los tokens y de `AI_PRICE_*`, no la factura: la factura real está en la consola del proveedor.
+
+**Si algo falla.** La API registra solo el motivo, nunca la clave, el prompt ni el nombre del lugar:
+
+| En el log | Qué respondemos | Qué mirar |
+|---|---|---|
+| `anthropic 401` (o `402`, `403`) | `503 ai_unavailable` | La clave, el saldo o los permisos del proveedor |
+| `anthropic 404` | `503 ai_unavailable` | Por ejemplo, un `AI_MODEL` que no existe |
+| `anthropic 429` o `529` | `502 generation_failed` | El proveedor pide esperar: reintentar más tarde |
+| `timeout` | `502 generation_failed` | La llamada pasó de 60 s o la generación, de 90 s |
+
+Un `429 ai_budget_exceeded` o `ai_device_limit` no es un fallo: se agotó el día UTC. Se arregla solo a las 00:00 UTC, y subir `AI_DAILY_BUDGET_USD` es una decisión de gasto del responsable del proyecto.
 
 ## Base de datos: migraciones y datos iniciales
 
@@ -135,6 +188,7 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 
 - **Rápido:** en Coolify, app → *Deployments* → volver a la imagen anterior.
 - **Por código:** `git revert` en `main` y desplegar con normalidad. Nunca reescribir `production`.
+- **Migraciones:** la 0001 (fase 7) solo añade tablas, así que volver a una imagen anterior de la API es seguro.
 
 ## Pendiente
 
@@ -147,3 +201,5 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] Despliegue de las fases 4 y 5 (2026-10-08, commit `1c151bb`). Al arrancar, la API aplicó las migraciones y sembró la ruta de Leiria. La web carga las rutas desde la API.
 - [x] `pnpm deploy:prod` lanza los despliegues por la API de Coolify, porque la GitHub App no tiene webhook (2026-10-08).
 - [x] Despliegue de la fase 6, el creador de rutas (2026-10-08, commit `7f6456b`). Comprobado en producción: una ruta creada con lugares reales de Wikidata, probada en simulación, guardada (`POST` 201) y eliminada (`DELETE` 204).
+- [x] Despliegue de la fase 7, la guía con IA (2026-10-08, commit `3898958`): `AI_PROVIDER`, `AI_MODEL` y `AI_API_KEY` en Coolify como variables solo de ejecución; la migración `0001` (`ai_contents`, `ai_generations`) se aplicó al arrancar. Comprobado con la IA real: sugerencias, tres fichas sin spoilers y la trivia al llegar.
+- [ ] Fase 7, la guía con IA: cargar `AI_PROVIDER` y `AI_API_KEY` en `rumbo-api` (solo de ejecución), desplegar (migración 0001) y verificar con la IA real: sugerir lugares, preparar fichas, recorrer una ruta hasta su trivia y revisar el gasto en `ai_generations`.

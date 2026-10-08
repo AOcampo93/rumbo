@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 6 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo y el creador de rutas). Producción activa en https://rumbo.arturoocampo.com, con la API y su base de datos desde el 2026-10-08; el creador (fase 6) espera a que se pida su despliegue ([DEPLOY.md](DEPLOY.md)).
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real ([DEPLOY.md](DEPLOY.md)).
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -29,7 +29,7 @@ Dos formas de uso, un solo motor:
 | | Rutas precargadas (curated) | Rutas creadas por el usuario (planificador) |
 |---|---|---|
 | Quién la crea | Nosotros (JSON curado) | El usuario, con un formulario guiado |
-| Contenido al llegar | Interacciones a medida: quiz, video, redirect, 3D/RA (futuro) | Plantilla generativa: ficha creada con IA a partir de fuentes reales (Wikipedia/Wikimedia) |
+| Contenido al llegar | Interacciones a medida: quiz, video, redirect, 3D/RA (futuro) | Plantilla generativa: ficha creada con IA a partir de fuentes reales (Wikipedia/Wikimedia o, si no hay artículo, la web), con una pregunta rápida |
 | Modos | Libre o reto | Libre o reto |
 | Valor | Experiencias diseñadas (turismo, museos, eventos, deporte) | **Planificador de viaje** cuya ruta funciona como guía en el sitio |
 
@@ -120,7 +120,7 @@ Secciones: `# Overview`, `# Development Environment`, `# Useful Websites`, `# Fu
 ┌─────────▼────────────────────── Servidor (VPS Contabo · Coolify + Traefik) ────────────────────┐
 │  API Fastify (TS) ── PostgreSQL (+PostGIS)                                                      │
 │   ├─ rutas y contenidos (CRUD)            ├─ búsqueda de lugares (Wikidata)                     │
-│   ├─ generación de contenido con IA       ├─ recorridos (runs) y analytics privados             │
+│   ├─ sugerencias y fichas con IA          ├─ recorridos (runs) y analytics privados             │
 │   └─ (futuro) cuentas, push, panel B2B                                                          │
 │        │                     │                         │                                        │
 │   Proveedor IA          Wikipedia / Wikidata /     ArcGIS Location Services                     │
@@ -144,7 +144,7 @@ Secciones: `# Overview`, `# Development Environment`, `# Useful Websites`, `# Fu
 | UI | CSS propio con tokens (variables CSS) de `docs/DESIGN.md`; iconos Lucide; SortableJS (vía `vue-draggable-plus`) para reordenar |
 | API | Fastify 5 + `fastify-type-provider-zod` + `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/swagger`. Sin CORS: la API comparte origen con la web |
 | BD | PostgreSQL 17 + PostGIS 3.5 (imagen `postgis/postgis`; su uso es opcional en v1) + Drizzle ORM + drizzle-kit (migraciones) |
-| IA | Interfaz `AiProvider` con una implementación por defecto (p. ej. API de Anthropic); modelo configurable por variable de entorno |
+| IA | Interfaz `AiProvider` con una implementación por defecto, la API de Anthropic (`AI_PROVIDER=anthropic`, modelo `claude-sonnet-5-5` por defecto, configurable con `AI_MODEL`). Salida estructurada con una herramienta cuyo JSON Schema es la respuesta, validada con Zod |
 | Tests | Vitest (unitarios y de escenario), Playwright (e2e con geolocalización simulada) |
 | Calidad | ESLint 10 (flat config) + Prettier 3, Conventional Commits, GitHub Actions (formato, lint, typecheck, tests, build, imágenes Docker y escaneo de secretos con gitleaks) |
 | Despliegue | Docker (un Dockerfile por app) en Coolify, Traefik con HTTPS (obligatorio para geolocalización y service worker). Detalle en [DEPLOY.md](DEPLOY.md) |
@@ -387,11 +387,19 @@ export interface PointContent {
   images: MediaRef[];            // reales (Wikimedia Commons) con autoría y licencia
   video?: { provider: 'youtube' | 'file'; id?: string; url?: string; title?: string };
   tip?: string;                  // consejo práctico
+  quiz?: {                       // trivia: una pregunta rápida al llegar (fase 7)
+    question: string;            // ≤300
+    options: string[];           // de 2 a 4, ≤120 caracteres cada una
+    correctIndex: number;        // posición de la correcta en `options`
+    explanation?: string;        // ≤500
+  };
   sources: { title: string; url: string }[];  // fuentes usadas (grounding)
   generated?: { by: 'ai' | 'human'; model?: string; promptVersion?: string; at: string };
   status: 'draft' | 'approved';
 }
 ```
+
+**La trivia (`quiz`)** va dentro de la ficha y en su idioma, como texto simple y no como `LocalizedText`: una ficha tiene un solo idioma. Es distinta de la acción `quiz` (§9.5), que escribimos a mano en los tres idiomas y con los puntos que diga su `params`. El handler `ai_template` la puntúa: si el resultado de la vista trae `data.answerIndex`, el resultado lleva `score` (10 puntos, `CARD_QUIZ_POINTS`, si acierta; 0 si no) y `data { answerIndex, correct }`. Sin respuesta no hay puntuación.
 
 ---
 
@@ -411,7 +419,8 @@ export interface RouteDraft {
   locale: Locale;                    // el idioma de la app al crear la ruta (no se pregunta)
   mode: RouteMode;
   activity: Activity;
-  interests?: string[];              // para la IA: 'history', 'art', 'food'... (fase 7)
+  interests?: string[];              // para la IA: 'history', 'art', 'architecture', 'food', 'nature', 'religion', 'curiosities' (INTERESTS, en api-contract)
+  summary?: string;                  // ≤280, texto simple: la idea de ruta que sugirió la IA → spec.summary
   timeLimit?: number | null;         // s; solo challenge
   places: DraftPlace[];              // el ORDEN del array es el orden de la ruta
   settingsOverrides?: Partial<RouteSettings>;
@@ -457,13 +466,13 @@ summarizeRoute(spec)
 - `validateDraft(draft)`: lo que aún impide guardar, por paso: `name_required`, `name_too_long`, `too_few_places`, `too_many_places`, `place_name_required`, `radius_out_of_range`, `time_limit_invalid` y `route_too_long`.
 - `newIdSuffix()` y `truncateText(texto, máximo)`.
 
-**Wizard (la UI está detallada en `docs/DESIGN.md`).** Los pasos se numeran como las pantallas C1 a C5. En la fase 6 el Stepper tiene **tres pasos**: Datos · Lugares · Revisar. «Contenido IA» se insertará como paso 3 en la fase 7, y la pantalla final (Lista) queda fuera del Stepper.
+**Wizard (la UI está detallada en `docs/DESIGN.md`).** Los pasos se numeran como las pantallas C1 a C5. El Stepper tiene **cuatro pasos**: Datos · Lugares · Fichas · Revisar. La pantalla final (Lista) queda fuera del Stepper.
 
-1. **Datos:** nombre, zona (ciudad o área: centra el mapa y la búsqueda, y no se guarda en la ruta), modo, actividad y límite de tiempo (reto). No se pregunta el idioma: es el de la app, y en él se generarán las fichas de IA. Los intereses llegan con la fase 7; al editar se conservan los que ya tenga la ruta.
-2. **Lugares:** búsqueda con autocompletado (Wikidata vía backend, §12.3). Un punto personalizado se añade con una **pulsación larga en el mapa** o con el botón **«Añadir el centro del mapa»**, no tocando el mapa. La lista se **reordena arrastrando** o con «Subir» y «Bajar» en el menú de cada lugar. Radio y obligatoriedad por punto, zonas dibujadas en el mapa con aviso de solapamiento, y distancia y duración estimadas. De 2 a 30 lugares.
-3. **Contenido IA** *(fase 7)*: generación por punto (sección 12), con revisión y edición antes de guardar. Se puede saltar y usar la ficha básica.
-4. **Revisar y simular:** validación, advertencias y botón **Probar ruta** (motor con fuente simulada).
-5. **Guardar:** la ruta se guarda siempre primero en IndexedDB, en el registro de «Mis rutas», y se sube en segundo plano con `POST /api/v1/routes`. Funciona sin conexión.
+1. **Datos:** nombre, zona (ciudad o área: centra el mapa y la búsqueda, y no se guarda en la ruta), modo, actividad y límite de tiempo (reto), más los **intereses** (opcionales): historia, arte, arquitectura, gastronomía, naturaleza, religión y curiosidades. No se pregunta el idioma: es el de la app (al editar, el de la ruta), y una línea avisa de que «Las fichas se generarán en {idioma}». **«Usar mi ubicación»** lee la posición una sola vez, al pulsar, y la pone como zona («Tu ubicación»), redondeada a 3 decimales.
+2. **Lugares:** búsqueda con autocompletado (Wikidata vía backend, §12.3). Un punto personalizado se añade con una **pulsación larga en el mapa** o con el botón **«Añadir el centro del mapa»**, no tocando el mapa. La lista se **reordena arrastrando** o con «Subir» y «Bajar» en el menú de cada lugar. Radio y obligatoriedad por punto, zonas dibujadas en el mapa con aviso de solapamiento, y distancia y duración estimadas. De 2 a 30 lugares. **«Sugerir lugares»** pide ideas a la IA (§12.4): el usuario da el tiempo que tiene, marca los lugares que quiere y se añaden en el orden sugerido.
+3. **Fichas:** la app prepara una ficha por lugar con el pipeline del §12.2, **sin enseñarla**: cada fila dice solo su estado («Ficha lista · 3 fuentes»). «Ver ficha» pide confirmación antes de abrirla (sin spoilers); «Regenerar» pide otra ficha; «Usar ficha básica» renuncia a la IA en ese lugar. «Siguiente» nunca se bloquea: un lugar sin ficha lista usa la ficha básica (`info_sheet`, nombre y dirección).
+4. **Revisar y simular:** validación, advertencias, la línea «{n} fichas con IA · {m} básicas» y botón **Probar ruta** (motor con fuente simulada, con las fichas incluidas).
+5. **Guardar:** la ruta se guarda siempre primero en IndexedDB, en el registro de «Mis rutas», y se sube en segundo plano con `POST /api/v1/routes`. Las fichas viajan en `contents` del bundle, en el idioma de la ruta, así que la ruta funciona sin conexión y sin llamar a la IA al llegar.
 
 El borrador se guarda automáticamente en IndexedDB mientras se edita, para no perder datos, y `/create` lo retoma en el primer paso con algo pendiente. Las rutas guardadas se editan desde Mis rutas y conservan los ids de punto (§7.1).
 
@@ -516,6 +525,35 @@ Al construir el creador se concretaron estos puntos. Los del servidor están en 
 - **Tests:**
   - `route-builder` pasa de 17 a 61 tests, con la misma barrera de cobertura que el motor (90 % de líneas, sentencias y funciones; 85 % de ramas) y 100 % medido. `route-spec` pasa de 39 a 46 y `api-contract` de 4 a 27, con la comprobación de que todo lo que construye `buildRouteSpec` pasa `checkUserRoute`.
   - La capa de datos de la web tiene sus tests con IndexedDB falso y `fetch` simulado: un 201, un 201 perdido y el reintento, una edición durante un POST en curso, un borrado durante un POST, una página HTML en lugar de la API, dos cambios simultáneos y una lectura fallida que no vacía el registro.
+
+### 7.2 Precisiones de la implementación (fase 7)
+
+Al construir los pasos nuevos del creador se concretaron estos puntos. Las fichas y las sugerencias del servidor están en el §12, la pregunta rápida de la llegada en el §10.10 y el razonamiento de fondo en el [ADR 0003](adr/0003-guia-con-ia.md).
+
+- **Servicios** (`services/ai.ts`, `content.ts` y `suggest.ts`):
+  - `postAi` hace el POST con `X-Device-Id`, comprueba la respuesta contra el contrato y solo rechaza con `AiError`, cuyo `code` es `offline`, `ai_unavailable`, `ai_budget_exceeded`, `ai_device_limit` o `failed`.
+  - Un `429 rate_limited`, un `502 generation_failed`, una página HTML del proxy o un cuerpo que no cumple el contrato son `failed`. Un fallo de red es `offline` solo si `navigator.onLine` es falso.
+  - `generateCard` espera hasta 120 s (el plazo de la API es de 90 s) y rechaza como `failed` una ficha cuyo `locale` no sea el pedido, porque rompería el bundle. `suggestPlaces` espera 60 s y redondea `near` a 3 decimales también en el cliente.
+- **Borrador** (`stores/creator.ts`): sigue siendo `v: 1`, así que los borradores anteriores se leen bien. Añade `interests`, `summary` (se corta a 280) y `cards`, por `tempId`: `{ status, content?, grounding?, error? }`, con `status` en `pending`, `generating`, `ready`, `error` o `basic`.
+  - Al leerlo, `generating` y `error` pasan a `pending`: una petición muere con la página y un error no merece recordarse.
+  - Una ficha `ready` necesita su contenido y su `contentRef`, y las fichas de lugares que ya no están se descartan. Una lectura rota se copia a `create:draft:backup`, como cualquier otra reparación.
+- **Pasos:** `CREATOR_STEPS` = details, places, content, review. `stepIssues('content')` es siempre vacío: el paso nunca bloquea. `resumeStep` abre el primer paso con algo pendiente, y Fichas cuenta como pendiente mientras algún lugar no tenga entrada de ficha, esté `pending` o espere conexión. Atrás en Revisar lleva a Fichas, y en Fichas, a Lugares.
+- **Cola de generación** (de 2 en 2, en el orden de la lista, sin guardar nada): `generateMissing()`, `regenerateCard(id)`, `setBasicCard(id)` y `setBasicForFailed()`.
+  - Sin conexión marca `error: 'offline'` sin pedir nada, y el evento `online` lo reintenta.
+  - Un error bloqueante (`ai_*`) u `offline` falla igual los lugares que seguían en cola, sin más peticiones. Un `failed` no frena a los demás.
+  - El resultado de un borrador que se reemplazó o cerró, o de un lugar que se quitó, se ignora. Descartar, empezar otro borrador, editar, guardar, «Borrar mis datos locales» y cerrar el ámbito del store cancelan las peticiones en curso.
+- **Regenerar** envía `fresh: true` (§11.1). La ficha anterior sigue vigente, y viaja en la ruta, mientras llega la nueva; si la nueva falla, se queda la anterior y un aviso lo dice.
+- **`contentRef` y `contents`:** una ficha lista le da al lugar `contentRef = 'card-' + sufijo` (se conserva al regenerar). `build()` devuelve `contents` (`{ [contentRef]: { [locale]: { ...ficha, id: contentRef } } }`) y guardar se lo pasa a `saveMyRoute`. Un lugar sin ficha lista no lleva `contentRef` y muestra el `info_sheet`.
+  - **La ficha se guarda tal como la hizo la API.** Si se cambiara cualquier campo, el POST sería un `422 unverified_content`. Un test comprueba que su hash es el mismo antes y después de guardar y de editar.
+- **Idioma:** las peticiones usan `draft.locale` (el de la ruta), no el idioma que tenga la app en ese momento. `externalId` solo se envía si es un QID; si no, `custom: true`.
+- **Editar** (`loadForEdit`): recupera `summary`, `interests` y las fichas del bundle guardado (el `grounding` se deduce de las fuentes). Los lugares sin ficha pasan a `basic`: abrir el creador nunca gasta presupuesto de IA.
+  - Quitar un lugar descarta su ficha, y «Deshacer» la devuelve con él.
+  - Un punto propio al que se cambia el nombre pierde su ficha (se investigó por el nombre); uno de Wikidata la conserva.
+- **«Sugerir lugares»** (`SuggestSheet`): la posición es el centro del mapa, la zona o el centro de los lugares, tal como están al abrir la hoja. Los intereses se rellenan con los del borrador y vuelven a él al pulsar «Sugerir». Atrás cierra la hoja antes de salir del paso, y cerrarla cancela la petición.
+- **Fichas sin spoilers:** ni el texto ni las imágenes de una ficha se pintan antes de la confirmación (lo comprueban un test unitario y el e2e). «Ver ficha» abre la hoja de llegada en modo vista previa (`ui.present('ai_template', { …, preview: true })`, §10.10).
+- **Analytics:** `content_generated` (`{ ok, ms }`), uno por petición de ficha (§13).
+- **Queda para después:** editar el texto de una ficha, el carrusel de imágenes y la URL de video (el editor del diseño original de C3), e invalidar las fichas cuando cambian los intereses después de crearlas (por ahora se usa «Regenerar»).
+- **Tests:** 15 de los servicios, 19 de la cola y el borrador y 17 de la interfaz (sin spoilers, estados, sugerencias), más los del store y el router, adaptados a los 4 pasos.
 
 ---
 
@@ -879,7 +917,7 @@ Los textos de esta tabla son la referencia en español. En el código, cada noti
 | `type` | Para qué | `params` (Zod) |
 |---|---|---|
 | `info_sheet` | Ficha estática (respaldo universal) | `{ contentRef?, title?, body?, image? }` |
-| `ai_template` | Ficha generativa (rutas de usuario) | `{ contentRef }` → pinta `PointContent` |
+| `ai_template` | Ficha generativa (rutas de usuario) | `{ contentRef }` → pinta `PointContent` y puntúa su `quiz` (10 puntos, §6.4) |
 | `video` | Video del lugar | `{ provider: 'youtube' \| 'file', id?, url?, title? }` |
 | `quiz` | Pregunta con puntos | `{ question, options: string[], correctIndex, points, explanation? }` |
 | `redirect` | Web externa (con confirmación) | `{ url, label }` |
@@ -957,17 +995,19 @@ src/
 ├─ router/                  # rutas (abajo)
 ├─ stores/                  # Pinia: catalog, run, creator, settings, device
 ├─ services/                # api (cliente tipado con api-contract), geo (búsqueda de lugares),
+│                           # ai, content, suggest (fichas y sugerencias de la IA),
 │                           # myRoutes (rutas del usuario: registro local y subida), contentCache (IndexedDB),
-│                           # analytics, notifications, wakeLock, audio, permissions, installPrompt
+│                           # catalog (descarga y fotos sin conexión), analytics, notifications, wakeLock, audio,
+│                           # permissions, installPrompt
 ├─ map/                     # RouteMap.vue (envuelve <arcgis-map>) + capas, symbols.ts, popup.ts, basemap.ts
 ├─ engine/                  # useGeoEngine.ts: motor + fuentes + persistencia de snapshots
 ├─ events/                  # setupEventSystem.ts, uiAdapter.ts, feedbackAdapter.ts
 ├─ handlers/                # vistas de los handlers: info-sheet, ai-template, video, quiz, decision, coming-soon, error
 ├─ views/                   # Onboarding, Home, MyRoutes, RouteDetail, RunPrepare, Run, RunSummary,
 │                           # create/(Layout, Details, Places, Content, Review, Done), Settings
-│                           # (Content llega en la fase 7)
 ├─ components/              # BottomSheet, RouteCard, ModeBadge, StatChip, PointListItem, HudTarget,
-│                           # ProgressBar, DecisionSheet, Stepper, PlaceSearch, GpsIndicator, MiniRunBar...
+│                           # ProgressBar, DecisionSheet, Stepper, PlaceSearch, InterestChips, SuggestSheet,
+│                           # GpsIndicator, MiniRunBar...
 ├─ styles/                  # tokens.css (de DESIGN.md), base.css
 ├─ i18n/                    # es.json, en.json, pt.json (vue-i18n) y useLocale()
 └─ sw.ts                    # service worker (injectManifest): precache, caché en tiempo de ejecución, notificationclick
@@ -985,7 +1025,7 @@ src/
 | `/routes/:routeId/prepare` | Preparación y permisos |
 | `/run` | Recorrido en curso (una ruta activa a la vez). Acepta `?point=<id>` desde una notificación |
 | `/run/summary` | Resumen del último recorrido |
-| `/create/details` → `/create/places` → `/create/review` → `/create/done` | Wizard del creador, sin navegación inferior. `/create` retoma el borrador en el primer paso con algo pendiente. «Contenido» (`/create/content`, entre Lugares y Revisar) llega en la fase 7; hasta entonces esa URL redirige a `/create/review`. Una ruta se edita desde Mis rutas, que la carga en el borrador y abre `/create/details` |
+| `/create/details` → `/create/places` → `/create/content` → `/create/review` → `/create/done` | Wizard del creador, sin navegación inferior. `/create` retoma el borrador en el primer paso con algo pendiente. `/create/content` es el paso Fichas, entre Lugares y Revisar. Una ruta se edita desde Mis rutas, que la carga en el borrador y abre `/create/details` |
 | `/settings` | Ajustes |
 
 Las hojas de llegada y de decisión **no son rutas**: forman una pila de overlays gestionada por el `UiAdapter`. El botón atrás del sistema cierra la hoja superior; en `/run`, pide confirmar antes de salir de la pantalla, y la ruta sigue activa.
@@ -1033,7 +1073,7 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
 - **Precache:** la app shell y los tres catálogos de idioma (Workbox).
 - **Al pulsar Iniciar:**
   - El bundle de la ruta, con todos sus idiomas, va a IndexedDB.
-  - Las imágenes del contenido van a Cache Storage.
+  - Las imágenes del contenido van a Cache Storage: se piden como imagen con CORS para que el service worker las guarde (§10.10).
   - La UI muestra "Disponible sin conexión ✓".
 - **Caché en tiempo de ejecución:**
   - `GET /api/v1/routes*` → *NetworkFirst*.
@@ -1096,6 +1136,29 @@ Al construir `apps/web` se concretaron estos puntos.
   - 7 e2e (Playwright, sobre la build de producción): los escenarios de 14.2. Usan el modo simulación y el reloj de Playwright para que los paseos sean rápidos y deterministas; las rutas de reto son *fixtures* servidas simulando la API.
   - Las pruebas del recorrido no cargan el SDK del mapa: en la CI se pinta por software y, con el reloj acelerado, alarga mucho los paseos. El mapa tiene su propia prueba. Por lo mismo, los botones de simulación y recentrar están fuera del componente del mapa: la simulación funciona aunque el mapa no cargue.
 
+### 10.10 Precisiones de la implementación (fase 7)
+
+Al construir la llegada con trivia y las fotos sin conexión se concretaron estos puntos. El creador está en el §7.2 y el servidor en el §12.
+
+- **Trivia en la ficha** (`handlers/ContentSheet.vue`): solo aparece si la ficha trae `quiz`, entre el consejo y las fuentes.
+  - Un `h2` «Pregunta rápida», la pregunta y un grupo etiquetado por ella con un `<button>` nativo por opción (48 px como mínimo; las opciones largas saltan de línea).
+  - **Un solo intento:** tras la primera pulsación, todas las opciones quedan `disabled`. La correcta lleva un icono de visto y la elegida, si falla, una cruz: la forma acompaña al color, y el texto del veredicto lo repite.
+  - Una región `role="status"` siempre está en el DOM, vacía hasta responder, para que el veredicto se anuncie. Acierto: «¡Correcto! +10 pts». Fallo: «No es esa. La correcta: …». Después, la explicación, si la hay.
+  - Al responder, la hoja se desplaza para que el veredicto se vea (suave, salvo con movimiento reducido), porque la ficha crece por debajo.
+- **Resultado:** al cerrar con Continuar, Pausar o Terminar, la vista devuelve `{ status: 'done', decision?, data?: { answerIndex, locale } }`. `data` solo va si se respondió, y `locale` es el de la pregunta mostrada. El `ai_template` real da `score` 10 (acierto), 0 (fallo) y nada (sin responder), y conserva la decisión de Pausar o Terminar junto a la puntuación (hay un test de contrato con el handler real).
+- **Cambio de idioma con la hoja abierta:** la respuesta pertenece a la pregunta para la que se dio. Si el cambio trae otra ficha con su propio `quiz`, empieza sin responder; si se queda la misma (respaldo de idioma), la respuesta se queda y el veredicto se vuelve a traducir.
+- **Vista previa** (`preview`): la usa el creador (§7.2). Sin la etiqueta «LLEGASTE» y con un solo botón «Cerrar» que cierra sin resultado. La trivia funciona en local y no se puntúa ni se registra nada.
+- **Fotos sin conexión:** `routeImageUrls(bundle)` reúne la portada, las imágenes de las fichas en todos los idiomas y la de los `info_sheet` (solo http y https, sin repetir y 60 como máximo). `prefetchImages` las pide 4 a la vez, con 8 s por foto y 15 s de espera en total (el resto sigue cargando en segundo plano), y nunca falla. `PrepareView` lo llama al terminar `catalog.download`, y la descarga cuenta como lista después, así que «Empezar» espera 15 s como mucho.
+  - **Por qué un `Image` con `crossOrigin = 'anonymous'`** (medido en Chrome contra el `sw.js` compilado): la ruta de imágenes del service worker solo atiende `request.destination === 'image'`, así que un `fetch()` nunca se guarda. `CacheFirst` de Workbox no guarda respuestas opacas, y un `<img>` normal entre orígenes recibe una, así que las fotos que solo se vieron en línea no se cachean. Una respuesta CORS (200) sí se guarda en `rumbo-images`, y después un `<img>` normal la carga de esa copia aunque el servidor de fotos no responda.
+  - Wikimedia contesta `access-control-allow-origin: *` y no usa `Vary: Origin`.
+- **Límites conocidos:**
+  - Cerrar la hoja con el gesto de deslizar o con Escape después de responder no puntúa: `OverlayHost` la cierra sin pedirle su resultado (`{ status: 'dismissed' }`). Le pasa igual a `QuizSheet`.
+  - El veredicto escribe «+10 pts» siempre que la ficha tenga `quiz`, pero solo `ai_template` puntúa. Un `info_sheet` que apuntara a una ficha con `quiz` enseñaría puntos sin sumarlos (hoy no existe ninguno).
+  - Playwright corre con `serviceWorkers: 'block'`, así que la caché de fotos sin conexión no se comprueba en los e2e. Si una ruta de e2e lleva fotos de `upload.wikimedia.org`, hay que servirlas con un PNG para que `PrepareView` no espere a la red.
+  - Solo se ha verificado en Chrome. En Safari/iOS (el objetivo principal de la PWA) debería funcionar igual, porque el Fetch estándar deja que una respuesta CORS del service worker conteste a un `<img>` sin CORS, pero no se ha probado.
+  - Las fotos que se ven en línea sin pasar por `PrepareView` (los popups de Explorar) no se cachean. Poner `crossorigin` en esos `<img>` lo arreglaría, pero rompería los servidores de fotos sin CORS.
+- **Tests:** 23 de la trivia (estructura, acierto, fallo, un solo intento, resultado, idioma, vista previa y el contrato con el handler real) y 12 de las fotos (`routeImageUrls`, `prefetchImages` y `PrepareView` de punta a punta).
+
 ---
 
 ## 11. Backend (`apps/api`) en el VPS
@@ -1116,7 +1179,8 @@ Al construir `apps/web` se concretaron estos puntos.
 | DELETE | `/routes/:id` | Borra la ruta con sus fichas y recorridos (cabecera `X-Edit-Token`) → `204` |
 | GET | `/geo/suggest?q=&near=&kind=&limit=` | Sugerencias de lugares (`kind=place`, por defecto) o de ciudades y zonas (`kind=area`) mientras se escribe |
 | GET | `/geo/resolve?key=` | Lugar resuelto de una sugerencia, con su dirección |
-| POST | `/content/generate` | Genera un `PointContent` (borrador) con IA, en el `locale` pedido (obligatorio) |
+| POST | `/content/generate` | Genera con IA la ficha de un lugar (un `PointContent` sin `id`), en el `locale` pedido (obligatorio). Necesita `X-Device-Id` |
+| POST | `/suggest/places` | Sugiere lugares reales cerca de un punto, para un tiempo, una actividad y unos intereses, en el `locale` pedido. Necesita `X-Device-Id` |
 | POST | `/runs` | Inicio de recorrido → `{ runId }` |
 | PATCH | `/runs/:runId` | Cierre: estado final + resumen |
 | POST | `/analytics/batch` | Lote de eventos anónimos → `202` |
@@ -1138,7 +1202,7 @@ export interface RouteSummary {
 
 - **Cabeceras:** el POST necesita `X-Edit-Token` y `X-Device-Id` (el dispositivo que crea la ruta es su dueño). PUT, DELETE y la lectura de una ruta de usuario solo necesitan `X-Edit-Token`. Un token ausente o mal formado (no son 43 caracteres base64url) es `401 missing_edit_token`.
 - **Cuerpo de POST y PUT:** `{ spec, contents? }`, hasta 128 KiB. El esquema del cuerpo solo comprueba ese sobre: cualquier problema de la ruta es un `422 invalid_route` con `details` (hasta 20 `{ path, message }`).
-- **Orden de comprobaciones:** límite por IP (429) → token (401) → dispositivo, solo en el POST (400 `missing_device_id`) → tamaño (413) → sobre (400) → base de datos lista (503) → validación de la ruta (422) → cuotas (409 o 503) → escritura. Se autentica antes de leer el cuerpo.
+- **Orden de comprobaciones:** límite por IP (429) → token (401) → dispositivo, solo en el POST (400 `missing_device_id`) → tamaño (413) → sobre (400) → base de datos lista (503) → validación de la ruta (422 `invalid_route`) → fichas verificadas (422 `unverified_content`, fase 7) → cuotas (409 o 503) → escritura. Se autentica antes de leer el cuerpo.
 - **POST:** `201` la primera vez. Si el id ya existe y el token coincide, actualiza la ruta y responde `200` (el dueño sigue siendo el dispositivo original, aunque el reintento lleve otro `X-Device-Id`). Si el id es de otro token o de una ruta curada: `409 route_exists`. Dos POST idénticos a la vez dan un `201` y un `200`.
 - **PUT:** `404 route_not_found` si no existe; `403 forbidden` si la ruta es curada o el token es otro; `400 route_id_mismatch` si `spec.id` no es el de la URL (se comprueba después de los dos anteriores). Reemplaza el spec, las columnas del listado, `updatedAt` y las fichas.
 - **DELETE:** los mismos 404 y 403. Borra de verdad la fila, sus fichas y sus recorridos (cascada). Un PUT o un DELETE posterior responde `404`.
@@ -1181,14 +1245,72 @@ export interface ResolvedPlace {     // GET /geo/resolve
 | `geocoding_failed` | 502 | Wikidata no respondió bien: 6 s agotados, error de red o respuesta no válida o demasiado grande |
 | `geocoding_unavailable` | 503 | La búsqueda está apagada (`GEOCODING_PROVIDER=none`) o en pausa porque Wikimedia pidió esperar |
 
+**Guía con IA (fase 7).** Dos endpoints que necesitan `X-Device-Id` (si falta, `400 missing_device_id`). El idioma va en el cuerpo (`locale`), no en `Accept-Language`. El detalle de lo que hacen por dentro está en el §12.
+
+```ts
+// @rumbo/api-contract
+export const INTERESTS = ['history', 'art', 'architecture', 'food', 'nature', 'religion', 'curiosities'] as const;
+
+export interface ContentGenerateBody {   // POST /content/generate
+  name: string;                      // ≤ 80
+  position: LatLng;
+  locale: Locale;                    // obligatorio
+  category?: PointCategory;
+  externalId?: string;               // QID de Wikidata, si el lugar salió de la búsqueda o de una sugerencia
+  interests?: Interest[];            // hasta 7
+  custom?: boolean;                  // punto propio del usuario (hoy decide `externalId`, no este campo)
+  fresh?: boolean;                   // «Regenerar»: se salta la caché y gasta una generación
+}
+export interface ContentGenerateResponse {
+  content: Omit<PointContent, 'id'>; // el cliente le pone como `id` el `contentRef` del lugar
+  grounding: 'wikipedia' | 'web' | 'none';
+  cached: boolean;                   // true: salió de la caché del servidor y no costó nada
+}
+
+export interface SuggestPlacesBody { // POST /suggest/places
+  near: LatLng;                      // el servidor lo redondea a 3 decimales
+  locale: Locale;
+  interests?: Interest[];
+  minutes: number;                   // de 30 a 480
+  activity: Activity;
+  exclude?: string[];                // QIDs que la ruta ya tiene (hasta 30)
+}
+export interface SuggestedPlace extends GeoSuggestion {
+  externalId: string;                // siempre un QID
+  teaser: string;                    // ≤ 160: por qué ir, nunca qué vas a aprender
+}
+export interface SuggestPlacesResponse {
+  title: string;                     // ≤ 80
+  summary: string;                   // ≤ 280
+  places: SuggestedPlace[];          // hasta 12, en el orden de recorrido
+}
+```
+
+- **`POST /content/generate`:** cuerpo de hasta 4 KB. Orden: límite por IP → cuerpo (413 o 400) → `X-Device-Id` (400) → IA apagada (503) → caché → presupuestos (429) → un solo vuelo por clave → tubería → guardar → registrar.
+  - Un acierto de la caché responde `cached: true`, no gasta presupuesto y funciona aunque el día esté agotado.
+  - `fresh: true` se salta la caché, pasa por los presupuestos y guarda la ficha nueva con una clave propia (§12.6).
+  - El `id` de la ficha no viene: lo pone el cliente (el `contentRef` del lugar), y la ficha no se puede tocar más (§11.3).
+- **`POST /suggest/places`:** cuerpo de hasta 4 KB, con `cache-control: no-store`. Sin candidatos responde `200 { title: '', summary: '', places: [] }`: es «nada cerca», no un error. Puede responder también `502 geocoding_failed` y `503 geocoding_unavailable` cuando Wikimedia falla o pide esperar.
+
+Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de la IA no son el `rate_limited` de los límites por IP):
+
+| Código | Estado | Cuándo |
+|---|---|---|
+| `ai_unavailable` | 503 | La IA está apagada (`AI_PROVIDER` vacío o sin `AI_API_KEY`), o el proveedor rechaza la clave, el saldo o el modelo (401, 402, 403 o 404) |
+| `ai_budget_exceeded` | 429 | El gasto estimado de hoy (UTC) llegó a `AI_DAILY_BUDGET_USD`: no empieza ninguna generación nueva |
+| `ai_device_limit` | 429 | El dispositivo ya empezó `AI_MAX_GENERATIONS_PER_DEVICE_PER_DAY` generaciones hoy |
+| `generation_failed` | 502 | El proveedor falló, tardó demasiado o no dio una respuesta válida, o Wikimedia falló al preparar una ficha |
+| `unverified_content` | 422 | En un POST o PUT de ruta, alguna ficha no la generó este servidor. Incluye `details` con las rutas `contents.<ref>.<locale>` |
+| `place_not_found` | 404 | (Ya existía.) En `/content/generate`, el `externalId` no es un elemento de Wikidata |
+
 ### 11.2 Base de datos (Drizzle, PostgreSQL)
 
 | Tabla | Columnas principales |
 |---|---|
 | `routes` | `id` (slug, pk), `spec` jsonb, `spec_version`, `spec_hash`, `name`, `mode`, `activity`, `source`, `locale`, `point_count`, `distance_m`, `est_minutes`, `centroid_lat`, `centroid_lng`, `bbox` jsonb, `status` (`published`\|`draft`\|`archived`), `owner_device_id`, `owner_user_id` (futuro, null), `edit_token_hash`, `created_at`, `updated_at` |
 | `point_contents` | `id` (pk), `route_id` (fk), `point_id`, `locale`, `content` jsonb, `status`, timestamps. Único (`route_id`, `point_id`, `locale`) |
-| `content_cache` | `cache_key` (pk), `content` jsonb, `sources` jsonb, `hits`, `created_at` |
-| `ai_generations` | `id`, `device_id`, `cache_key`, `locale`, `model`, `prompt_version`, `input_tokens`, `output_tokens`, `cost_estimate`, `status`, `latency_ms`, `created_at` |
+| `ai_contents` | `cache_key` (pk), `content` jsonb (la ficha sin `id`), `content_hash` (SHA-256 de su JSON canónico, único), `grounding` (`wikipedia`\|`web`\|`none`), `hits`, `created_at` |
+| `ai_generations` | `id` bigserial, `device_id` (uuid, sin clave foránea), `kind` (`card`\|`suggest`), `cache_key` (null en las sugerencias), `locale`, `model`, `prompt_version`, `input_tokens`, `output_tokens`, `web_searches`, `cost_usd`, `status` (`ok`\|`failed`), `latency_ms`, `created_at`. Índices (`created_at`) y (`device_id`, `created_at`) |
 | `runs` | `id` (uuid), `route_id`, `spec_hash`, `device_id`, `mode`, `status` (`running`\|`finished`\|`cancelled`\|`abandoned`), `started_at`, `ended_at`, `elapsed_ms`, `completed_points`, `total_points`, `score`, `client_info` jsonb |
 | `analytics_events` | `id` bigserial, `device_id`, `run_id` (null), `name`, `props` jsonb, `client_ts`, `server_ts`. Índice (`name`, `server_ts`) |
 | `devices` | `id`, `first_seen`, `last_seen`, `platform` (aproximada), `pwa_installed` |
@@ -1196,30 +1318,42 @@ export interface ResolvedPlace {     // GET /geo/resolve
 - El `spec` en jsonb es la **fuente de verdad**. Las columnas extraídas (nombre, modo, métricas, centroide) sirven para listar y filtrar sin abrir el JSON.
 - Las rutas de usuario llevan `owner_device_id` (el `X-Device-Id` del POST) y `edit_token_hash` (el SHA-256, en hexadecimal, del token que generó el cliente). Las curadas no llevan ninguno de los dos.
 - Borrar una ruta es un borrado físico: la fila, sus `point_contents` y sus `runs` se van por la cascada de las claves foráneas.
+- **`ai_contents`** guarda cada ficha que genera el servidor, y su hash decide qué fichas acepta una ruta de usuario (§11.3). **`ai_generations`** es el libro de cuentas de la IA: una fila por llamada, con sus tokens y su coste estimado, que también alimenta los presupuestos. Ninguna de las dos se poda.
 - **Futuro:** tabla `users`, sesiones, migración de `owner_device_id` → `owner_user_id`, consultas espaciales con PostGIS ("rutas cerca de mí").
 
 ### 11.3 Seguridad
 
-- Mismo origen que la web, así que sin CORS. `@fastify/helmet` y límite de tamaño del body: 1 MB, y 128 KiB en el POST y el PUT de rutas (`413 payload_too_large`).
+- Mismo origen que la web, así que sin CORS. `@fastify/helmet` y límite de tamaño del body: 1 MB, 128 KiB en el POST y el PUT de rutas y 4 KB en los dos endpoints de IA (`413 payload_too_large`).
 - **Rate limit.** `X-Device-Id` lo elige el cliente y se esquiva con uno nuevo en cada petición, así que los límites estrictos cuentan por **IP**:
   - general, por dispositivo o IP: 300 por minuto (`RATE_LIMIT_PER_MINUTE`);
   - escrituras de rutas (POST, PUT, DELETE y lecturas de una ruta de usuario): 20 por minuto y 200 por día;
   - búsqueda de lugares (`/geo/suggest` y `/geo/resolve`, juntos): 120 por minuto;
   - recorridos y analytics: 30 por minuto;
-  - `/content/generate` tendrá el suyo en la fase 7.
+  - fichas (`/content/generate`): 30 por minuto (`CONTENT_RATE_LIMIT_PER_MINUTE`);
+  - sugerencias (`/suggest/places`): 20 por minuto (`SUGGEST_RATE_LIMIT_PER_MINUTE`).
 
   La IP es la última entrada de `X-Forwarded-For`, la que añade Traefik: la API confía en un solo salto y solo si la conexión viene de una red privada (§11.7). Al superar un límite, `429 rate_limited` con `Retry-After`.
 - **Cuotas de rutas de usuario:** 50 por dispositivo (`409 quota_exceeded`) y, en todo el servidor, `USER_ROUTES_MAX` (5.000 por defecto; pasado el tope, `503 unavailable`). La ruta que se repite no cuenta contra sus propias cuotas.
-- Validación Zod de todo lo que entra; nunca se confía en el cliente. El POST y el PUT de rutas pasan por `validateRouteBundle` (sin exigir los tres idiomas) y por `checkUserRoute`, una lista cerrada de lo que puede tener una ruta de usuario: la que produce el creador y nada más. `PointContent` se validará en el servidor en la fase 7.
-  - Sin `path`, `coverImage`, `description` ni `summary`, y sin fichas (`contents` vacío).
+- Validación Zod de todo lo que entra; nunca se confía en el cliente. El POST y el PUT de rutas pasan por `validateRouteBundle` (sin exigir los tres idiomas) y por `checkUserRoute`, una lista cerrada de lo que puede tener una ruta de usuario: la que produce el creador y nada más.
+  - Sin `path`, `coverImage` ni `description`. `summary` solo como texto simple de hasta 280 caracteres (la idea de ruta que sugiere la IA).
+  - Fichas (`contents`) solo las que generó este servidor, con las reglas de «Fichas verificadas por el servidor» (más abajo).
   - Metadatos de la ruta: solo `interests` (hasta 10 textos de 40 caracteres). Metadatos de un punto: solo `address` (hasta 200) y `externalId` (un QID de Wikidata).
   - Acciones: una por punto más 8, como mucho, y solo `info_sheet` (sin imagen), `ai_template` y `decision`, sin `presentation` ni `feedback`. Triggers: `onEnter` en los puntos y `onDeviation`, `onIdle`, `onOutOfOrder` y `onTimeout` en la ruta.
   - Que Postgres pueda guardarla: anidación de 8 niveles como mucho, sin caracteres de control ni sustitutos Unicode sueltos en ningún texto ni clave, y hasta 500 km entre los puntos en orden.
-  - Un problema es `422 invalid_route` con hasta 20 `details`. Así nadie guarda imágenes, enlaces o datos pesados a través de la API.
+  - Un problema es `422 invalid_route` con hasta 20 `details`. Así nadie guarda imágenes, enlaces o datos pesados a través de la API, salvo las fichas que generó el servidor.
 - **Rutas de usuario privadas:** `GET /routes` solo lista las curadas, y una ruta de usuario solo la lee quien tiene su `X-Edit-Token` (§11.1).
+- **Fichas verificadas por el servidor (fase 7).** `checkUserRoute` abre `contents` solo para fichas de IA: una por cada clave que referencie una acción `ai_template` (y al revés), en el idioma de la ruta (`spec.locale`), con `generated.by === 'ai'`, con imágenes solo de `https://upload.wikimedia.org/…` y hasta 30 fichas.
+  - Además, el POST y el PUT calculan el SHA-256 de cada ficha (`contentHashInput`: su JSON canónico sin el `id`) y exigen que esté en `ai_contents.content_hash`. Si no, `422 unverified_content`, con `details` en `contents.<clave>.<idioma>`.
+  - Sin eso, cualquiera podría guardar una ficha que dijera «Generado con IA a partir de Wikipedia» con el texto, los enlaces o las imágenes que quisiera. Las fichas las escribe el servidor con fuentes y fotos de Wikimedia, y el cliente solo las transporta, sin tocarlas.
+  - La comprobación va después de `checkUserRoute` (una imagen de otro servidor sigue siendo `invalid_route`) y antes de las cuotas. Una ficha ya generada sigue valiendo aunque cambie el prompt o se genere otra con `fresh`: `ai_contents` no se poda.
+- **Presupuestos de IA.** El gasto estimado del día UTC (la suma de `cost_usd` de `ai_generations`) no puede pasar de `AI_DAILY_BUDGET_USD`, y un dispositivo no empieza más de `AI_MAX_GENERATIONS_PER_DEVICE_PER_DAY` generaciones al día: si no, `429 ai_budget_exceeded` o `429 ai_device_limit`.
+  - Lo que sale de la caché es gratis y no cuenta. Solo cuentan las llamadas `ok` o con coste: un fallo del proveedor sin gasto no consume el día de nadie.
+  - `X-Device-Id` lo elige el cliente, así que el tope por dispositivo se esquiva con un identificador nuevo. Los topes que de verdad frenan son el presupuesto global y el límite por IP.
+  - Comprobar y registrar no es una sola operación atómica: una ráfaga puede pasarse del tope por unas pocas generaciones (acotado por el límite por IP y el vuelo único por clave).
+  - Qué se envía al proveedor de IA, cómo se trata el texto no fiable y qué guarda el servidor: [SECURITY.md](SECURITY.md).
 - `editToken`: lo genera el cliente, 32 bytes aleatorios (§10.8). El servidor guarda solo su hash SHA-256 y lo compara en tiempo constante.
 - Secretos únicamente en variables de entorno: en Coolify, como variables solo de ejecución, y en local, en `.env` que git ignora. En el repo solo hay `.env.example`. El repo es público: reglas completas en [SECURITY.md](SECURITY.md).
-- Logs (pino) sin datos personales: la ruta sin la *query*, y nunca coordenadas, tokens, el texto que se busca ni el cuerpo de las peticiones.
+- Logs (pino) sin datos personales: la ruta sin la *query*, y nunca coordenadas, tokens, el texto que se busca ni el cuerpo de las peticiones. Una llamada a la IA que falla se registra solo con su motivo (`anthropic 401 authentication_error`, `timeout`…), nunca con la clave, el prompt ni el nombre del lugar.
 
 ### 11.4 Variables de entorno
 
@@ -1243,15 +1377,21 @@ USER_ROUTES_MAX=5000            # fase 6: rutas de usuario en todo el servidor
 GEOCODING_PROVIDER=wikidata     # fase 6: búsqueda de lugares con coordenadas guardables (ver 12.3); none la apaga
 WIKIMEDIA_USER_AGENT=           # fase 6: vacío = "Rumbo/<versión> (https://github.com/AOcampo93/rumbo)"; para dar un email, en Coolify
 ARCGIS_API_KEY_SERVER=          # geocodificación de direcciones (solo para mostrar, nunca guardar); la API ya la lee, aún no la usa
-AI_PROVIDER=anthropic
-AI_API_KEY=
-AI_MODEL=
-AI_DAILY_BUDGET_USD=5
+AI_PROVIDER=anthropic           # fase 7: anthropic, o vacío = IA apagada (los endpoints de IA responden 503 ai_unavailable)
+AI_API_KEY=                     # SECRETO (fase 7). Sin clave, 'anthropic' queda en 'none' y la API avisa al arrancar
+AI_MODEL=                       # vacío = claude-sonnet-5-5
+AI_EFFORT=low                   # fase 7: cuánto piensa el modelo (low, medium, high); none no envía el ajuste
+AI_DAILY_BUDGET_USD=5           # fase 7: gasto estimado por día UTC a partir del cual no empieza ninguna generación nueva
 AI_MAX_GENERATIONS_PER_DEVICE_PER_DAY=40
+AI_PRICE_INPUT_PER_MTOK=2       # fase 7: precios con los que se estima el gasto (USD por millón de tokens y por búsqueda web);
+AI_PRICE_OUTPUT_PER_MTOK=10     #         son los del modelo por defecto: cámbialos junto con AI_MODEL
+AI_PRICE_PER_WEB_SEARCH=0.01
+CONTENT_RATE_LIMIT_PER_MINUTE=30   # fase 7: fichas, por IP
+SUGGEST_RATE_LIMIT_PER_MINUTE=20   # fase 7: sugerencias de lugares, por IP
 ANALYTICS_ENABLED=true
 ```
 
-Los números de la fase 6 son opcionales: un valor que no sea un entero positivo se ignora y se usa el de por defecto. `GEOCODING_PROVIDER` con un valor que no sea `wikidata` ni `none` impide arrancar la API. El límite de 50 rutas por dispositivo no es una variable: es una constante (`ROUTES_PER_DEVICE`).
+Los números de las fases 6 y 7 son opcionales: un valor que no sea un entero positivo (un número positivo, en los precios y el presupuesto) se ignora y se usa el de por defecto. `GEOCODING_PROVIDER` con un valor que no sea `wikidata` ni `none` impide arrancar la API, igual que un `AI_PROVIDER` que no sea `anthropic` ni `none` o un `AI_EFFORT` desconocido. El límite de 50 rutas por dispositivo no es una variable: es una constante (`ROUTES_PER_DEVICE`).
 
 ### 11.5 Despliegue (Coolify en Contabo)
 
@@ -1272,7 +1412,7 @@ En marcha desde el 2026-10-07. El detalle operativo está en [DEPLOY.md](DEPLOY.
 - **Contrato (`packages/api-contract`):** los DTOs en Zod que comparten la API (validación de entrada y OpenAPI) y la web (tipos): `RouteSummary`, los filtros del listado, el inicio y el cierre de un recorrido, el lote de analytics y los códigos de error.
 - **Base de datos:** Drizzle ORM sobre `pg`. El esquema está en `apps/api/src/db/schema.ts` y las migraciones SQL en `apps/api/drizzle`.
   - Respecto a la tabla de §11.2: `point_contents` usa `content_ref` (la clave de `RouteBundle.contents`) en lugar de `point_id`; `routes` guarda además `locales` (idiomas completos); `runs` guarda `simulated` y `locale`.
-  - `content_cache` y `ai_generations` llegan con la fase 7.
+  - `ai_contents` y `ai_generations` llegaron con la fase 7 (migración 0001, §11.2).
 - **Arranque:**
   - aplica las migraciones pendientes y carga las rutas de `data/routes` (inserta las nuevas, reemplaza las que cambiaron y deja igual el resto);
   - si Postgres no responde, arranca igual y reintenta cada 10 s, mientras los endpoints de datos devuelven `503 { code: "unavailable" }`.
@@ -1325,36 +1465,60 @@ Al construir las escrituras de rutas y la búsqueda de lugares se concretaron es
 
 ---
 
-## 12. Generación de contenido con IA (solo en el servidor)
+## 12. Guía con IA (solo en el servidor)
+
+Tres piezas, todas en `apps/api` y detrás de `AI_PROVIDER`: **sugerir** lugares reales (§12.4), **preparar** la ficha de cada lugar (§12.2) y darle una **trivia** (dentro de la ficha). El navegador nunca habla con el proveedor de IA: llama a nuestra API.
 
 ### 12.1 Principios
 
-- Se genera **al crear la ruta**, no al llegar al lugar. Así no hay espera en el momento clave, no hay coste por visita y funciona offline.
-- **Anclado en fuentes reales:** el texto sale de Wikipedia/Wikidata y la IA solo resume y estructura. Si no hay información suficiente, la ficha es más corta; **nunca se inventan datos**.
-- **Imágenes reales, no generadas:** Wikimedia Commons con autor y licencia (CC0, dominio público, CC BY, CC BY-SA). Las imágenes generativas solo se usarían para ilustraciones decorativas, y en v1 no hay.
-- **Transparencia:** la ficha muestra "Contenido generado con IA a partir de Wikipedia" con enlaces a las fuentes.
-- El usuario **revisa y puede editar** cada ficha antes de guardar (`status: 'draft'` → `'approved'`).
-- **En el idioma del usuario:** cada generación usa el idioma de la app, y lo generado se queda en ese idioma aunque el usuario cambie después ([ADR 0001](adr/0001-multilenguaje.md)).
+- **Una guía de bolsillo.** En un sitio que no conoces, la app te propone qué ver, eliges, la ruta se arma sola y cada lugar lo descubres al llegar (ficha, consejo y pregunta rápida), siempre con fuentes. El razonamiento está en el [ADR 0003](adr/0003-guia-con-ia.md).
+- **La IA solo propone; Wikidata y Wikipedia verifican.** Los lugares sugeridos los elige el modelo de una lista de candidatos que arma el servidor con la geobúsqueda de Wikipedia. Los nombres y las posiciones salen de esa lista, nunca del modelo, y un id que no esté en ella se descarta.
+- **Anclado en fuentes reales.** El texto de una ficha sale de la Wikipedia del lugar o, si no la tiene, de una búsqueda web con citas. La IA solo resume y estructura. Si no hay información fiable, la ficha es corta y lo dice: **nunca se inventan datos**, y las fuentes se muestran siempre que la ficha las tiene.
+- **Sin spoilers.** Las fichas se preparan al crear la ruta, pero el creador solo enseña su estado («Ficha lista · 3 fuentes»), y abrir una pide confirmación. Las anécdotas de las sugerencias dicen por qué ir, no qué vas a aprender.
+- **Al crear la ruta, no al llegar.** Así no hay espera en el momento clave, no hay coste por visita y funciona sin conexión: la ficha viaja en el bundle de la ruta.
+- **Fichas verificadas por el servidor.** Una ruta de usuario solo puede llevar fichas que generó este servidor (§11.3). El cliente las transporta sin tocarlas.
+- **Imágenes reales, no generadas:** Wikimedia Commons con autor y licencia (CC0, dominio público, CC BY, CC BY-SA). Las imágenes generativas no se usan.
+- **Transparencia:** la ficha muestra «Generado con IA · Fuentes: …» con enlaces a las fuentes.
+- **En el idioma del usuario:** cada petición va en el idioma de la app, y lo generado se queda en él aunque el usuario cambie después ([ADR 0001](adr/0001-multilenguaje.md)). El español va en tuteo y el portugués es el de Portugal, de «tu».
+- **Coste acotado:** una generación por (lugar, idioma, versión del prompt, intereses), guardada para todos, con un presupuesto diario y un límite por dispositivo (§12.5).
+- **Sin editor, por ahora.** La ficha llega ya `approved`: el usuario puede aceptarla, regenerarla o cambiarla por la básica, pero no editar su texto (queda para después, §16).
 
 ### 12.2 Pipeline de `POST /content/generate`
 
 ```
-Entrada: { name, position, locale (obligatorio: es | en | pt), interests?, externalId? }
-1. Resolver entidad: Wikipedia geosearch (radio ~500 m) + coincidencia de nombre → título + QID de Wikidata
-2. Texto: el artículo del idioma pedido, vía los sitelinks del QID (respaldo: en → es → pt).
-   La ficha se escribe siempre en el idioma pedido, aunque la fuente esté en otro
-3. Imágenes: imágenes de la página / Commons con extmetadata (autor, licencia); filtrar licencias compatibles
-4. LLM con salida estructurada (JSON Schema derivado de Zod, sin campos de media):
-   - prompt versionado (PROMPT_VERSION), temperatura baja
-   - instrucción: usar SOLO el texto de grounding; idioma = locale; tono cercano; adaptar a intereses
-5. Validar con Zod → un reintento con los errores → si vuelve a fallar: ficha mínima (nombre + extracto)
-6. Combinar con imágenes y fuentes → PointContent { status: 'draft', generated: { by: 'ai', ... } }
-7. Caché por clave `${QID || hash(nombre+coords)}:${locale}:${PROMPT_VERSION}` + registro en ai_generations
+Entrada: { name, position, locale, category?, externalId?, interests?, custom?, fresh? }
+
+0. Caché. Clave: ${QID | 'custom:' + sha1(nombre|tipo|lat a 4 decimales|lng a 4 decimales)}:${locale}:${PROMPT_VERSION}:${intereses ordenados}
+   · acierto → { content, grounding, cached: true }: gratis y sin presupuesto (`fresh: true` se la salta)
+   · fallo → presupuestos (429) y un solo vuelo por clave
+1. Elemento de Wikidata: el `externalId` o, en un punto propio, el mejor de una búsqueda por nombre a menos de 2 km
+   (solo vale si tiene una etiqueta o un alias con las mismas palabras significativas)
+2. Hechos del elemento (etiquetas, descripción, enlaces a es/en/pt, foto P18, tipo P31) y texto del artículo de Wikipedia
+   en el idioma pedido (respaldo: en → es → pt). Si es un esbozo (menos de 1.200 caracteres), se miran los otros idiomas
+   y gana uno que sea más de 1,5 veces más largo. La ficha se escribe siempre en el idioma pedido
+3. Imágenes: la P18 y, si no hay, la del artículo, desde Commons (autor y licencia; solo CC0, dominio público, CC BY y
+   CC BY-SA; fotos de 300 px o más; miniatura de 960 px en upload.wikimedia.org)
+4. Ficha, en una llamada al modelo con la herramienta `write_card`:
+   a. con artículo: el artículo es la única fuente (fuentes = [el artículo])
+   b. sin artículo: búsqueda web del proveedor (3 como máximo); fuentes = las páginas que el modelo dice haber usado
+      y que la búsqueda devolvió de verdad (si no cita ninguna, las 2 primeras)
+   c. nada fiable (el modelo dice `found: false`, o no hay citas): ficha honesta y corta en es/en/pt, `grounding: 'none'`
+5. Validar con Zod → un reintento con la ficha y los problemas → si falla otra vez: el arranque del artículo (si está
+   en el idioma del usuario) o la ficha honesta
+6. Guardar en `ai_contents` (con su SHA-256), anotar la llamada en `ai_generations` y responder
 ```
 
-- **Video en v1:** campo manual de URL de YouTube en el paso 3. La búsqueda automática (YouTube Data API) queda para el futuro.
-- **Wikimedia:** enviar un `User-Agent` descriptivo con contacto (lo exige su política de uso) y respetar sus límites.
-- **Coste:** presupuesto diario global (`AI_DAILY_BUDGET_USD`) y límite por dispositivo. Al superarlo se devuelve `429` y la UI ofrece la ficha básica.
+- **La ficha que devuelve:** `{ locale, title, subtitle?, summary, facts, images, tip?, quiz?, sources, generated: { by: 'ai', model, promptVersion, at }, status: 'approved' }`, sin `id`.
+  - Lo que escribe el modelo: `title` (≤ 80), `subtitle` (≤ 120), `summary` de 2 a 4 frases (≤ 800), hasta 6 `facts` (≤ 160), `tip` (≤ 200) y la trivia.
+  - Las imágenes y las fuentes no las escribe el modelo: las pone el servidor.
+- **El prompt** (`PROMPT_VERSION = 'card-1'`): un guía local cercano que habla al visitante en el idioma pedido (portugués de Portugal).
+  - Usa SOLO el texto o los resultados que se le dan, y prefiere pocos datos a datos inventados.
+  - El consejo es algo práctico que mirar o hacer allí. Da más peso a los intereses. No dice que es una IA.
+  - Cambiar el prompt sube `PROMPT_VERSION`, y con ella la clave de la caché.
+- **La trivia:** una pregunta con 3 o 4 opciones, la correcta y una explicación, que se puede contestar con lo que dice la propia ficha. El servidor baraja las opciones. Si solo falla la trivia, se descarta sin reintentar.
+- **La ficha honesta** (`grounding: 'none'`): un texto fijo en es/en/pt que dice que no se ha encontrado información fiable y que no se quiere inventar nada. Sin datos, sin consejo, sin trivia y sin fuentes (mantiene la foto, si el lugar la tiene).
+- **Video:** la IA no busca video. El campo `video` queda para fichas escritas a mano.
+- **Wikimedia:** las consultas llevan el mismo `User-Agent` descriptivo, plazo, tope de 1 MB, `redirect: 'error'` y cortacircuitos (429 o 5xx) que la búsqueda de lugares (§12.3), con 4 peticiones a la vez.
 
 ### 12.3 Búsqueda de lugares y coordenadas (paso 2 del creador)
 
@@ -1418,6 +1582,87 @@ Entrada: { name, position, locale (obligatorio: es | en | pt), interests?, exter
 - `wbsearchentities` ordena de forma global y no sirve para lugares cercanos («igreja» no tenía ningún resultado a menos de 5 km entre los 50 primeros), pero sí para ciudades.
 - Algunas coordenadas de Wikidata están redondeadas (el Castelo de Leiria, a unos 50 m; §15): conviene ajustar el radio de esos lugares.
 
+### 12.4 Sugerencias de lugares (`POST /suggest/places`)
+
+El usuario dice dónde está el mapa, cuánto tiempo tiene, qué actividad hace y qué le interesa, y la app le propone entre 3 y 12 lugares reales, ya en orden de recorrido. **La IA solo elige**: no escribe nombres ni coordenadas.
+
+```
+Entrada: { near, locale, interests, minutes (30 a 480), activity, exclude (QIDs, hasta 30) }
+
+1. Candidatos: geobúsqueda de Wikipedia (`generator=geosearch`) en la Wikipedia del idioma y en las de pt y en, con 50
+   artículos por idioma y un radio de min(1500 + 10·minutos, 4000) m a pie (×1,5 corriendo, ×3 en bici, hasta 10 km).
+   Se unen por QID. Se descartan las páginas de desambiguación, las sin coordenadas, las de otro astro, los `exclude` y
+   las áreas (país, provincia, municipio, ciudad, según el `type` de la coordenada). Quedan 40 como mucho: primero los que
+   tienen artículo en más Wikipedias y luego los más cercanos
+2. Wikidata (`wbgetentities`): la categoría (P31, la misma tabla del §12.3) y la etiqueta en el idioma del usuario
+3. Una llamada al modelo (herramienta `choose_places`, con los ids de los candidatos como únicos valores permitidos):
+   recibe una tabla (id | nombre | tipo | distancia y dirección | «artículos n/N» | descripción), los intereses, el tiempo
+   y la actividad, y devuelve { título, resumen, picks: [{ id, anécdota }] } con entre 3 y 12 lugares que quepan en el tiempo
+4. Limpieza: se descartan los ids desconocidos o repetidos, y los textos pierden saltos de línea y enlaces y se cortan en
+   una palabra con «…» (título 80, resumen 280, anécdota 160). Un reintento si no hay respuesta por la herramienta o
+   ningún id sirve
+5. Orden: vecino más cercano desde `near`. Si el recorrido en línea recta (a la velocidad de la actividad, más 6 min por
+   parada) pasa de 1,25 veces el tiempo, se quitan los últimos de la lista del modelo, que son los que menos valora, hasta 3
+```
+
+- **Nombre:** el título del artículo en la Wikipedia del usuario; si no existe, la etiqueta de Wikidata en su idioma; y si tampoco, el artículo que se encontró (pt y luego en).
+- **Respuesta:** `key: 'wikidata:<QID>'` (sirve para `/geo/resolve`), `name`, `description?`, `position` (la de la geobúsqueda, con 6 decimales), `category`, `externalId`, `distanceMeters` (desde el `near` redondeado), `storable: true` y `teaser`.
+- **Cachés:** 1 h en memoria (500 entradas) por (`near` a 3 decimales, idioma, intereses, minutos, actividad y `exclude`), solo si Wikipedia y Wikidata respondieron enteros. Las categorías y etiquetas se guardan 24 h por (idioma, QID).
+- **Un trabajo idéntico en curso se comparte.** Quien se une no pasa por los presupuestos, igual que un acierto de caché.
+- **Anécdotas sin spoilers:** el prompt (`PROMPT_VERSION` `suggest-1`) pide que digan por qué ir y no qué vas a aprender, que se apoyen en los intereses y que no inventen detalles ni hablen del orden del paseo. No se comprueba por código.
+
+### 12.5 Costes y límites
+
+**Medido el 2026-10-08** con `claude-sonnet-5-5`, esfuerzo `low` y los precios por defecto (2 USD por millón de tokens de entrada, 10 de salida y 0,01 por búsqueda web):
+
+| Llamada | Tokens (entrada / salida) | Tiempo | Coste |
+|---|---|---|---|
+| Ficha desde Wikipedia | ~4.000 / 850 | de 5 a 7 s | ~0,017 USD |
+| Ficha con búsqueda web | ~17.000 / 1.200, con 1 búsqueda | ~10 s | ~0,056 USD |
+| Sugerencia de lugares | ~2.800 / 600 | de 6 a 9 s (1,5 s de Wikimedia) | ~0,012 USD |
+
+- Una ruta de 8 lugares con ficha de Wikipedia cuesta unos 0,14 USD si no hay ninguna ficha en caché, y 0,012 USD más si se pidió una sugerencia. Con el presupuesto por defecto (5 USD al día) caben unas 35 rutas así al día. Los lugares ya generados (con el mismo idioma e intereses) se sirven de la caché, gratis.
+- El gasto es una **estimación** a partir de los tokens que declara el proveedor y de los precios configurados, no la factura. Si cambias `AI_MODEL`, cambia también `AI_PRICE_*`.
+- **Topes:** presupuesto diario (`AI_DAILY_BUDGET_USD`, 5 USD) y límite por dispositivo (`AI_MAX_GENERATIONS_PER_DEVICE_PER_DAY`, 40) en el §11.3. Por IP: 30 fichas y 20 sugerencias por minuto.
+- **Latencia:** una ficha tarda normalmente de 5 a 12 s. El plazo de la API es de 90 s por ficha y el de la web, de 120 s. El creador prepara 2 fichas a la vez y enseña el progreso.
+
+### 12.6 Precisiones de la implementación (fase 7)
+
+Al construir la API de la IA se concretaron estos puntos. La web está en el §7.2 y el §10.10.
+
+- **Proveedor** (`src/ai/provider.ts` y `anthropic.ts`): una interfaz con una sola operación, `structured(petición, señal)`: un prompt, una herramienta cuyo JSON Schema es la respuesta y, si hace falta, búsqueda web. La implementación de Anthropic usa `POST /v1/messages` con un `fetch` inyectable, y los tests usan un proveedor falso y respuestas grabadas: no tocan la red.
+  - **El modelo por defecto rechaza con un 400** una `temperature` distinta de la suya y un `tool_choice` forzado. El proveedor envía `tool_choice: auto` y ninguna `temperature`; el prompt pide responder llamando a la herramienta una sola vez, y una respuesta sin esa llamada es `invalid_output` (la tubería reintenta una vez).
+  - `output_config.effort` (`AI_EFFORT`, `low` por defecto): el modelo piensa por defecto, y con `low` una ficha tarda de 5 a 7 s. `AI_EFFORT=none` no envía el ajuste (para modelos que no lo admiten).
+  - **Errores:** 429 y 529 son `rate_limited`; 401, 402, 403 y 404 son `unavailable` (503 `ai_unavailable`: la clave, el saldo o el modelo); lo demás es `failed` (502 `generation_failed`). El plazo es de 60 s por llamada. Los mensajes son `anthropic <estado> <tipo>`, `network`, `timeout` o `aborted`: nunca la clave, el prompt ni el texto del proveedor.
+  - Una respuesta que gasta tokens y no sirve (un rechazo, `max_tokens` o la ausencia de la llamada a la herramienta) lleva su consumo (`AiBilledError`) para que se anote y cuente en el presupuesto.
+  - Las citas son primero los `web_search_result_location` de los bloques de texto y luego cada resultado de la búsqueda (sin repetir y solo http o https).
+- **Arranque:** `app.ts` registra las rutas de fichas y de sugerencias, y `buildApp` recibe el proveedor (`ai`) y el acceso a Wikimedia (`grounding`) para que los tests inyecten falsos; `server.ts` crea los de verdad. Sin proveedor o sin clave, la API arranca con un aviso y los dos endpoints responden `503 ai_unavailable`.
+- **Fichas:**
+  - **La trivia viaja como cuatro campos planos** en la herramienta (`quizQuestion`, `quizOptions`, `quizCorrectIndex` y `quizExplanation`), y el servidor construye el objeto `quiz`. La respuesta de la búsqueda web también es plana. Con el `quiz` anidado, el modelo escribió una vez el objeto entero como un texto y el reintento duplicó el coste de la ficha.
+  - Un `quiz` inválido o los datos que pasen de 6 se descartan sin reintentar. Lo demás se reintenta una vez con la ficha y los problemas (con una ficha ya escrita no se vuelve a buscar en la web).
+  - **Las fotos se buscan antes de llamar al modelo**, y un fallo de Commons falla la petición (502, sin guardar nada): una ficha en caché sin su foto no se arreglaría sola.
+  - **Con un elemento de Wikidata, el nombre de la ficha sale de Wikidata**, nunca del cuerpo de la petición: la ficha se guarda para todos los que pidan ese elemento y un cliente no puede envenenarla. El tipo y la posición del cuerpo solo llegan al prompt en un lugar sin elemento.
+  - El texto del artículo va dentro de etiquetas `<source>`, y las que traiga el propio texto se neutralizan.
+  - `custom` no cambia nada: decide `externalId` (sin elemento: búsqueda por nombre cerca y, si no, web).
+  - **`fresh: true`** guarda la ficha nueva con la clave `<clave>#<8 caracteres>`. La anterior sigue en `ai_contents`: las rutas que ya la usan siguen siendo válidas, y las peticiones normales siguen recibiendo la original. Cuenta como una generación para los presupuestos.
+  - **El plazo es de 90 s por generación y sigue aunque el cliente se vaya** (ya está pagada): quien reintente la recibe gratis (`cached: true`) cuando termine. Si llegan dos peticiones idénticas a la vez, la segunda espera a la primera y también recibe `cached: true`.
+  - Una fila `ok` por ficha. Si el modelo respondió mal o falló a mitad (o se gastaron tokens), la fila es `failed`. Si ni siquiera llegó a él (Wikimedia caído, clave rechazada o límite del proveedor), no hay fila.
+- **Sugerencias:**
+  - **Las posiciones son las de la geobúsqueda de Wikipedia**, no la P625 de Wikidata (que es CC0). No salen del geocodificador de ArcGIS, que es lo que prohíbe el §12.3.
+  - **Los nombres no coinciden siempre con `/geo`.** Aquí manda el artículo del usuario («Castillo de Leiría», con la tilde de la Wikipedia en español) y `/geo` enseña la etiqueta de Wikidata («Castillo de Leiria»). Pasar a «etiqueta primero» es una línea en `nearby()`.
+  - La geobúsqueda devuelve los 50 artículos más cercanos, no los más notables. En una ciudad densa, la columna «artículos n/N» y el orden por número de Wikipedias mantienen los más conocidos en la lista.
+  - Se comprueba el presupuesto **antes** de preguntar a Wikimedia: un día agotado no le cuesta nada. Un cortacircuitos por servidor respeta el `Retry-After` de Wikimedia (60 s si no lo dice). Una búsqueda ocupada (`cirrussearch-too-busy-error`) se reintenta una vez y, si un idioma sigue fallando, se usan los demás.
+  - Si falla Wikidata, los lugares siguen con categoría `other` y los nombres de sus artículos, y la respuesta no se guarda en la caché.
+  - La fila de `ai_generations` lleva `cache_key` nulo a propósito: llevaría la posición. Si falla la anotación, se registra el fallo y el usuario recibe su respuesta igual.
+  - Un error inesperado (un bug) no se esconde: `500 internal`, después de anotar la llamada.
+- **Escrituras de rutas:** la comprobación de fichas (§11.3) devuelve en `details` las rutas `contents.<clave>.<idioma>` que fallan. La ficha tiene que ser exactamente la que hizo la API, con el `id` cambiado por el `contentRef` y sin tocar nada más (ni `status`, ni `generated`, ni el orden de los datos), y su `locale` tiene que ser el de la ruta.
+- **Migración 0001:** solo crea las dos tablas nuevas (§11.2). Volver a una imagen anterior de la API es seguro: las tablas se quedan sin usar.
+- **Tests:** la API pasa de 106 a 285, y ninguno usa la red.
+  - Proveedor (21, con un `fetch` simulado), acceso a Wikidata, Wikipedia y Commons (33, con respuestas grabadas) y la tubería de fichas (28: artículo, web, ficha honesta, reintentos, idiomas, inyección y consumo).
+  - Presupuestos (9, con la tabla real), la ruta de fichas (27: caché, claves, vuelo único, presupuestos, errores, plazo y límites) y fichas en rutas de usuario (8: `unverified_content` en POST y PUT).
+  - Configuración (6) y sugerencias (46: candidatos, ids desconocidos, orden, ajuste al tiempo, caché, vuelo único y fallos de Wikimedia).
+- **Medidas con la IA real** (2026-10-08, durante el desarrollo): tres fichas (Castelo de Leiria, Sé de Leiria y un punto propio, el Rio Lis, investigado en la web) y cuatro sugerencias para Leiria, por unos 0,15 USD en total. Las sugerencias salieron en pt-PT correcto, y tras endurecer el prompt dejaron de inventar detalles.
+
 ---
 
 ## 13. Analytics y métricas privadas
@@ -1428,9 +1673,9 @@ Entrada: { name, position, locale (obligatorio: es | en | pt), interests?, exter
 - **Eventos v1:**
   - **Uso general:** `app_open`, `onboarding_completed`, `pwa_installed`, `route_viewed`.
   - **Recorrido:** `run_started`, `permission_result` (`{ type, result }`), `point_reached` (`{ pointId, manual }`), `point_completed` (`{ pointId, handlerType, status, ms }`), `interruption_shown` (`{ type }`), `decision_made` (`{ type, decision }`), `run_paused`, `run_resumed`, `run_cancelled`, `run_finished` (`{ elapsedMs, completed, total }`), `gps_weak`.
-  - **Creador:** `creator_step_completed` (`{ step }`), `route_created`, `content_generated` (`{ ok, ms }`).
+  - **Creador:** `creator_step_completed` (`{ step }`), `route_created`, `content_generated` (`{ ok, ms }`: uno por cada petición de ficha a la API, con `ok: false` si falló; desde la fase 7 se emite de verdad). Sin propiedades que identifiquen el lugar.
   - **Errores:** `error` (`{ code }`).
-- **Métricas internas** (consultas SQL; panel privado en el futuro): rutas iniciadas frente a completadas, abandono por punto, tiempo medio por punto, frecuencia de desvíos, porcentaje de GPS débil por ruta, coste de IA por ruta creada y plataformas.
+- **Métricas internas** (consultas SQL; panel privado en el futuro): rutas iniciadas frente a completadas, abandono por punto, tiempo medio por punto, frecuencia de desvíos, porcentaje de GPS débil por ruta, coste de IA por ruta creada y plataformas. El coste y la latencia de la IA salen de `ai_generations` (`cost_usd`, tokens y `latency_ms` por llamada), no de los eventos.
 
 ---
 
@@ -1458,13 +1703,16 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
 
 - `route-spec`: fixtures válidos e inválidos para cada regla de 6.3, más la normalización por modo y actividad.
 - `route-builder`: un draft produce siempre un spec válido; `summarizeRoute` es correcto. Desde la fase 6, además: los ids de punto no cambian al renombrar o reordenar lugares, editar una ruta y volver a construirla devuelve el mismo spec, y `validateDraft`, `findOverlaps` y `summarizeDraft` cumplen los límites del borrador.
-- `event-system`: orden y prioridad de la cola, deduplicación, interrupciones obsoletas, decisiones aplicadas al motor y respaldo cuando un handler falla.
+- `event-system`: orden y prioridad de la cola, deduplicación, interrupciones obsoletas, decisiones aplicadas al motor y respaldo cuando un handler falla. Desde la fase 7, además, `ai_template` puntúa el `quiz` de la ficha: 10 puntos si acierta, 0 si falla y nada si no se responde.
 - **i18n:**
   - los tres catálogos tienen las mismas claves y los mismos parámetros;
   - `resolveText` sigue su cadena de respaldo;
   - distancias, tiempos y fechas se formatean bien en cada idioma.
 - API: tests de integración de endpoints (Postgres en contenedor de test) y validación de bundles. Desde la fase 6 cubren también las escrituras y lecturas de rutas de usuario, las cuotas, los límites por IP y el seed. La búsqueda de lugares se prueba con respuestas grabadas de Wikidata: los tests no usan la red.
+  - Desde la fase 7, la IA se prueba con un proveedor falso y respuestas grabadas de Wikipedia, Wikidata y Commons (`apps/api/test/fixtures/ai` y `suggest`), también sin red: los tres caminos de una ficha (artículo, web y ficha honesta), los reintentos y el respaldo, la caché, el vuelo único, los presupuestos y el límite por dispositivo, la IA apagada, `unverified_content` en el POST y el PUT, y las sugerencias (candidatos, ids desconocidos, orden y ajuste al tiempo). El proveedor de Anthropic se prueba con un `fetch` simulado (forma de la petición, citas y errores).
+  - El proveedor real **no** se prueba en la CI: se mide a mano, con la clave local (§12.5).
 - Web, capa de datos del creador: tests unitarios del registro de «Mis rutas» y su sincronización (IndexedDB falso, `fetch` simulado), del borrador, de la prueba aislada, del router y de que cada clave i18n que usa el código existe.
+- Web, fase 7: servicios de IA (errores por código y plazos), cola y borrador de fichas, la interfaz sin spoilers, la trivia de la llegada (con el `ai_template` real: 10, 0 o nada) y las fotos para uso sin conexión. Se comprobó con mutaciones que fallan si se quita el reinicio al cambiar de idioma, la región `aria-live` o el cableado de `PrepareView`.
 - **e2e (Playwright, Chromium):**
   - Recorrer "Leiria histórica" en simulación.
   - Reto con un punto fuera de orden.
@@ -1479,6 +1727,12 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - Editar y eliminar una ruta desde Mis rutas.
   - El borrador sobrevive a una recarga.
   - «Probar ruta» fuerza la simulación aunque Ajustes la tenga desactivada.
+- **e2e de la guía con IA (fase 7, el último test de `create.spec.ts`)**, con la API de IA simulada (`page.route`):
+  - «Usar mi ubicación» como zona y los intereses.
+  - «Sugerir lugares» con 3 h (se comprueba el cuerpo de la petición): se desmarca uno de tres y se aplica el título sugerido.
+  - Fichas: todas listas **sin ningún texto de ficha en pantalla**; «Ver ficha» pide confirmación («Mejor no», «Ver ficha» y «Cerrar»).
+  - Revisar: la línea de fichas. Guardar: el POST lleva `summary`, `interests`, dos `contentRef` y `contents[ref].es` con `generated.by: 'ai'`.
+  - Recorrido en simulación: la primera llegada muestra la ficha y su trivia (`h2` «Pregunta rápida»), la respuesta correcta da «¡Correcto! +10 pts», «Continuar ruta», segundo lugar y resumen.
 - **CI:** todo lo anterior en cada PR.
 
 ### 14.3 Definition of Done global
@@ -1611,17 +1865,31 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
   - Precisiones en el §7.1 (creador y web) y el §11.7 (API). La búsqueda de lugares, en el §12.3, y el razonamiento de fondo, en el [ADR 0002](adr/0002-rutas-de-usuario.md).
   - Tests: 571 en total. `route-builder` 61 (con barrera de cobertura), `route-spec` 46, `api-contract` 27, la API 106 y la web 150.
   - Sin migraciones nuevas: `routes` ya tenía `owner_device_id` y `edit_token_hash`.
-  - Hasta la fase 7 el asistente tiene tres pasos; los intereses y la línea «Las fichas se generarán en…» llegan con «Contenido».
+  - El asistente tuvo tres pasos hasta la fase 7, que añadió «Fichas», los intereses y la línea «Las fichas se generarán en…».
   - Queda para después: el último recorrido de cada ruta en Mis rutas, la búsqueda de direcciones con ArcGIS (necesita `ARCGIS_API_KEY_SERVER`) y compartir rutas.
 
-### Fase 7: Contenido IA (P1 → P2)
+### Fase 7: Guía con IA (P1 → P2) · construida el 2026-10-08, pendiente de verificar en producción
 
-- [ ] `POST /content/generate` (pipeline de 12.2) en el idioma del usuario, paso 3 del wizard y handler `ai_template` con datos reales.
-- **DoD:** ruta de usuario con fichas generadas, revisadas y visibles al llegar, incluso sin conexión.
+- [x] Contratos: `PointContent.quiz`, `RouteDraft.summary`, los esquemas de `/content/generate` y `/suggest/places` (con `INTERESTS`), los cinco códigos de error nuevos, `contentHashInput` y `checkUserRoute` abierto a las fichas que genera el servidor. `ai_template` puntúa la trivia (10 puntos).
+- [x] API: proveedor de IA (Anthropic, con `fetch` inyectable), presupuestos y límites, acceso a Wikidata, Wikipedia y Commons, `POST /content/generate` (artículo → web → ficha honesta), `POST /suggest/places`, tablas `ai_contents` y `ai_generations` (migración 0001) y verificación de las fichas en `POST` y `PUT /routes`.
+- [x] Web, creador: intereses, «Usar mi ubicación», «Sugerir lugares», el paso Fichas (sin spoilers, con «Ver ficha» tras una confirmación, «Regenerar» y «Usar ficha básica») y la línea de fichas en Revisar. Las fichas viajan en el bundle de la ruta.
+- [x] Web, llegada: la pregunta rápida (10 puntos), la vista previa de la ficha y las fotos de las fichas en la caché del service worker al preparar la ruta.
+- [x] Métrica `content_generated` y e2e del flujo con IA (§14.2).
+- [x] Medidas con la IA real durante el desarrollo (§12.5).
+- [x] Verificación en producción con la IA real: la clave en Coolify (solo de ejecución), el despliegue y una ruta recorrida de punta a punta (2026-10-08).
+- **DoD:** crear una ruta con lugares sugeridos por la IA y un lugar personalizado investigado; fichas preparadas sin spoilers; al llegar se muestran, también sin conexión, con su trivia; verificado en producción con la IA real. ✓
+  - En producción (commit `3898958`): con Historia y 1 hora en Leiria, la IA sugirió 9 lugares reales con una idea de ruta («Leiria entre piedra y memoria») y avances sin spoilers; se eligieron 2 y se añadió el punto propio «Rio Lis». Las 3 fichas se prepararon sin mostrar su texto (la del río, con búsqueda web y 5 fuentes). Al llegar en simulación se abrió la ficha del río con su trivia. Coste de toda la prueba: 0,094 USD (3 fichas y 1 sugerencia).
+- **Notas de implementación:**
+  - Precisiones en el §7.2 (creador), el §10.10 (llegada y fotos sin conexión) y el §12.6 (API). La tubería de fichas está en el §12.2, las sugerencias en el §12.4 y el razonamiento de fondo en el [ADR 0003](adr/0003-guia-con-ia.md).
+  - Tests: 852 en total. La API pasa de 106 a 287, la web de 150 a 240 y los e2e de 12 a 13, con el de la guía con IA.
+  - Una migración nueva (0001, dos tablas) y variables nuevas de la API (`AI_*` y los dos límites por IP, §11.4). Sin `AI_API_KEY` la API arranca y el creador degrada a fichas básicas.
+  - Costes medidos: unos 0,017 USD por ficha de Wikipedia, 0,056 con búsqueda web y 0,012 por sugerencia (§12.5).
+  - Queda para después: editar el texto de una ficha (con su carrusel de imágenes y la URL de video), invalidar las fichas cuando cambian los intereses, que cerrar la ficha con el gesto después de responder puntúe la trivia, y probar las fotos sin conexión en Safari/iOS.
 
 ### Fase 8: Futuro (P2)
 
 - [ ] Cuentas de usuario y propiedad real de las rutas.
+- [ ] Eventos y rutas de otros usuarios en la guía: descubrirlos y compartirlos (compartir necesita un token de lectura aparte, C5).
 - [ ] Panel B2B para negocios (rutas por suscripción).
 - [ ] Editor visual avanzado.
 - [ ] Handlers `three_scene` y `ar_scene` (Three.js / WebXR / model-viewer).
@@ -1664,7 +1932,14 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 | Borrar una ruta es un borrado físico | Si el usuario borra, se borra: sin estados intermedios ni datos personales guardados de más |
 | Wikidata como buscador de lugares del creador | Coordenadas CC0 que se pueden guardar en la ruta; ArcGIS solo para direcciones, cuando haya clave (§12.3) |
 | «Probar ruta» en simulación forzada y aislada | Probar una ruta no puede tocar un recorrido real ni las estadísticas |
-| Asistente de 3 pasos hasta la fase 7 | «Contenido IA» se inserta como paso 3 cuando exista el pipeline |
+| Asistente de 4 pasos: Datos · Lugares · Fichas · Revisar | «Fichas» es el paso 3 desde la fase 7. No bloquea nunca el avance: sin IA o sin ficha lista se usa la ficha básica |
+| La IA propone y Wikidata verifica | El modelo elige los lugares de una lista de candidatos de Wikipedia, y los nombres y las posiciones salen de la lista, nunca de él: no hay lugares inventados ([ADR 0003](adr/0003-guia-con-ia.md)) |
+| Sin spoilers | Las fichas se preparan al crear la ruta, pero el creador solo enseña su estado y pide confirmación antes de abrirlas: lo bueno es descubrir el lugar al llegar |
+| Fichas verificadas por el servidor | La API solo acepta en una ruta fichas cuyo SHA-256 generó ella (`unverified_content`): nadie puede falsificar un «Generado con IA a partir de Wikipedia» ni colar imágenes o enlaces de otros servidores |
+| La búsqueda web solo es el respaldo | Con artículo de Wikipedia la ficha cuesta unos 0,017 USD y tarda de 5 a 7 s; con búsqueda web, unos 0,056 USD y 10 s, con fuentes más dispares. Solo se busca si el lugar no tiene artículo |
+| La trivia va dentro de la ficha | Sale de la misma llamada, sin coste extra, funciona sin conexión y `ai_template` la puntúa (10 puntos) |
+| Una generación por lugar, idioma, versión del prompt e intereses, guardada para todos | Lo que se generó una vez no se paga otra. Presupuesto diario y límite por dispositivo para el resto |
+| Eventos y rutas de otros usuarios, a la fase 8 | La guía de la fase 7 se centra en sugerir, preparar y descubrir. Compartir rutas necesita un token de lectura aparte y, mejor, cuentas |
 
 **Preguntas abiertas:**
 
@@ -1711,3 +1986,6 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 | **Fuente de posición** | GPS real, simulación o reproducción de un trayecto grabado |
 | **Token de edición** | Prueba de propiedad de una ruta de usuario: 32 bytes que genera el dispositivo y viajan en `X-Edit-Token`; el servidor solo guarda su hash |
 | **Probar ruta** | Recorrido de prueba de una ruta del creador: siempre simulado y aislado del recorrido real (sin snapshot, resumen, API ni analytics) |
+| **Grounding** | El texto real en el que se apoya una ficha: el artículo de Wikipedia del lugar o, si no lo hay, los resultados de una búsqueda web. Sin él, la ficha dice que no hay información fiable |
+| **Ficha verificada** | Ficha cuyo SHA-256 está en `ai_contents`, es decir, que generó este servidor. Es la única que acepta una ruta de usuario |
+| **Trivia** | Pregunta rápida (`quiz`) dentro de una ficha; `ai_template` la puntúa con 10 puntos |
