@@ -7,12 +7,19 @@ import {
   until,
   visible,
   walkAndVisit,
+  withoutMap,
 } from './helpers.ts';
 
 // PROJECT_PLAN §14.2, the run: the curated route end to end, a challenge out
 // of order, deviation → pause → resume, cancelling and a reload mid-run.
+// These flows don't need the map (it has its own test), so it isn't loaded.
+
+test.beforeEach(async ({ page }) => {
+  await withoutMap(page);
+});
 
 test('walks "Leiria histórica" in simulation, card by card, to the summary', async ({ page }) => {
+  test.setTimeout(480_000);
   await setup(page);
   await startRoute(page, 'leiria-historica');
   await openSimulation(page, '20×');

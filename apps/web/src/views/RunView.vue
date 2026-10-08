@@ -291,25 +291,25 @@ onBeforeUnmount(() => {
           @action="onMarkerAction"
           @map-click="onMapClick"
           @user-pan="follow = false"
-        >
-          <div class="run__fabs">
-            <MapFab
-              v-if="run.simulated"
-              :icon="FlaskConical"
-              :label="t('run.simulation')"
-              tone="sim"
-              :active="simOpen"
-              @click="simOpen = !simOpen"
-            />
-            <MapFab
-              :icon="LocateFixed"
-              tone="primary"
-              :label="t('run.recenter')"
-              :active="follow"
-              @click="follow = true"
-            />
-          </div>
-        </RouteMap>
+        />
+        <!-- Outside the map: simulation must work even if the map can't load. -->
+        <div class="run__fabs">
+          <MapFab
+            v-if="run.simulated"
+            :icon="FlaskConical"
+            :label="t('run.simulation')"
+            tone="sim"
+            :active="simOpen"
+            @click="simOpen = !simOpen"
+          />
+          <MapFab
+            :icon="LocateFixed"
+            tone="primary"
+            :label="t('run.recenter')"
+            :active="follow"
+            @click="follow = true"
+          />
+        </div>
       </section>
 
       <div class="run__top">
@@ -455,6 +455,7 @@ onBeforeUnmount(() => {
   position: absolute;
   right: 16px;
   bottom: 32px;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 12px;

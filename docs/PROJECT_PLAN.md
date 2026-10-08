@@ -1021,6 +1021,7 @@ Al construir `apps/web` se concretaron estos puntos.
 - **Tests:**
   - 33 unitarios (Vitest + happy-dom): paridad de los catálogos (claves, parámetros, plurales y claves del sistema de eventos), formatos, textos, ajustes, catálogo, marcadores, símbolos y la pila de hojas.
   - 7 e2e (Playwright, sobre la build de producción): los escenarios de 14.2. Usan el modo simulación y el reloj de Playwright para que los paseos sean rápidos y deterministas; las rutas de reto son *fixtures* servidas simulando la API.
+  - Las pruebas del recorrido no cargan el SDK del mapa: en la CI se pinta por software y, con el reloj acelerado, alarga mucho los paseos. El mapa tiene su propia prueba. Por lo mismo, los botones de simulación y recentrar están fuera del componente del mapa: la simulación funciona aunque el mapa no cargue.
 
 ---
 

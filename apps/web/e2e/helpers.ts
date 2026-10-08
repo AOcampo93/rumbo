@@ -11,6 +11,15 @@ export interface Bundle {
 export const fixture = (name: string): Bundle =>
   JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8')) as Bundle;
 
+/**
+ * Skips loading the map SDK. The run works the same without it, and rendering
+ * the map in software (CI has no GPU) while the clock races ahead is what
+ * makes long walks slow; the map has its own test (explore.spec.ts).
+ */
+export async function withoutMap(page: Page) {
+  await page.route(/\/assets\/(sdk\/.*|RouteMap-[^/]*)\.js$/, (route) => route.abort());
+}
+
 /** A returning user in simulation mode, unless the test says otherwise. */
 export async function setup(page: Page, settings: Record<string, unknown> = {}, routes?: Bundle[]) {
   if (process.env.E2E_DEBUG) {
