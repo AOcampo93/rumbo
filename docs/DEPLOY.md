@@ -75,10 +75,10 @@ La web y la API comparten dominio. La PWA llama a `/api/v1/…` sin CORS, y el s
 Las reglas completas sobre secretos están en [`docs/SECURITY.md`](SECURITY.md).
 
 - En producción se gestionan en Coolify, **nunca en el repo**. En local, en `apps/*/.env`, que git ignora. Las plantillas son los `.env.example`.
-- **API:** `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Todas las demás son opcionales y tienen valor por defecto (tabla de abajo). Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen. Para encender la guía con IA (fase 7) hacen falta además `AI_PROVIDER=anthropic` y `AI_API_KEY` (sección «IA (fase 7)»).
+- **API:** `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Todas las demás son opcionales y tienen valor por defecto (tabla de abajo). Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen. Para encender la guía con IA (fase 7) hacen falta además `AI_PROVIDER=anthropic` y `AI_API_KEY` (sección «IA (fase 7)»). Para las notificaciones push (fase 7.1) hacen falta `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` (sección «Notificaciones push (fase 7.1)»).
 - **Web:** las `VITE_*` se inyectan en el bundle durante el build. Son públicas por definición: nunca secretos.
 
-Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto, salvo `ARCGIS_API_KEY_SERVER` y `AI_API_KEY`:
+Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto, salvo `ARCGIS_API_KEY_SERVER`, `AI_API_KEY`, `VAPID_PRIVATE_KEY` y `ADMIN_TOKEN`:
 
 | Variable | Por defecto | Para qué |
 |---|---|---|
@@ -101,6 +101,13 @@ Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto,
 | `AI_PRICE_PER_WEB_SEARCH` | `0.01` | USD por búsqueda web de una ficha. Opcional |
 | `CONTENT_RATE_LIMIT_PER_MINUTE` | `30` | Fichas (`/content/generate`) por minuto y por IP |
 | `SUGGEST_RATE_LIMIT_PER_MINUTE` | `20` | Sugerencias (`/suggest/places`) por minuto y por IP |
+| `VAPID_PUBLIC_KEY` | vacía (push apagado) | Clave pública VAPID: la API se la da a los navegadores para suscribirse (`GET /push/key`). Se genera con `push:keys` |
+| `VAPID_PRIVATE_KEY` | vacía | **Secreto** (solo de ejecución). Su mitad privada, con la que la API firma lo que manda a los servicios push. Nunca se muestra ni se registra |
+| `VAPID_SUBJECT` | vacía | Contacto para los servicios push: una URL `https:` o una dirección `mailto:`. `push:keys` pone `https://rumbo.arturoocampo.com` |
+| `PUSH_REMINDER_HOURS` | `6` | Horas tras el inicio de un recorrido sin terminar a las que su dispositivo recibe un recordatorio (acepta decimales). Nunca de 22:00 a 08:00 en Europa/Lisboa |
+| `PUSH_RATE_LIMIT_PER_MINUTE` | `20` | Suscribir y cancelar notificaciones push por minuto y por IP |
+| `ADMIN_RATE_LIMIT_PER_MINUTE` | `5` | Anuncios (`POST /admin/push`) por minuto y por IP; los tokens equivocados también cuentan |
+| `ADMIN_TOKEN` | vacía | **Secreto** (solo de ejecución), opcional. Token `Bearer` de los anuncios: al menos 32 caracteres. Sin él, o más corto, `POST /admin/push` responde `404` |
 
 - Una variable numérica con un valor que no sea un entero positivo (un número positivo, en el presupuesto y los precios) se ignora y se usa el de por defecto.
 - El límite de 50 rutas por dispositivo no es una variable: es una constante del código (`ROUTES_PER_DEVICE`).
@@ -148,6 +155,61 @@ El gasto es una estimación a partir de los tokens y de `AI_PRICE_*`, no la fact
 
 Un `429 ai_budget_exceeded` o `ai_device_limit` no es un fallo: se agotó el día UTC. Se arregla solo a las 00:00 UTC, y subir `AI_DAILY_BUDGET_USD` es una decisión de gasto del responsable del proyecto.
 
+## Notificaciones push (fase 7.1)
+
+La API manda dos tipos de aviso con Web Push: un **recordatorio** por recorrido sin terminar y los **anuncios** del responsable del proyecto. Nunca avisa de llegadas, porque el servidor no sabe dónde está nadie. Cómo funciona está en [`docs/PROJECT_PLAN.md`](PROJECT_PLAN.md) §10.11 y §11.1, y qué guarda y qué envía, en [`docs/SECURITY.md`](SECURITY.md).
+
+**Generar las claves**
+
+```bash
+pnpm --filter @rumbo/api run push:keys                 # el par VAPID y el contacto, una sola vez
+pnpm --filter @rumbo/api run push:keys --admin-token   # además, un ADMIN_TOKEN, si todavía no hay uno
+pnpm --filter @rumbo/api run push:keys --replace       # un par VAPID nuevo
+```
+
+- Escribe `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` (`https://rumbo.arturoocampo.com`) en `apps/api/.env`, con permisos 600 y **sin mostrarlos**: solo dice cuáles ha escrito. Si ya hay un par, no lo toca. `ADMIN_TOKEN` son 32 bytes aleatorios en base64url.
+- `--replace` invalida todas las suscripciones: cada navegador tiene que suscribirse de nuevo. La web lo hace sola la próxima vez que se abre, pero no llega a quien no la abra. Solo hace falta si el par se filtra.
+- `--admin-token` no sustituye un `ADMIN_TOKEN` que ya exista. Para cambiarlo, hay que borrar el viejo del `.env` antes.
+
+**Activarlo**
+
+1. Generar las claves en local (arriba).
+2. Cargar las variables en Coolify leyéndolas de `apps/api/.env` y enviándolas por la API de Coolify a la app `rumbo-api`, **solo de ejecución** y sin mostrarlas nunca en la salida. Son secretas `VAPID_PRIVATE_KEY` y `ADMIN_TOKEN`. `VAPID_PUBLIC_KEY` y `VAPID_SUBJECT` no lo son, pero van con ellas.
+3. Desplegar o reiniciar `rumbo-api`. En el log tiene que salir `Web Push is on` (con `reminderHours` y `announcements`).
+
+**Sin las claves la API arranca igual.** Avisa en el log (`Web Push is off: …`), los tres endpoints `/push/*` responden `503 push_unavailable` y la web enseña «No disponibles ahora mismo». Pasa lo mismo si falta una de las tres o el par no encaja (`incomplete` o `invalid`, sin mostrar ninguna clave). Un `ADMIN_TOKEN` de menos de 32 caracteres también se avisa: los anuncios quedan apagados.
+
+**Migración 0002** (`push_subscriptions` y `push_log`): se aplica sola al arrancar. Solo crea dos tablas, así que volver a la imagen anterior de la API es seguro: las tablas se quedan sin usar. `push_log` no se poda.
+
+**Recordatorios.** Cada 15 minutos la API busca los recorridos que siguen en marcha pasadas `PUSH_REMINDER_HOURS` horas (6 por defecto) desde su inicio, que vencieron hace menos de 24 horas y cuyo dispositivo tiene una suscripción, y manda **uno solo** por recorrido. De 22:00 a 08:00 en Europa/Lisboa no sale ninguno: los que vencen de noche salen a las 08:00. Para probarlo sin esperar, baja `PUSH_REMINDER_HOURS` en Coolify (acepta decimales, por ejemplo `0.1`) y vuelve a subirlo después.
+
+**Anunciar algo.** `POST /api/v1/admin/push` con el `ADMIN_TOKEN` como `Bearer`. El título (hasta 80 caracteres) y el texto (hasta 240) van en los tres idiomas, y cada suscripción recibe el suyo. `url` es opcional: una ruta de la web (`/` por defecto). Responde `{ sent, failed }`.
+
+```bash
+TOKEN=$(sed -n 's/^ADMIN_TOKEN=//p' apps/api/.env)   # leído del .env, sin imprimirlo
+curl -sS -X POST https://rumbo.arturoocampo.com/api/v1/admin/push \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"title":{"es":"…","en":"…","pt":"…"},"body":{"es":"…","en":"…","pt":"…"},"url":"/"}'
+```
+
+Un anuncio llega a todos los suscritos y la API no tiene forma de retirarlo, así que se revisa antes de mandarlo. El token lo tiene solo el responsable del proyecto.
+
+**Si algo falla**
+
+| En el log o en la respuesta | Qué significa | Qué mirar |
+|---|---|---|
+| `Web Push is off: set VAPID_…` | Faltan las tres variables | Cargarlas (arriba) |
+| `Web Push is off: the VAPID settings are incomplete` o `invalid` | Falta una, o están mal escritas o mezcladas (un par que no encaja) | Rehacer el par con `push:keys --replace` y cargar las tres otra vez |
+| `ADMIN_TOKEN has fewer than 32 characters` | Los anuncios están apagados | Generar otro con `--admin-token` |
+| `404` en `POST /admin/push` | No hay un `ADMIN_TOKEN` válido | Lo mismo |
+| `403 forbidden` en `POST /admin/push` | El token no coincide | Que el de Coolify sea el del `.env` |
+| `503 push_unavailable` | El push está apagado | Las tres variables VAPID |
+| Una suscripción desaparece de la tabla | El servicio push respondió `404` o `410` (se desinstaló la app o se retiró el permiso), o la rechazó 10 veces seguidas | Es lo normal: se borra sola |
+
+La API registra solo el estado que contestó el servicio push o un código de red, nunca la dirección de una suscripción ni una clave.
+
+**Probarlo tras desplegar.** En un Android real y en un iPhone con la app añadida a la pantalla de inicio (iOS 16.4 o más): Ajustes → Avisos → Notificaciones push → activar, mandar un anuncio y tocarlo. Es lo que los e2e no cubren: el Chrome de Playwright rechaza `subscribe()`.
+
 ## Base de datos: migraciones y datos iniciales
 
 Al arrancar, la API aplica las migraciones pendientes (`apps/api/drizzle`, generadas con `pnpm --filter @rumbo/api db:generate`). Después carga las rutas curadas de `data/routes`: inserta las nuevas, reemplaza las que cambiaron y deja igual el resto.
@@ -188,7 +250,7 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 
 - **Rápido:** en Coolify, app → *Deployments* → volver a la imagen anterior.
 - **Por código:** `git revert` en `main` y desplegar con normalidad. Nunca reescribir `production`.
-- **Migraciones:** la 0001 (fase 7) solo añade tablas, así que volver a una imagen anterior de la API es seguro.
+- **Migraciones:** la 0001 (fase 7) y la 0002 (fase 7.1) solo añaden tablas, así que volver a una imagen anterior de la API es seguro.
 
 ## Pendiente
 
@@ -202,4 +264,5 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] `pnpm deploy:prod` lanza los despliegues por la API de Coolify, porque la GitHub App no tiene webhook (2026-10-08).
 - [x] Despliegue de la fase 6, el creador de rutas (2026-10-08, commit `7f6456b`). Comprobado en producción: una ruta creada con lugares reales de Wikidata, probada en simulación, guardada (`POST` 201) y eliminada (`DELETE` 204).
 - [x] Despliegue de la fase 7, la guía con IA (2026-10-08, commit `3898958`): `AI_PROVIDER`, `AI_MODEL` y `AI_API_KEY` en Coolify como variables solo de ejecución; la migración `0001` (`ai_contents`, `ai_generations`) se aplicó al arrancar. Comprobado con la IA real: sugerencias, tres fichas sin spoilers y la trivia al llegar.
-- [ ] Fase 7, la guía con IA: cargar `AI_PROVIDER` y `AI_API_KEY` en `rumbo-api` (solo de ejecución), desplegar (migración 0001) y verificar con la IA real: sugerir lugares, preparar fichas, recorrer una ruta hasta su trivia y revisar el gasto en `ai_generations`.
+- [x] Despliegue de la fase 7.1, ajustes tras las pruebas en un iPhone y notificaciones push (2026-10-08, commit `e76be01`): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` en Coolify como variables solo de ejecución; la migración `0002` (`push_subscriptions`, `push_log`) se aplicó al arrancar y el log dice `Web Push is on`. Comprobado en producción: `GET /push/key` da la clave pública, una suscripción de un servicio no permitido o con claves falsas da `400`, y en un iPhone emulado el detalle de una ruta propia muestra «Editar ruta» y «Eliminar ruta», y Ajustes, el interruptor de push.
+- [ ] Fase 7.1: probar el push en un Android real y en un iPhone con la app instalada. Para mandar un anuncio de prueba hace falta antes un `ADMIN_TOKEN` (`push:keys --admin-token`) cargado en `rumbo-api`, solo de ejecución.

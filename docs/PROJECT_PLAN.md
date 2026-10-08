@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real ([DEPLOY.md](DEPLOY.md)).
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales.
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -29,7 +29,7 @@ Dos formas de uso, un solo motor:
 | | Rutas precargadas (curated) | Rutas creadas por el usuario (planificador) |
 |---|---|---|
 | Quién la crea | Nosotros (JSON curado) | El usuario, con un formulario guiado |
-| Contenido al llegar | Interacciones a medida: quiz, video, redirect, 3D/RA (futuro) | Plantilla generativa: ficha creada con IA a partir de fuentes reales (Wikipedia/Wikimedia o, si no hay artículo, la web), con una pregunta rápida |
+| Contenido al llegar | Interacciones a medida: quiz, video, redirect, 3D/RA (futuro) | Plantilla generativa: ficha creada con IA a partir de fuentes reales (Wikipedia/Wikimedia o, si no hay artículo, la web), con una pregunta rápida (o, a elección del usuario en cada lugar, su propia pregunta, un video de YouTube, un enlace o un aviso) |
 | Modos | Libre o reto | Libre o reto |
 | Valor | Experiencias diseñadas (turismo, museos, eventos, deporte) | **Planificador de viaje** cuya ruta funciona como guía en el sitio |
 
@@ -142,7 +142,7 @@ Secciones: `# Overview`, `# Development Environment`, `# Useful Websites`, `# Fu
 | Web | Vue 3 + Vite 8 + Pinia + Vue Router + vue-i18n (catálogos es/en/pt) + vite-plugin-pwa (Workbox, estrategia `injectManifest`). Fuentes Fraunces e Inter alojadas en la app (`@fontsource`): funcionan sin conexión y no envían la IP del usuario a terceros |
 | Mapa | ArcGIS Maps SDK for JavaScript (`@arcgis/core`, `MapView` + `GraphicsLayer`), encapsulado en un componente propio |
 | UI | CSS propio con tokens (variables CSS) de `docs/DESIGN.md`; iconos Lucide; SortableJS (vía `vue-draggable-plus`) para reordenar |
-| API | Fastify 5 + `fastify-type-provider-zod` + `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/swagger`. Sin CORS: la API comparte origen con la web |
+| API | Fastify 5 + `fastify-type-provider-zod` + `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/swagger`. Sin CORS: la API comparte origen con la web. Las notificaciones push usan `web-push` (MPL-2.0, sin modificar) |
 | BD | PostgreSQL 17 + PostGIS 3.5 (imagen `postgis/postgis`; su uso es opcional en v1) + Drizzle ORM + drizzle-kit (migraciones) |
 | IA | Interfaz `AiProvider` con una implementación por defecto, la API de Anthropic (`AI_PROVIDER=anthropic`, modelo `claude-sonnet-5-5` por defecto, configurable con `AI_MODEL`). Salida estructurada con una herramienta cuyo JSON Schema es la respuesta, validada con Zod |
 | Tests | Vitest (unitarios y de escenario), Playwright (e2e con geolocalización simulada) |
@@ -437,7 +437,17 @@ export interface DraftPlace {
   radius?: number;
   required?: boolean;
   contentRef?: string;
+  arrival?: ArrivalChoice;           // qué pasa al llegar (fase 7.1); sin valor = 'card'
 }
+
+// Lo que ve quien llega a un lugar. El creador deja elegir una; buildRouteSpec la convierte en la acción onEnter.
+export type ArrivalChoice =
+  | { type: 'card' }                 // la ficha con IA si está lista; si no, la hoja básica (por defecto)
+  | { type: 'basic' }                // la hoja básica: nombre y dirección, sin IA
+  | { type: 'quiz'; question: string; options: string[]; correctIndex: number; explanation?: string }  // pregunta propia, de 2 a 4 respuestas
+  | { type: 'video'; youtubeId: string; title?: string }                                               // video de YouTube
+  | { type: 'link'; url: string; label: string }                                                       // enlace https, tras confirmar
+  | { type: 'check' };               // solo un aviso («Llegaste a {name}»): sin hoja, la ruta sigue
 
 buildRouteSpec(draft, opts: { source: 'user'; id?: string; idFactory?: () => string })
   → { spec: RouteSpec; normalized: NormalizedRouteSpec; warnings: Issue[] }
@@ -452,36 +462,43 @@ summarizeRoute(spec)
 - Genera el `id`: un slug del nombre, un guion y un sufijo de 10 caracteres `[a-z0-9]` de `crypto.getRandomValues` (unos 52 bits: no se puede adivinar a partir de otro id). Con `opts.id` (al editar) se conserva el id guardado.
 - Ids de punto estables: un lugar con `pointId` lo conserva; los lugares nuevos reciben un slug de su nombre, sin repetir. Así, renombrar o reordenar lugares no cambia los ids de punto, los de acción (`content_<pointId>`) ni `hashRouteSpec`, y los recorridos guardados siguen valiendo.
 - Asigna `order` según la posición en el array.
-- Acciones por defecto en rutas de usuario: cada punto tiene `onEnter → content_<pointId>`, de tipo `ai_template` si hay `contentRef` y de tipo `info_sheet` (nombre + dirección, nunca imagen) si no lo hay.
+- Acciones en rutas de usuario: cada punto tiene `onEnter → content_<pointId>`, y su tipo sale de «Al llegar» (`arrival`):
+  - `card` (por defecto): `ai_template` si la ficha está lista (`contentRef`); si no, `info_sheet` (nombre + dirección, nunca imagen);
+  - `basic`: `info_sheet`, sin `contentRef`;
+  - `quiz`: `quiz` con 10 puntos (`USER_QUIZ_POINTS`);
+  - `video`: `video` con `provider: 'youtube'`;
+  - `link`: `redirect`, que siempre pide confirmar antes de abrir;
+  - `check`: `toast` con la clave `run.arrivedAt` («Llegaste a {name}»), que no abre ninguna hoja.
 - Triggers de ruta por defecto: `onDeviation`, `onIdle`, `onOutOfOrder` y `onTimeout` apuntan a acciones `decision` con su preset.
 - Limpia los textos (tabuladores y saltos de línea pasan a un espacio; se quitan los caracteres de control, los sustitutos Unicode sueltos y las marcas bidireccionales) y no comparte ninguna referencia con el borrador.
-- Siempre devuelve un spec que pasa `validateRouteSpec`. Si no puede, lanza `RouteBuildError` con los issues.
+- Siempre devuelve un spec que pasa `validateRouteSpec`. Si no puede, lanza `RouteBuildError` con los issues (un «Al llegar» inválido se señala en `places[i].arrival`).
 
 **Otras funciones del paquete** (`draft.ts`, sin UI):
 
 - `DRAFT_LIMITS`: de 2 a 30 lugares; nombres hasta 80 caracteres y direcciones hasta 200; ruta de hasta 500 km; radio de 20 a 200 m en pasos de 5 (40 por defecto). `TIME_LIMIT_PRESETS`: 30, 60, 90, 120 y 180 minutos.
-- `draftFromSpec(spec)`: el borrador de una ruta guardada, para editarla. Construir la ruta desde él, con el mismo `id`, devuelve el mismo spec.
+- `draftFromSpec(spec)`: el borrador de una ruta guardada, para editarla. Construir la ruta desde él, con el mismo `id`, devuelve el mismo spec. Lee también la pregunta, el video, el enlace y el aviso de cada lugar; una ficha y una hoja básica no se distinguen (se leen como la opción por defecto), y una acción que el creador no produce se lee como sin elección.
 - `summarizeDraft(draft)`: distancia, duración estimada y tramos, aunque el borrador esté vacío o incompleto.
 - `findOverlaps(places)`: pares de lugares cuyas zonas se solapan (la regla de la advertencia `overlapping_zones`).
-- `validateDraft(draft)`: lo que aún impide guardar, por paso: `name_required`, `name_too_long`, `too_few_places`, `too_many_places`, `place_name_required`, `radius_out_of_range`, `time_limit_invalid` y `route_too_long`.
+- `validateDraft(draft)`: lo que aún impide guardar, por paso: `name_required`, `name_too_long`, `too_few_places`, `too_many_places`, `place_name_required`, `radius_out_of_range`, `time_limit_invalid`, `route_too_long` y, desde la fase 7.1, los `arrival_*` (pregunta, respuestas, correcta, explicación, video y enlace), que se señalan en `places.<i>`.
 - `newIdSuffix()` y `truncateText(texto, máximo)`.
+- `arrival.ts` (fase 7.1): `ARRIVAL_TYPES`, `ARRIVAL_LIMITS`, `emptyArrival(tipo)`, `arrivalTypeOf(lugar)`, `parseYoutubeId(texto)` (el ID de un enlace de YouTube o el ID mismo; `null` si es otra web) y `validateArrival(elección)`.
 
 **Wizard (la UI está detallada en `docs/DESIGN.md`).** Los pasos se numeran como las pantallas C1 a C5. El Stepper tiene **cuatro pasos**: Datos · Lugares · Fichas · Revisar. La pantalla final (Lista) queda fuera del Stepper.
 
 1. **Datos:** nombre, zona (ciudad o área: centra el mapa y la búsqueda, y no se guarda en la ruta), modo, actividad y límite de tiempo (reto), más los **intereses** (opcionales): historia, arte, arquitectura, gastronomía, naturaleza, religión y curiosidades. No se pregunta el idioma: es el de la app (al editar, el de la ruta), y una línea avisa de que «Las fichas se generarán en {idioma}». **«Usar mi ubicación»** lee la posición una sola vez, al pulsar, y la pone como zona («Tu ubicación»), redondeada a 3 decimales.
-2. **Lugares:** búsqueda con autocompletado (Wikidata vía backend, §12.3). Un punto personalizado se añade con una **pulsación larga en el mapa** o con el botón **«Añadir el centro del mapa»**, no tocando el mapa. La lista se **reordena arrastrando** o con «Subir» y «Bajar» en el menú de cada lugar. Radio y obligatoriedad por punto, zonas dibujadas en el mapa con aviso de solapamiento, y distancia y duración estimadas. De 2 a 30 lugares. **«Sugerir lugares»** pide ideas a la IA (§12.4): el usuario da el tiempo que tiene, marca los lugares que quiere y se añaden en el orden sugerido.
-3. **Fichas:** la app prepara una ficha por lugar con el pipeline del §12.2, **sin enseñarla**: cada fila dice solo su estado («Ficha lista · 3 fuentes»). «Ver ficha» pide confirmación antes de abrirla (sin spoilers); «Regenerar» pide otra ficha; «Usar ficha básica» renuncia a la IA en ese lugar. «Siguiente» nunca se bloquea: un lugar sin ficha lista usa la ficha básica (`info_sheet`, nombre y dirección).
-4. **Revisar y simular:** validación, advertencias, la línea «{n} fichas con IA · {m} básicas» y botón **Probar ruta** (motor con fuente simulada, con las fichas incluidas).
+2. **Lugares:** búsqueda con autocompletado (Wikidata vía backend, §12.3). Un punto personalizado se añade con una **pulsación larga en el mapa** o con el botón **«Añadir el centro del mapa»**, no tocando el mapa. La lista se **reordena arrastrando** o con «Subir» y «Bajar» en el menú de cada lugar. Radio, obligatoriedad y **«Al llegar»** por punto (la ficha, una hoja básica, una pregunta propia, un video de YouTube, un enlace o solo un aviso), zonas dibujadas en el mapa con aviso de solapamiento, y distancia y duración estimadas. De 2 a 30 lugares. **«Sugerir lugares»** pide ideas a la IA (§12.4): el usuario da el tiempo que tiene, marca los lugares que quiere y se añaden en el orden sugerido.
+3. **Fichas:** la app prepara con el pipeline del §12.2 una ficha por cada lugar que usa la ficha en «Al llegar», **sin enseñarla**: cada fila dice solo su estado («Ficha lista · 3 fuentes»). «Ver ficha» pide confirmación antes de abrirla (sin spoilers); «Regenerar» pide otra ficha; «Usar ficha básica» renuncia a la IA en ese lugar. «Siguiente» nunca se bloquea: un lugar sin ficha lista usa la ficha básica (`info_sheet`, nombre y dirección). Los lugares con otra opción en «Al llegar» salen en la lista con lo que mostrarán (§7.3).
+4. **Revisar y simular:** validación, advertencias, la línea «{n} fichas con IA · {m} básicas», la línea «Al llegar: …» si algún lugar muestra otra cosa y botón **Probar ruta** (motor con fuente simulada, con las fichas incluidas).
 5. **Guardar:** la ruta se guarda siempre primero en IndexedDB, en el registro de «Mis rutas», y se sube en segundo plano con `POST /api/v1/routes`. Las fichas viajan en `contents` del bundle, en el idioma de la ruta, así que la ruta funciona sin conexión y sin llamar a la IA al llegar.
 
-El borrador se guarda automáticamente en IndexedDB mientras se edita, para no perder datos, y `/create` lo retoma en el primer paso con algo pendiente. Las rutas guardadas se editan desde Mis rutas y conservan los ids de punto (§7.1).
+El borrador se guarda automáticamente en IndexedDB mientras se edita, para no perder datos, y `/create` lo retoma en el primer paso con algo pendiente. Las rutas guardadas se editan desde Mis rutas, desde su detalle o desde el recorrido, y conservan los ids de punto (§7.1).
 
 ### 7.1 Precisiones de la implementación (fase 6)
 
 Al construir el creador se concretaron estos puntos. Los del servidor están en el §11.7, la búsqueda de lugares en el §12.3 y el razonamiento de fondo (rutas privadas, token del cliente, borrado) en el [ADR 0002](adr/0002-rutas-de-usuario.md).
 
 - **Contratos compartidos:**
-  - Los esquemas de `params` de `info_sheet`, `ai_template` y `decision`, y la lista `INTERRUPTIONS`, viven en `route-spec` (`src/actions.ts`). `event-system` y `api-contract` los importan de ahí: con una sola definición, un cambio en un handler no puede dejar a la API rechazando rutas que la app acaba de crear.
+  - Los esquemas de `params` de `info_sheet`, `ai_template` y `decision` (desde la fase 7.1, también `quiz`, `video`, `redirect` y `toast`), y la lista `INTERRUPTIONS`, viven en `route-spec` (`src/actions.ts`). `event-system` y `api-contract` los importan de ahí: con una sola definición, un cambio en un handler no puede dejar a la API rechazando rutas que la app acaba de crear.
   - Un trigger solo puede apuntar a una acción propia de `actions` (y una ficha, a una clave propia de `contents`): `constructor`, `toString` o `__proto__` dan `unknown_action`.
   - `findLocalizedTexts` se detiene a 16 niveles de profundidad. Sin ese tope, unos `params` anidados 20.000 niveles desbordaban la pila, y una petición manipulada habría recibido un 500.
   - `checkUserRoute` (`api-contract`) es la lista cerrada de lo que puede tener una ruta de usuario (§11.3). La API rechaza lo que se salga de ella, y los tests comprueban que todo lo que construye `buildRouteSpec` pasa.
@@ -506,7 +523,7 @@ Al construir el creador se concretaron estos puntos. Los del servidor están en 
   - Se valida campo a campo al leerlo. Un borrador de otra versión o con campos rotos se copia a `create:draft:backup`, y el creador sigue con lo que se pueda aprovechar (o desde cero): nunca se queda bloqueado por un borrador roto.
   - Entre pestañas, cada versión lleva una revisión (`rev`, nunca menor que el reloj) y la pestaña que la escribió. Al volver a una pestaña se adopta el borrador más nuevo de otra.
   - `/create` abre el borrador en el primer paso con algo pendiente (`resumeStep`), y cada paso exige los anteriores (guardia del router).
-  - **Editar:** Mis rutas carga la ruta en el borrador (`loadForEdit`) y abre Datos; no hay `?edit=` en la URL. El id de la ruta y los de punto se conservan. Si ya hay otro borrador con contenido, se pide confirmación antes de descartarlo, y borrar una ruta descarta el borrador que la edita.
+  - **Editar:** Mis rutas y el detalle de la ruta cargan la ruta en el borrador (`loadForEdit`) y abren Datos; «Editar ruta» del recorrido abre Lugares (§10.11). No hay `?edit=` en la URL. El id de la ruta y los de punto se conservan. Si ya hay otro borrador con contenido, se pide confirmación antes de descartarlo, y borrar una ruta descarta el borrador que la edita.
   - **Guardar**, en este orden: se construye la ruta; se guarda en el registro (si la escritura local falla, el borrador queda como estaba y se avisa); se detiene el autoguardado; se cierra el borrador; y **al final** se borra `create:draft`, para que nada vuelva a escribirlo. La subida sigue en segundo plano, y la pantalla final lee el estado del registro (`synced` o `pending`) sin esperar a la red. Una ruta nueva nunca sobrescribe otra con el mismo id: ante una colisión local, prácticamente imposible, se cambia el sufijo una vez.
 - **Probar ruta** (`stores/run.ts`):
   - Corre la ruta normalizada, aunque aún no esté guardada, en **simulación forzada** sea cual sea el ajuste.
@@ -554,6 +571,24 @@ Al construir los pasos nuevos del creador se concretaron estos puntos. Las ficha
 - **Analytics:** `content_generated` (`{ ok, ms }`), uno por petición de ficha (§13).
 - **Queda para después:** editar el texto de una ficha, el carrusel de imágenes y la URL de video (el editor del diseño original de C3), e invalidar las fichas cuando cambian los intereses después de crearlas (por ahora se usa «Regenerar»).
 - **Tests:** 15 de los servicios, 19 de la cola y el borrador y 17 de la interfaz (sin spoilers, estados, sugerencias), más los del store y el router, adaptados a los 4 pasos.
+
+### 7.3 Precisiones de la implementación (fase 7.1)
+
+Al dejar que cada lugar elija qué pasa al llegar se concretaron estos puntos. Cómo se muestra cada opción está en el §9.5 y el §10.11, y lo que acepta la API, en el §11.3.
+
+- **Opciones** (`arrival.ts`): `card` (por defecto), `basic`, `quiz`, `video`, `link` y `check`. Los textos se limpian como los demás y se miden en puntos de código. Los límites son los de `ACTION_LIMITS` (`route-spec`), una sola definición para el creador, la API y la web:
+  - pregunta, hasta 300 caracteres; de 2 a 4 respuestas, de hasta 120 cada una; explicación, hasta 500;
+  - título del video y texto del enlace, hasta 120; enlace `https://` completo, hasta 2048, sin espacios ni credenciales.
+- **Editor de lugar** (`PlaceEditorSheet`): el apartado «Al llegar» tiene un botón de radio por opción, con su icono y su ayuda, y debajo los campos de la elegida:
+  - pregunta: el texto, de 2 a 4 respuestas (un botón de radio nativo marca la correcta; se añaden y se quitan) y una explicación opcional;
+  - video: un enlace o un ID de YouTube, que se reduce al ID («Video encontrado: ID»), y un título opcional;
+  - enlace: la dirección y el texto que verá quien llegue.
+
+  Los errores salen al guardar (o al salir del campo del enlace o del video) y el foco va al primer campo mal. Una elección incompleta no se guarda. Lo escrito bajo otra opción se conserva mientras el editor sigue abierto.
+- **Borrador** (`stores/creator.ts`): la elección se guarda por lugar (`card` se guarda como ninguna elección). Una elección ilegible se descarta y el borrador se copia a `create:draft:backup`, como cualquier otra reparación.
+- **Fichas:** solo los lugares que usan `card` piden ficha a la IA y cuentan en `cardStats.total`. Cambiar un lugar a otra opción descarta su ficha y su `contentRef`; volver a `card` la pide de nuevo. Al editar una ruta guardada, las elecciones vuelven sin consultar a la IA.
+- **C3 y C4:** C3 lista los demás lugares con lo que mostrarán («Tu pregunta: «…»», «Video de YouTube: «…»», «Enlace: … · host», «Solo un aviso al llegar», «Nombre y dirección, sin IA») y dice cuándo no hay nada que preparar. C4 añade la línea «Al llegar: 1 pregunta propia · 1 aviso» y cuenta direcciones solo de los lugares que muestran la hoja básica.
+- **Tests:** 28 de `arrival.ts`, 27 del editor y el borrador en la web y 17 de `checkUserRoute` con las acciones nuevas; el e2e está en el §14.2.
 
 ---
 
@@ -631,6 +666,10 @@ const restored = restoreGeoEngine(spec, snapshot, options);
 // Si hashRouteSpec(spec) !== snapshot.specHash, lanza EngineRestoreError('ROUTE_CHANGED').
 // Un recorrido sin terminar vuelve SIEMPRE en 'paused': el usuario confirma para continuar
 // y la fuente de posición no arranca hasta resume(). Uno terminado o cancelado vuelve tal cual.
+
+// Si la ruta se editó con el recorrido en curso, antes se lleva el snapshot a la versión nueva (§8.10):
+const moved = migrateSnapshot(snapshot, newSpec);   // pura; misma ruta (mismo id) o EngineRestoreError
+const restoredNew = restoreGeoEngine(newSpec, moved, options);
 ```
 
 ### 8.3 Reglas por modo
@@ -769,7 +808,7 @@ export interface EngineEvent<T extends EngineEventType = EngineEventType> {
 
 - La app guarda `engine.serialize()` en IndexedDB en cada cambio relevante (con *throttle* de 2 s) y al pasar a segundo plano (`visibilitychange`).
 - Al abrir la app, si hay un recorrido activo, se ofrece **"Continuar recorrido"**: `restoreGeoEngine` lo deja en pausa hasta que el usuario confirma.
-- Si la ruta cambió (hash distinto), se ofrece empezar de nuevo.
+- Si la ruta cambió (hash distinto), se ofrece empezar de nuevo. La excepción es editar una ruta propia con su recorrido en curso: la app lleva el snapshot a la versión nueva con `migrateSnapshot` y el recorrido sigue (§8.10, §10.11).
 
 ### 8.8 Casos límite que el motor debe resolver
 
@@ -796,6 +835,21 @@ Al construir el motor (`packages/geo-engine`) se concretaron estos puntos. Los v
 - **Eventos sin reentrada:** los eventos se encolan y se entregan al final de cada paso. Un oyente puede llamar a `complete()` dentro de `enter` sin romper la evaluación en curso.
 - **Fuente simulada:** además de lo del §8.1, tiene `setTimeScale(1|5|20)` y `setWeakGps(on)`. Este último reporta 80 m de precisión y la vuelve no fiable, para que el motor aplique sus filtros reales; es el interruptor «GPS débil» de la demo.
 - **Fuente del navegador:** acepta la geolocalización inyectada, lo que permite testearla sin navegador.
+
+### 8.10 Precisiones de la implementación (fase 7.1)
+
+Al dejar editar una ruta mientras se recorre se concretaron estos puntos (`migrate.ts` y `challenge.ts`).
+
+- **`migrateSnapshot(snapshot, spec)`** lleva el snapshot a la versión editada de su ruta, y `restoreGeoEngine(spec, migrateSnapshot(snapshot, spec), …)` funciona donde el snapshot original lanzaría `ROUTE_CHANGED`. Es pura (no cambia ninguno de sus argumentos ni comparte objetos con ellos) y se puede repetir. Como los ids de punto son estables al editar:
+  - un punto que sigue en la ruta conserva todo lo que el recorrido sabe de él (estado, horas, puntuación);
+  - un punto nuevo empieza pendiente, como si el recorrido siempre lo hubiera tenido;
+  - un punto quitado se va, pero su puntuación se queda en el total (`carriedScore`);
+  - el tiempo, la traza, la distancia y el resto pasan intactos, y el recorrido conserva su estado (en pausa sigue en pausa).
+- **Se recalcula con la ruta nueva** lo que depende del orden o del modo: los bloqueos de un reto (`challengeStates`, que ahora comparten el motor y la migración), la ausencia de ellos en el modo libre y el objetivo elegido, que solo se conserva si aún se puede ir a él (modo libre; si no, el motor vuelve a elegir). Un cronómetro vencido deja de estarlo si se subió o se quitó el límite.
+- **`carriedScore`** es un campo opcional de `EngineSnapshot` (ausente = 0, así que los snapshots anteriores se leen igual; solo se escribe si es mayor que 0). Cuenta en la puntuación total, en el resumen de `finish()` y en el cierre de un recorrido abandonado que se manda a la API.
+- **Una regla del reto cambia en un caso que solo se da tras una migración:** un punto obligatorio añadido detrás del último completado sigue siendo alcanzable (antes se bloqueaba y el recorrido no podía terminar). Un opcional de detrás sigue bloqueado para siempre. Los recorridos normales se comportan igual que antes.
+- **Sin nada que visitar:** si la edición quita los últimos puntos pendientes, el recorrido restaurado termina al reanudarse, sin arrancar nunca el GPS.
+- **Tests:** 30 de `migrate.test.ts`: añadir un punto; quitar uno pendiente y terminar con el resto; quitar el siguiente (libre y reto); objetivo quitado o conservado; punto alcanzado con su ficha abierta; puntuación de los quitados, también tras dos ediciones; bloqueos del reto; cronómetro; rechazos (versión y otra ruta); nada que visitar; ida y vuelta por JSON. El paquete pasa de 75 a 105 tests, con 99,8 % de líneas y 95,2 % de ramas (barrera: 90 % y 85 %).
 
 ---
 
@@ -838,7 +892,7 @@ export interface HandlerContext {
   ui: UiAdapter;
   feedback: FeedbackAdapter;
   analytics: (name: string, props?: Record<string, unknown>) => void;
-  signal: AbortSignal;                           // se aborta si el recorrido se cancela
+  signal: AbortSignal;                           // se aborta si el recorrido se cancela, si el sistema se detiene o si el usuario sale de la zona con la ficha de llegada abierta
 }
 
 // El sistema de eventos nunca produce texto: pasa claves i18n (con parámetros) o
@@ -858,7 +912,8 @@ export interface UiAdapter {
   present<R = ViewOutcome>(view: string, props: Record<string, unknown>,
     opts?: { variant?: 'sheet' | 'modal' | 'fullscreen'; signal?: AbortSignal }): Promise<R | undefined>;
   toast(message: UiText, opts?: { icon?: string; durationMs?: number }): void;
-  confirm(opts: { title: UiText; body?: UiText; confirmLabel: UiText; cancelLabel: UiText; destructive?: boolean }): Promise<boolean>;
+  confirm(opts: { title: UiText; body?: UiText; confirmLabel: UiText; cancelLabel: UiText; destructive?: boolean;
+    signal?: AbortSignal }): Promise<boolean>;   // si se aborta, el diálogo se cierra como si se rechazara
   openExternal(url: string): void;
   navigate(to: 'summary'): void;                 // la app lo traduce a su router (/run/summary)
 }
@@ -879,7 +934,7 @@ events.stop();    // se desuscribe, aborta lo abierto y vacía la cola
 - **Cola:**
   - Las acciones `blocking` se ejecutan **de una en una** (FIFO). Las de tipo `toast` no bloquean.
   - Prioridad: `error` > interrupciones (`deviation`, `idle`, `out_of_order`, `timeout`) > contenido (`enter`).
-  - Una interrupción no corta la ficha abierta: espera a que se cierre.
+  - Una interrupción no corta la ficha abierta: espera a que se cierre, a mano o sola al salir de la zona.
 - **Deduplicación:** el mismo `trigger` + `pointId` no se encola dos veces.
 - **Interrupciones obsoletas:** se descartan si el estado ya las resolvió (p. ej. llega `back_on_track` antes de mostrar `deviation`).
 - **Sin trigger, comportamiento por defecto:**
@@ -889,12 +944,13 @@ events.stop();    // se desuscribe, aborta lo abierto y vacía la cola
   - `finished` y `cancelled`: navegar a `/run/summary`, después de la acción de `onFinish` u `onCancel` si la hay.
   - `error`: hoja de error con instrucciones.
 - **Tras un `enter`:** se llama a `engine.complete(pointId, { score, data })` con cualquier resultado (`done` o `dismissed`).
+- **Salir de la zona con la ficha abierta (fase 7.1):** si llega el `exit` de un punto y lo que está abierto es la ficha de llegada de ese mismo punto (su ficha o la hoja básica de respaldo), el dispatcher la cierra por el usuario: la marca como dejada atrás y aborta su `signal`. El handler termina como `dismissed` y el punto se completa como con cualquier ficha descartada. No hace nada si sale otro punto, si la salida no nombra ninguno, si lo abierto no es una llegada (la acción de `approach` o `exit` del mismo punto, una interrupción o una hoja de error), si la ficha ya se cerró o si la señal ya estaba abortada (salida repetida). La cola no cambia (§9.7).
 - **Una acción que falla nunca bloquea la ruta:** si el handler falla (`failed` o excepción), se muestra `info_sheet` de respaldo con los datos del punto y se completa igualmente. El fallo se registra en analytics.
 - **Decisiones:**
   - `continue` → `resume()` si estaba en pausa.
   - `pause` → `pause()`.
   - `cancel` → `ui.confirm` destructivo y, si se confirma, `cancel()`.
-- **Cancelación:** se aborta el `signal` de los handlers en curso y se vacía la cola.
+- **Cancelación:** se aborta el `signal` de los handlers en curso y se vacía la cola. Eso no completa el punto; salir de la zona sí (§9.7).
 - **Fichas pendientes:** al arrancar (`start()`), los puntos `reached` con `onEnter` vuelven a mostrar su ficha. Es el caso de una recarga con la ficha abierta.
 
 ### 9.4 Feedback por defecto (sobrescribible con `ActionDef.feedback`)
@@ -928,7 +984,7 @@ Los textos de esta tabla son la referencia en español. En el código, cada noti
 
 **Acciones personalizadas en 3 idiomas:** los textos de los `params` son `LocalizedText`. Eso incluye la pregunta, las opciones y la explicación del quiz; el `label` del redirect; el `title` y el `body` de `info_sheet`; y el `message` del toast. Así, una acción escrita por nosotros (no por la IA) puede traer español, inglés y portugués, y el handler muestra el idioma activo.
 
-**Esquemas compartidos:** los esquemas de `params` de `info_sheet`, `ai_template` y `decision`, y la lista `INTERRUPTIONS`, se definen en `route-spec` (`src/actions.ts`). Los handlers de este paquete los importan de ahí (y este paquete reexporta `INTERRUPTIONS`). La API los usa para validar las rutas de usuario (§11.3), así que hay una sola definición.
+**Esquemas compartidos:** los esquemas de `params` de `info_sheet`, `ai_template`, `decision`, `quiz`, `video`, `redirect` y `toast`, la lista `INTERRUPTIONS` y los límites de texto (`ACTION_LIMITS`) se definen en `route-spec` (`src/actions.ts`). Los handlers de este paquete los importan de ahí (y este paquete reexporta `INTERRUPTIONS`). La API los usa para validar las rutas de usuario (§11.3), así que hay una sola definición. Para las rutas de usuario, el creador produce `quiz` (10 puntos), `video` (solo YouTube), `redirect` (solo `https://`) y `toast` (§7), y la API los acepta con parámetros más estrictos que los de las rutas curadas.
 
 **Añadir un tipo nuevo** consiste en escribir su `ActionHandler` (con su `paramsSchema`), pasarlo en `handlers` y crear en la web el componente de su vista. **El motor no se toca.**
 
@@ -940,6 +996,8 @@ GPS ─► motor: muestra aceptada → dentro del radio → permanencia 5 s ─�
    ─► UI: hoja con la ficha → el usuario pulsa "Continuar ruta" → HandlerResult { status: 'done' }
    ─► event-system: engine.complete("castelo") ─► motor: completed → (reto) activa el siguiente punto → nuevo estado
 ```
+
+Si el usuario se va sin cerrar la ficha, el motor emite `exit` y la ficha se cierra sola: el punto se completa igual (§9.3).
 
 ### 9.7 Precisiones de la implementación (fase 3)
 
@@ -964,7 +1022,17 @@ Al construir `packages/event-system` se concretaron estos puntos.
   - Una ficha: se descarta si su punto ya no está `reached`.
   - Si el recorrido terminó, se descarta todo menos la navegación.
 - **Fichas pendientes tras recargar:** el motor restaurado conserva los puntos `reached`, pero la ficha se perdió con la pestaña. `start()` las vuelve a encolar, sin repetir vibración ni notificación. Sin esto, el punto quedaría `reached` para siempre y la ruta no podría terminar.
-- **Cancelación y `stop()`:** abortan el `signal` de la acción abierta (la vista debe cerrarse) y vacían la cola. Una ficha abortada no completa su punto, que queda `reached` para volver a mostrarse.
+- **Cancelación y `stop()`:** abortan el `signal` de la acción abierta (la vista debe cerrarse) y vacían la cola. Una ficha abortada no completa su punto, que queda `reached` para volver a mostrarse. La excepción es la salida de la zona (siguiente punto): nadie va a volver a por esa ficha, así que el punto se completa.
+- **Salida de la zona** (fase 7.1): el `exit` de un punto cierra su ficha de llegada abierta (§9.3).
+  - La cola no cambia: las interrupciones y fichas en espera salen después, como siempre. La acción `onExit` del punto se lanza antes de cerrar la ficha, así que una `onExit` con la misma clave que la ficha abierta sigue sin mostrarse dos veces.
+  - Se respeta lo que el usuario hizo en ese mismo instante (por ejemplo, Pausar). Una acción que había fallado, con su hoja de respaldo abierta, completa el punto con estado `failed`. Si el `exit` llega antes de que se presente la ficha, no se abre nada y el punto se completa.
+  - Analytics: sin nombres nuevos. `point_completed` sale con `status: 'dismissed'` (o `done` o `failed`, según lo anterior). Sin aviso ni feedback.
+  - Los diálogos: `redirect` abre un `ui.confirm`, no una hoja. El dispatcher da a los handlers una UI cuyo `confirm` lleva la señal de la acción (`uiFor`), y la tienda de la web cierra el diálogo al abortarse. El `confirm` de «¿Terminar el recorrido?» (`decide()`) no la lleva: una salida nunca lo cierra.
+  - **Límites conocidos:**
+    - solo se aborta la ficha que está abierta: la llegada de un punto que sigue en cola cuando se sale de su zona no se descarta y se mostrará después;
+    - una trivia respondida, pero sin «Continuar ruta», se pierde al cerrarse sola (la vista informa de la respuesta al cerrar): el punto cuenta, con 0 puntos de trivia;
+    - el motor no emite `exit` para una ficha restaurada tras una recarga (no está ligada a una estancia) ni para un check-in manual hecho fuera de la zona: esas fichas esperan a que se cierren a mano;
+    - el ruido del GPS más allá del radio + 10 m de histéresis puede cerrar una ficha antes de tiempo; se puede volver a ver desde la lista de puntos (§10.11).
 - **Respaldo:**
   - Si la acción de un `enter` falla, se muestra `info_sheet` con el nombre del punto y el punto se completa.
     - Cuenta como fallo una excepción, un resultado `failed`, unos `params` inválidos o un tipo sin handler.
@@ -998,7 +1066,8 @@ src/
 │                           # ai, content, suggest (fichas y sugerencias de la IA),
 │                           # myRoutes (rutas del usuario: registro local y subida), contentCache (IndexedDB),
 │                           # catalog (descarga y fotos sin conexión), analytics, notifications, wakeLock, audio,
-│                           # permissions, installPrompt
+│                           # permissions, installPrompt, push y pushEvents (notificaciones push)
+├─ composables/             # useMyRouteActions: editar y eliminar una ruta propia (Mis rutas y su detalle)
 ├─ map/                     # RouteMap.vue (envuelve <arcgis-map>) + capas, symbols.ts, popup.ts, basemap.ts
 ├─ engine/                  # useGeoEngine.ts: motor + fuentes + persistencia de snapshots
 ├─ events/                  # setupEventSystem.ts, uiAdapter.ts, feedbackAdapter.ts
@@ -1010,7 +1079,7 @@ src/
 │                           # GpsIndicator, MiniRunBar...
 ├─ styles/                  # tokens.css (de DESIGN.md), base.css
 ├─ i18n/                    # es.json, en.json, pt.json (vue-i18n) y useLocale()
-└─ sw.ts                    # service worker (injectManifest): precache, caché en tiempo de ejecución, notificationclick
+└─ sw.ts                    # service worker (injectManifest): precache, caché en tiempo de ejecución, push, notificationclick
 ```
 
 ### 10.2 Rutas (coinciden con `docs/DESIGN.md`)
@@ -1020,12 +1089,12 @@ src/
 | `/welcome` | Idioma (S00): solo en el primer arranque. Después el idioma se cambia en `/settings` |
 | `/onboarding` | Onboarding (primera vez) |
 | `/` | Inicio, pestaña Explorar (lista o mapa) |
-| `/my-routes` | Mis rutas: las del usuario, con su estado de subida; editar y eliminar |
-| `/routes/:routeId` | Detalle de ruta |
+| `/my-routes` | Mis rutas: las del usuario, con su estado de subida; «Editar» a la vista y eliminar |
+| `/routes/:routeId` | Detalle de ruta. En las rutas propias, «Editar ruta» y «Eliminar ruta» |
 | `/routes/:routeId/prepare` | Preparación y permisos |
-| `/run` | Recorrido en curso (una ruta activa a la vez). Acepta `?point=<id>` desde una notificación |
+| `/run` | Recorrido en curso (una ruta activa a la vez). Acepta `?point=<id>` desde una notificación. En las rutas propias, su lista de puntos ofrece «Editar ruta» |
 | `/run/summary` | Resumen del último recorrido |
-| `/create/details` → `/create/places` → `/create/content` → `/create/review` → `/create/done` | Wizard del creador, sin navegación inferior. `/create` retoma el borrador en el primer paso con algo pendiente. `/create/content` es el paso Fichas, entre Lugares y Revisar. Una ruta se edita desde Mis rutas, que la carga en el borrador y abre `/create/details` |
+| `/create/details` → `/create/places` → `/create/content` → `/create/review` → `/create/done` | Wizard del creador, sin navegación inferior. `/create` retoma el borrador en el primer paso con algo pendiente. `/create/content` es el paso Fichas, entre Lugares y Revisar. Una ruta se edita desde Mis rutas o desde su detalle, que la cargan en el borrador y abren `/create/details`, o desde el recorrido, que abre `/create/places` |
 | `/settings` | Ajustes |
 
 Las hojas de llegada y de decisión **no son rutas**: forman una pila de overlays gestionada por el `UiAdapter`. El botón atrás del sistema cierra la hoja superior; en `/run`, pide confirmar antes de salir de la pantalla, y la ruta sigue activa.
@@ -1063,10 +1132,10 @@ La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curada
 | Vibración | ✅ | ❌ | `navigator.vibrate` con detección de soporte |
 | Sonido | ✅ | ✅ | Web Audio, desbloqueado con el toque en "Empezar" |
 | Notificación local | ✅ | ✅ solo con la **PWA instalada** (iOS 16.4+) | `registration.showNotification()` cuando `document.hidden` |
-| Web Push desde el servidor | ✅ | ✅ solo PWA instalada | **Futuro** (recordatorios). No sirve para llegadas porque requiere ubicación en segundo plano |
+| Web Push desde el servidor | ✅ | ✅ solo PWA instalada (iOS 16.4+) | Recordatorios y anuncios (fase 7.1, §10.11 y §11.1). No sirve para llegadas: el servidor no conoce la posición |
 
 - En iOS hay que guiar al usuario para **instalar la PWA** (Compartir → "Añadir a pantalla de inicio") antes de ofrecer notificaciones.
-- Para geocercas reales en segundo plano, la vía futura es un wrapper nativo (Capacitor), no la web.
+- El push de la web recuerda y anuncia, pero nunca informa de llegadas. Los avisos de llegada con la pantalla apagada necesitan la app nativa (Capacitor, fase 8). En la web, el seguimiento fiable exige la pantalla encendida, tanto en iOS como en Android.
 
 ### 10.6 Offline y caché
 
@@ -1159,6 +1228,42 @@ Al construir la llegada con trivia y las fotos sin conexión se concretaron esto
   - Las fotos que se ven en línea sin pasar por `PrepareView` (los popups de Explorar) no se cachean. Poner `crossorigin` en esos `<img>` lo arreglaría, pero rompería los servidores de fotos sin CORS.
 - **Tests:** 23 de la trivia (estructura, acierto, fallo, un solo intento, resultado, idioma, vista previa y el contrato con el handler real) y 12 de las fotos (`routeImageUrls`, `prefetchImages` y `PrepareView` de punta a punta).
 
+### 10.11 Precisiones de la implementación (fase 7.1)
+
+Al probar la fase 7 en un iPhone se concretaron estos puntos. La elección «Al llegar» está en el §7.3, el motor en el §8.10, la salida de la zona en el §9.7 y el servidor del push en el §11.1.
+
+- **Detalle de ruta** (`RouteDetailView`, solo en las rutas propias): una fila con dos botones de borde, «Editar ruta» y «Eliminar ruta» (texto rojo), entre los chips de datos y el resto. Se eligió una fila a la vista y no un menú ⋯ porque el menú no se encontraba, y no un pie fijo, para que la barra de «Iniciar ruta» siga siendo fina. Se apilan a 320 px y se desactivan mientras corre una acción. Las rutas curadas y los ids desconocidos no los muestran.
+  - **Editar** hace lo mismo que en Mis rutas: pregunta antes de reemplazar otro borrador y abre Datos. La flecha atrás del creador vuelve al detalle.
+  - **Eliminar** pide confirmar con el nombre de la ruta (en su idioma), termina el recorrido de esa ruta, la borra del dispositivo y de la cola del servidor, descarta su borrador y avisa «Ruta eliminada». Después vuelve a Mis rutas: con `router.back()` si Mis rutas era la entrada anterior (así el historial no la duplica) y, si no, con `router.replace('/my-routes')`.
+  - Al borrar, el catálogo vacía la entrada antes de que termine el borrado, y un observador síncrono marca la ruta como desaparecida en ese instante: «No encontramos esta ruta.» nunca llega a pintarse entre medias (un test lo vigila con un `MutationObserver`).
+- **Mis rutas:** cada tarjeta lleva un botón secundario «Editar» a la vista (`aria-label` «Editar: {nombre}»), además del menú ⋯. Una tarjeta cuya subida falló conserva su botón de estado (Reintentar o Editar), así que nunca lleva dos. Una ruta ilegible solo ofrece «Eliminar».
+- **`useMyRouteActions`** (`composables/`): `edit(id)`, `remove({ id, name, sourceLocale })`, `retry(id)` y `busy`, con lo que antes vivía en Mis rutas: confirmar el reemplazo de un borrador, los avisos de recorrido en curso, borrar la ruta y su borrador con el aviso «Ruta eliminada», el aviso `errors.generic` si falla y una sola acción a la vez. `edit` devuelve `true` cuando el creador ya está abierto sobre la ruta y `remove`, cuando ya está borrada: quien llama decide adónde ir.
+- **Editar una ruta con su recorrido en curso** (`stores/run.ts`): el recorrido sigue a la ruta.
+  - `applyRouteUpdate(bundle)` solo toca el recorrido real de esa ruta que está `running` o `paused` (nunca una prueba, uno terminado ni el de otra ruta), y solo si el bundle cambió de verdad: un reintento de subida no cuenta.
+  - Serializa el motor, migra el snapshot (§8.10), lo restaura con el bundle nuevo sobre la misma fuente de posición (una simulación conserva posición, velocidad y GPS débil), cambia el sistema de eventos, guarda `run:active` y avisa «Ruta actualizada: lo que ya visitaste se mantiene». Un recorrido en marcha sigue solo, sin contar un `run_resumed`; uno en pausa sigue en pausa.
+  - Todo lo que puede fallar va antes de tocar el motor viejo: si algo falla, se registra y el recorrido sigue como estaba.
+  - Un `watch` sobre `catalog.mine` lo aplica con cualquier guardado de esa ruta, empiece donde empiece la edición (el recorrido, Mis rutas o el detalle). Una ruta borrada ya no tiene bundle: su recorrido sigue como estaba.
+  - Un punto cuya ficha estaba abierta no se pierde: se cierra con el sistema de eventos viejo y el nuevo la abre de nuevo.
+  - Si la edición no deja nada que visitar, el recorrido termina (`endedByEdit`) y se va al resumen.
+  - Un recorrido en pausa vuelve con la fuente de posición parada, como cualquier restaurado: su punto y sus distancias salen vacíos hasta que se reanude.
+  - Un recorrido guardado cuya ruta se editó sin estar en memoria (otra pestaña) se sigue ofreciendo como «ruta cambiada» (S11). Con los flujos de esta app no se da.
+- **Recorrido, lista de puntos** (`RunView`, con el panel abierto):
+  - **«Editar ruta»** junto al título, solo en las rutas propias y nunca en una prueba. Pregunta antes de reemplazar otro borrador, carga la ruta y abre Lugares, con el recorrido activo debajo. En esa navegación no se pregunta «¿Salir del mapa?». Al guardar, el recorrido toma los cambios y la pantalla final (C5) ofrece «Volver al recorrido».
+  - **«Ver ficha»** en un punto visitado cuya acción es una ficha (`ai_template`) o una hoja con algo que mostrar (`aria-label` «Ver la ficha de {nombre}»): abre la hoja en vista previa, sin puntuar ni cambiar nada. El popup de su marcador ofrece lo mismo (DESIGN §6.3). `pointCard(bundle, pointId)` la construye igual que los handlers y devuelve `null` si no hay nada que abrir: una pregunta, un video, un enlace o un aviso no se reabren.
+- **Notificaciones push** (web):
+  - `services/push.ts`: `pushState()`, `enablePush()`, `disablePush()`, `syncPushSubscription()` y `startPushSync()`. Los estados son `unsupported`, `needs-install`, `denied`, `off`, `on` y `unavailable`. En iPhone solo funcionan con la app añadida a la pantalla de inicio (iOS 16.4+), y esa comprobación va antes que la de capacidades porque las pestañas de Safari no tienen `PushManager`.
+  - `enablePush()` pide el permiso antes de esperar nada (Safari lo exige en el mismo turno del toque) y luego hace `GET /push/key`, `pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })` y `POST /push/subscriptions { endpoint, keys, locale }`. Si el POST falla, cancela la suscripción: el navegador y el servidor siempre coinciden. `disablePush()` cancela y hace `DELETE`, aunque falle (la API poda los 404 y 410).
+  - `startPushSync()` (al montar `App.vue`): si hay suscripción, la vuelve a registrar, y otra vez en cada cambio de idioma para que los avisos lleguen en el idioma de la app. También reemplaza una suscripción hecha con una clave VAPID que el servidor ya no usa.
+  - `services/pushEvents.ts` (sin imports, para el worker): `sw.ts` muestra siempre una notificación al recibir un push, porque Safari revoca el permiso si no se muestra nada. Con un cuerpo vacío o raro, el título es «Rumbo» y el toque lleva a `/`. La URL de toque debe ser una ruta de esta app; cualquier otra pasa a `/`. Usa `icon-192.png` como icono y no lleva insignia (`badge`): Android la dibuja como una silueta blanca, y un icono a todo color saldría como un cuadrado blanco; sin ella usa la suya.
+  - **Ajustes → Avisos → «Notificaciones push»:** un interruptor con una línea de ayuda por estado (DESIGN S12). «Borrar mis datos locales» también cancela la suscripción, antes de olvidar el identificador del dispositivo. No se registra nada: ni direcciones ni claves.
+  - **Límites conocidos:**
+    - el push no avisa de llegadas: el servidor no sabe dónde está nadie;
+    - no hay manejador de `pushsubscriptionchange` (el worker no puede leer el identificador del dispositivo): si el navegador cambia la suscripción con la app cerrada, los avisos paran hasta que se abra otra vez;
+    - la notificación no lleva insignia propia: haría falta un icono monocromo, y mientras tanto Android usa la suya;
+    - Playwright no puede probar la suscripción completa (su Chrome rechaza `subscribe()`, así que acaba en `unavailable`): falta probarla en un Android real y en un iPhone con la app instalada, una vez desplegado.
+- **Textos:** `route.edit` y `route.delete`; `run.editRoute`, `run.routeUpdated`, `run.viewCard` y `run.viewCardNamed`; `create.done.backToRun` y `create.done.runUpdated`; `create.arrival.*`; `settings.push.*`. `myRoutes.activeRunEdit` ahora dice que el recorrido se actualizará con los cambios.
+- **Tests:** en el §14.2.
+
 ---
 
 ## 11. Backend (`apps/api`) en el VPS
@@ -1184,6 +1289,10 @@ Al construir la llegada con trivia y las fotos sin conexión se concretaron esto
 | POST | `/runs` | Inicio de recorrido → `{ runId }` |
 | PATCH | `/runs/:runId` | Cierre: estado final + resumen |
 | POST | `/analytics/batch` | Lote de eventos anónimos → `202` |
+| GET | `/push/key` | Clave pública VAPID con la que el navegador se suscribe. `503 push_unavailable` si el push está apagado |
+| POST | `/push/subscriptions` | Registra (o refresca) la suscripción push del navegador y su idioma. Necesita `X-Device-Id` → `201` |
+| DELETE | `/push/subscriptions` | Olvida una suscripción por su `endpoint` → `204`, también si no existe |
+| POST | `/admin/push` | Anuncia algo a todas las suscripciones, cada una en su idioma (`Authorization: Bearer ADMIN_TOKEN`). Sin un `ADMIN_TOKEN` válido no existe (`404`) |
 
 ```ts
 // @rumbo/api-contract
@@ -1303,6 +1412,19 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
 | `unverified_content` | 422 | En un POST o PUT de ruta, alguna ficha no la generó este servidor. Incluye `details` con las rutas `contents.<ref>.<locale>` |
 | `place_not_found` | 404 | (Ya existía.) En `/content/generate`, el `externalId` no es un elemento de Wikidata |
 
+**Notificaciones push (fase 7.1).** Web Push con VAPID (RFC 8030, 8291 y 8292), con la librería `web-push` (MPL-2.0, sin modificar). Los tres endpoints `/push/*` responden `503 push_unavailable` mientras `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` no estén las tres y sean válidas (el par se comprueba al arrancar). El servidor nunca sabe dónde está nadie: el push no informa de llegadas.
+
+- **`GET /push/key`:** `{ publicKey }`, con `cache-control: public, max-age=3600`. No necesita `X-Device-Id`.
+- **`POST /push/subscriptions`:** `{ endpoint, keys: { p256dh, auth }, locale }` (`locale` es `es`, `en` o `pt`), de hasta 4 KB y con `X-Device-Id`. El `endpoint` identifica al navegador: registrarlo otra vez, desde el mismo dispositivo o desde otro (si se reinició su identificador), lo refresca y lo asigna al último que lo registró. Un dispositivo puede tener varias suscripciones. Se ignora lo que el navegador añada (`expirationTime`).
+- **`DELETE /push/subscriptions`:** `{ endpoint }`, sin cabecera: `204`, también si no existe.
+- **Recordatorio:** un trabajo que corre cada 15 minutos busca los recorridos `running` que empezaron hace más de `PUSH_REMINDER_HOURS` horas (6 por defecto), pero no hace más de 24 horas más (pasado ese margen el recordatorio ya no vale), y cuyo dispositivo tiene alguna suscripción. A cada uno le manda **un solo** recordatorio, en el idioma de cada suscripción: «¿Seguimos?» · «Tu recorrido «{ruta}» te espera». Al tocarlo se abre `/run`.
+  - Lo reclama antes de enviarlo, con una fila de `push_log` (`run_reminder` y el id del recorrido), así que dos pases o dos instancias no lo repiten. Si no llegó a nadie por un motivo que puede pasar (el servicio push caído), libera la fila y lo reintenta en el pase siguiente.
+  - De 22:00 a 08:00 en Europa/Lisboa no sale ninguno, esté donde esté el usuario: lo que vence de noche sale a las 08:00. Hasta 200 recorridos por pase.
+- **`POST /admin/push`:** `{ title, body, url? }`, con `title` (hasta 80 caracteres) y `body` (hasta 240) en `es`, `en` y `pt`, y `url` opcional (una ruta de la web; `/` por defecto). Cuerpo de hasta 16 KB. Cada suscripción recibe el texto de su idioma. Responde `{ sent, failed }`. Sin un `ADMIN_TOKEN` de al menos 32 caracteres el endpoint no existe (`404 not_found`); con otro token, `403 forbidden`. Con el push apagado responde `503 push_unavailable`, pero solo a quien trae el token. Cada anuncio lleva su propia etiqueta (`announcement:<segundos>`), así que no reemplaza al anterior.
+- **El mensaje:** JSON cifrado con `{ title, body, url, tag }`, `TTL` de un día y urgencia normal. Hasta 10 envíos a la vez, con 10 s de plazo cada uno.
+- **La respuesta del servicio push:** `2xx` es una entrega (y perdona los fallos anteriores); `404` y `410` borran la suscripción; cualquier otra cosa cuenta como un fallo, y a los 10 seguidos se descarta.
+- **Errores:** `503 push_unavailable` (código nuevo), `400 missing_device_id`, `403 forbidden`, `404 not_found` y `429 rate_limited`.
+
 ### 11.2 Base de datos (Drizzle, PostgreSQL)
 
 | Tabla | Columnas principales |
@@ -1314,23 +1436,28 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
 | `runs` | `id` (uuid), `route_id`, `spec_hash`, `device_id`, `mode`, `status` (`running`\|`finished`\|`cancelled`\|`abandoned`), `started_at`, `ended_at`, `elapsed_ms`, `completed_points`, `total_points`, `score`, `client_info` jsonb |
 | `analytics_events` | `id` bigserial, `device_id`, `run_id` (null), `name`, `props` jsonb, `client_ts`, `server_ts`. Índice (`name`, `server_ts`) |
 | `devices` | `id`, `first_seen`, `last_seen`, `platform` (aproximada), `pwa_installed` |
+| `push_subscriptions` | `id` bigserial, `device_id` (uuid, sin clave foránea), `endpoint` (único), `p256dh`, `auth`, `locale` (`es`\|`en`\|`pt`), `created_at`, `last_success_at`, `failures` (rechazos seguidos). Índice (`device_id`) |
+| `push_log` | `id` bigserial, `device_id` (uuid, sin clave foránea), `kind` (`run_reminder`), `ref` (el id del recorrido), `sent_at`. Único (`kind`, `ref`) cuando `ref` no es nulo |
 
 - El `spec` en jsonb es la **fuente de verdad**. Las columnas extraídas (nombre, modo, métricas, centroide) sirven para listar y filtrar sin abrir el JSON.
 - Las rutas de usuario llevan `owner_device_id` (el `X-Device-Id` del POST) y `edit_token_hash` (el SHA-256, en hexadecimal, del token que generó el cliente). Las curadas no llevan ninguno de los dos.
 - Borrar una ruta es un borrado físico: la fila, sus `point_contents` y sus `runs` se van por la cascada de las claves foráneas.
 - **`ai_contents`** guarda cada ficha que genera el servidor, y su hash decide qué fichas acepta una ruta de usuario (§11.3). **`ai_generations`** es el libro de cuentas de la IA: una fila por llamada, con sus tokens y su coste estimado, que también alimenta los presupuestos. Ninguna de las dos se poda.
+- **`push_subscriptions`** guarda el `endpoint` de cada navegador suscrito y las dos claves públicas con las que se cifra cada aviso. El `endpoint` se trata como un secreto (§11.3). **`push_log`** hace que un recordatorio salga una sola vez por recorrido. Ninguna de las dos tiene clave foránea (un recorrido borrado no las toca), y `push_log` no se poda. Una suscripción se borra cuando el servicio push responde `404` o `410`, a los 10 rechazos seguidos o cuando el usuario la cancela.
 - **Futuro:** tabla `users`, sesiones, migración de `owner_device_id` → `owner_user_id`, consultas espaciales con PostGIS ("rutas cerca de mí").
 
 ### 11.3 Seguridad
 
-- Mismo origen que la web, así que sin CORS. `@fastify/helmet` y límite de tamaño del body: 1 MB, 128 KiB en el POST y el PUT de rutas y 4 KB en los dos endpoints de IA (`413 payload_too_large`).
+- Mismo origen que la web, así que sin CORS. `@fastify/helmet` y límite de tamaño del body: 1 MB, 128 KiB en el POST y el PUT de rutas, 4 KB en los dos endpoints de IA y en las suscripciones push, y 16 KB en un anuncio (`413 payload_too_large`).
 - **Rate limit.** `X-Device-Id` lo elige el cliente y se esquiva con uno nuevo en cada petición, así que los límites estrictos cuentan por **IP**:
   - general, por dispositivo o IP: 300 por minuto (`RATE_LIMIT_PER_MINUTE`);
   - escrituras de rutas (POST, PUT, DELETE y lecturas de una ruta de usuario): 20 por minuto y 200 por día;
   - búsqueda de lugares (`/geo/suggest` y `/geo/resolve`, juntos): 120 por minuto;
   - recorridos y analytics: 30 por minuto;
   - fichas (`/content/generate`): 30 por minuto (`CONTENT_RATE_LIMIT_PER_MINUTE`);
-  - sugerencias (`/suggest/places`): 20 por minuto (`SUGGEST_RATE_LIMIT_PER_MINUTE`).
+  - sugerencias (`/suggest/places`): 20 por minuto (`SUGGEST_RATE_LIMIT_PER_MINUTE`);
+  - suscribir y cancelar notificaciones push: 20 por minuto (`PUSH_RATE_LIMIT_PER_MINUTE`);
+  - anuncios (`/admin/push`): 5 por minuto (`ADMIN_RATE_LIMIT_PER_MINUTE`), con los intentos de token equivocados incluidos.
 
   La IP es la última entrada de `X-Forwarded-For`, la que añade Traefik: la API confía en un solo salto y solo si la conexión viene de una red privada (§11.7). Al superar un límite, `429 rate_limited` con `Retry-After`.
 - **Cuotas de rutas de usuario:** 50 por dispositivo (`409 quota_exceeded`) y, en todo el servidor, `USER_ROUTES_MAX` (5.000 por defecto; pasado el tope, `503 unavailable`). La ruta que se repite no cuenta contra sus propias cuotas.
@@ -1338,7 +1465,12 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
   - Sin `path`, `coverImage` ni `description`. `summary` solo como texto simple de hasta 280 caracteres (la idea de ruta que sugiere la IA).
   - Fichas (`contents`) solo las que generó este servidor, con las reglas de «Fichas verificadas por el servidor» (más abajo).
   - Metadatos de la ruta: solo `interests` (hasta 10 textos de 40 caracteres). Metadatos de un punto: solo `address` (hasta 200) y `externalId` (un QID de Wikidata).
-  - Acciones: una por punto más 8, como mucho, y solo `info_sheet` (sin imagen), `ai_template` y `decision`, sin `presentation` ni `feedback`. Triggers: `onEnter` en los puntos y `onDeviation`, `onIdle`, `onOutOfOrder` y `onTimeout` en la ruta.
+  - Acciones: una por punto más 8, como mucho, y solo `info_sheet` (sin imagen), `ai_template`, `decision` y, desde la fase 7.1, las que produce «Al llegar» (§7.3), sin `presentation` ni `feedback`. Triggers: `onEnter` en los puntos y `onDeviation`, `onIdle`, `onOutOfOrder` y `onTimeout` en la ruta. Las de «Al llegar» son más estrictas que las de las rutas curadas:
+    - `quiz`: textos simples dentro de los límites, de 2 a 4 respuestas y una correcta entre ellas. Los puntos van de 0 a 1000 (el esquema compartido), aunque el creador siempre escribe 10;
+    - `video`: solo `provider: 'youtube'` con un ID de 11 caracteres, sin archivo ni URL;
+    - `redirect`: solo una dirección `https://` completa, sin espacios ni credenciales y de hasta 2048 caracteres (`UserLinkSchema`); las curadas siguen admitiendo http y https;
+    - `toast`: un `message` de texto simple o una `messageKey` con puntos, exactamente uno de los dos. La clave solo se comprueba en su forma, no contra una lista;
+    - un tipo desconocido da un error que ahora lista los siete tipos permitidos.
   - Que Postgres pueda guardarla: anidación de 8 niveles como mucho, sin caracteres de control ni sustitutos Unicode sueltos en ningún texto ni clave, y hasta 500 km entre los puntos en orden.
   - Un problema es `422 invalid_route` con hasta 20 `details`. Así nadie guarda imágenes, enlaces o datos pesados a través de la API, salvo las fichas que generó el servidor.
 - **Rutas de usuario privadas:** `GET /routes` solo lista las curadas, y una ruta de usuario solo la lee quien tiene su `X-Edit-Token` (§11.1).
@@ -1351,6 +1483,11 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
   - `X-Device-Id` lo elige el cliente, así que el tope por dispositivo se esquiva con un identificador nuevo. Los topes que de verdad frenan son el presupuesto global y el límite por IP.
   - Comprobar y registrar no es una sola operación atómica: una ráfaga puede pasarse del tope por unas pocas generaciones (acotado por el límite por IP y el vuelo único por clave).
   - Qué se envía al proveedor de IA, cómo se trata el texto no fiable y qué guarda el servidor: [SECURITY.md](SECURITY.md).
+- **Notificaciones push (fase 7.1).** Qué guarda el servidor y qué manda está en [SECURITY.md](SECURITY.md). Las reglas de la API:
+  - **Dirección de la suscripción:** el servidor hace un POST a la dirección que le da el navegador, así que solo acepta una dirección `https://` de un servicio push conocido (`fcm.googleapis.com`, `updates.push.services.mozilla.com` y los subdominios de `push.services.mozilla.com`, `web.push.apple.com` y los de `notify.windows.com`), sin usuario, contraseña ni puerto y de hasta 2048 caracteres. Un host que solo se le parece se rechaza. Sin esta lista, la API serviría para mandar peticiones a cualquier sitio (SSRF). Las claves también se validan: `p256dh` es un punto real de P-256 y `auth`, 16 bytes.
+  - **Clave VAPID:** `VAPID_PRIVATE_KEY` es un secreto solo de ejecución. No se registra ni sale en ningún mensaje de error.
+  - **Anuncios:** `ADMIN_TOKEN` (secreto, 32 caracteres o más) como `Authorization: Bearer`, comparado en tiempo constante. Un token equivocado cuenta contra el límite por IP, igual que uno correcto.
+  - **Lo que lleva un aviso:** un título, un texto, una ruta de la web y una etiqueta; el recordatorio, el nombre de la ruta. Viaja cifrado con las claves del navegador.
 - `editToken`: lo genera el cliente, 32 bytes aleatorios (§10.8). El servidor guarda solo su hash SHA-256 y lo compara en tiempo constante.
 - Secretos únicamente en variables de entorno: en Coolify, como variables solo de ejecución, y en local, en `.env` que git ignora. En el repo solo hay `.env.example`. El repo es público: reglas completas en [SECURITY.md](SECURITY.md).
 - Logs (pino) sin datos personales: la ruta sin la *query*, y nunca coordenadas, tokens, el texto que se busca ni el cuerpo de las peticiones. Una llamada a la IA que falla se registra solo con su motivo (`anthropic 401 authentication_error`, `timeout`…), nunca con la clave, el prompt ni el nombre del lugar.
@@ -1388,10 +1525,17 @@ AI_PRICE_OUTPUT_PER_MTOK=10     #         son los del modelo por defecto: cámbi
 AI_PRICE_PER_WEB_SEARCH=0.01
 CONTENT_RATE_LIMIT_PER_MINUTE=30   # fase 7: fichas, por IP
 SUGGEST_RATE_LIMIT_PER_MINUTE=20   # fase 7: sugerencias de lugares, por IP
+VAPID_PUBLIC_KEY=               # fase 7.1: clave pública con la que se suscriben los navegadores (se genera con `push:keys`)
+VAPID_PRIVATE_KEY=              # SECRETO (fase 7.1): su mitad privada. Sin las tres VAPID_*, el push está apagado (503 push_unavailable)
+VAPID_SUBJECT=                  # fase 7.1: contacto para los servicios push, una URL https: o una dirección mailto:
+PUSH_REMINDER_HOURS=6           # fase 7.1: horas tras el inicio de un recorrido sin terminar a las que se manda su recordatorio
+PUSH_RATE_LIMIT_PER_MINUTE=20   # fase 7.1: suscribir y cancelar, por IP
+ADMIN_RATE_LIMIT_PER_MINUTE=5   # fase 7.1: anuncios (los tokens equivocados también cuentan), por IP
+ADMIN_TOKEN=                    # SECRETO (fase 7.1, opcional): al menos 32 caracteres. Sin él, POST /admin/push no existe (404)
 ANALYTICS_ENABLED=true
 ```
 
-Los números de las fases 6 y 7 son opcionales: un valor que no sea un entero positivo (un número positivo, en los precios y el presupuesto) se ignora y se usa el de por defecto. `GEOCODING_PROVIDER` con un valor que no sea `wikidata` ni `none` impide arrancar la API, igual que un `AI_PROVIDER` que no sea `anthropic` ni `none` o un `AI_EFFORT` desconocido. El límite de 50 rutas por dispositivo no es una variable: es una constante (`ROUTES_PER_DEVICE`).
+Los números de las fases 6, 7 y 7.1 son opcionales: un valor que no sea un entero positivo (un número positivo, en los precios, el presupuesto y `PUSH_REMINDER_HOURS`) se ignora y se usa el de por defecto. El par VAPID se comprueba al arrancar: si falta alguna de las tres o el par no encaja, el push queda apagado y el log dice por qué (`unset`, `incomplete` o `invalid`) sin mostrar ninguna clave. Un `ADMIN_TOKEN` de menos de 32 caracteres desactiva los anuncios y también se avisa en el log. `GEOCODING_PROVIDER` con un valor que no sea `wikidata` ni `none` impide arrancar la API, igual que un `AI_PROVIDER` que no sea `anthropic` ni `none` o un `AI_EFFORT` desconocido. El límite de 50 rutas por dispositivo no es una variable: es una constante (`ROUTES_PER_DEVICE`).
 
 ### 11.5 Despliegue (Coolify en Contabo)
 
@@ -1672,7 +1816,7 @@ Al construir la API de la IA se concretaron estos puntos. La web está en el §7
 - **Envío:** en lotes con `navigator.sendBeacon` al pasar a segundo plano, o cada 30 s.
 - **Eventos v1:**
   - **Uso general:** `app_open`, `onboarding_completed`, `pwa_installed`, `route_viewed`.
-  - **Recorrido:** `run_started`, `permission_result` (`{ type, result }`), `point_reached` (`{ pointId, manual }`), `point_completed` (`{ pointId, handlerType, status, ms }`), `interruption_shown` (`{ type }`), `decision_made` (`{ type, decision }`), `run_paused`, `run_resumed`, `run_cancelled`, `run_finished` (`{ elapsedMs, completed, total }`), `gps_weak`.
+  - **Recorrido:** `run_started`, `permission_result` (`{ type, result }`), `point_reached` (`{ pointId, manual }`), `point_completed` (`{ pointId, handlerType, status, ms }`), `interruption_shown` (`{ type }`), `decision_made` (`{ type, decision }`), `run_paused`, `run_resumed`, `run_cancelled`, `run_finished` (`{ elapsedMs, completed, total }`), `gps_weak`. La fase 7.1 no añade eventos: `point_completed` sale con `status: 'dismissed'` cuando la ficha se cierra al salir de la zona, y una edición de la ruta con el recorrido en curso no cuenta como `run_resumed`.
   - **Creador:** `creator_step_completed` (`{ step }`), `route_created`, `content_generated` (`{ ok, ms }`: uno por cada petición de ficha a la API, con `ok: false` si falló; desde la fase 7 se emite de verdad). Sin propiedades que identifiquen el lugar.
   - **Errores:** `error` (`{ code }`).
 - **Métricas internas** (consultas SQL; panel privado en el futuro): rutas iniciadas frente a completadas, abandono por punto, tiempo medio por punto, frecuencia de desvíos, porcentaje de GPS débil por ruta, coste de IA por ruta creada y plataformas. El coste y la latencia de la IA salen de `ai_generations` (`cost_usd`, tokens y `latency_ms` por llamada), no de los eventos.
@@ -1698,12 +1842,13 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
 - Pestaña en segundo plano (ticks espaciados) → la permanencia se calcula por marcas de tiempo.
 - `PERMISSION_DENIED` → `error` + pausa + `gps: 'denied'`.
 - Check-in manual permitido en libre y rechazado en reto.
+- `migrateSnapshot` (fase 7.1): lo visitado se mantiene al añadir o quitar puntos, la puntuación de los quitados se conserva, los bloqueos del reto se recalculan y un recorrido sin nada que visitar termina al reanudarse (§8.10).
 
 ### 14.2 Resto
 
 - `route-spec`: fixtures válidos e inválidos para cada regla de 6.3, más la normalización por modo y actividad.
-- `route-builder`: un draft produce siempre un spec válido; `summarizeRoute` es correcto. Desde la fase 6, además: los ids de punto no cambian al renombrar o reordenar lugares, editar una ruta y volver a construirla devuelve el mismo spec, y `validateDraft`, `findOverlaps` y `summarizeDraft` cumplen los límites del borrador.
-- `event-system`: orden y prioridad de la cola, deduplicación, interrupciones obsoletas, decisiones aplicadas al motor y respaldo cuando un handler falla. Desde la fase 7, además, `ai_template` puntúa el `quiz` de la ficha: 10 puntos si acierta, 0 si falla y nada si no se responde.
+- `route-builder`: un draft produce siempre un spec válido; `summarizeRoute` es correcto. Desde la fase 6, además: los ids de punto no cambian al renombrar o reordenar lugares, editar una ruta y volver a construirla devuelve el mismo spec, y `validateDraft`, `findOverlaps` y `summarizeDraft` cumplen los límites del borrador. Desde la fase 7.1, además: cada opción de «Al llegar» produce una acción válida, `draftFromSpec` la lee de vuelta (el spec reconstruido es igual al primero) y `validateArrival` y `parseYoutubeId` cubren sus casos.
+- `event-system`: orden y prioridad de la cola, deduplicación, interrupciones obsoletas, decisiones aplicadas al motor y respaldo cuando un handler falla. Desde la fase 7, además, `ai_template` puntúa el `quiz` de la ficha: 10 puntos si acierta, 0 si falla y nada si no se responde. Desde la fase 7.1, también la salida de la zona: cierra la ficha de llegada abierta y completa el punto una sola vez (aunque la salida se repita), sin tocar la cola ni otras fichas, con el motor simulado y con el real.
 - **i18n:**
   - los tres catálogos tienen las mismas claves y los mismos parámetros;
   - `resolveText` sigue su cadena de respaldo;
@@ -1711,8 +1856,15 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
 - API: tests de integración de endpoints (Postgres en contenedor de test) y validación de bundles. Desde la fase 6 cubren también las escrituras y lecturas de rutas de usuario, las cuotas, los límites por IP y el seed. La búsqueda de lugares se prueba con respuestas grabadas de Wikidata: los tests no usan la red.
   - Desde la fase 7, la IA se prueba con un proveedor falso y respuestas grabadas de Wikipedia, Wikidata y Commons (`apps/api/test/fixtures/ai` y `suggest`), también sin red: los tres caminos de una ficha (artículo, web y ficha honesta), los reintentos y el respaldo, la caché, el vuelo único, los presupuestos y el límite por dispositivo, la IA apagada, `unverified_content` en el POST y el PUT, y las sugerencias (candidatos, ids desconocidos, orden y ajuste al tiempo). El proveedor de Anthropic se prueba con un `fetch` simulado (forma de la petición, citas y errores).
   - El proveedor real **no** se prueba en la CI: se mide a mano, con la clave local (§12.5).
+  - Desde la fase 7.1, el push se prueba con un servicio push falso: la lista de servicios permitidos y la validación de las claves, el registro, el refresco y el borrado de suscripciones, el recordatorio (a la hora fijada, una sola vez aunque haya dos pases a la vez, las horas de silencio de Lisboa, el reintento si el servicio push falla y la caducidad a las 24 horas), los anuncios (token, idioma de cada suscripción y varias páginas), el borrado con `404` y `410` y a los 10 rechazos, el apagado sin claves y los límites. El transporte real (`web-push`) se prueba con `https.request` sustituido: se comprueba lo que saldría a la red (el mensaje cifrado para el navegador y la firma VAPID) sin tocarla. `checkUserRoute` se prueba con las acciones nuevas (17 tests más).
 - Web, capa de datos del creador: tests unitarios del registro de «Mis rutas» y su sincronización (IndexedDB falso, `fetch` simulado), del borrador, de la prueba aislada, del router y de que cada clave i18n que usa el código existe.
 - Web, fase 7: servicios de IA (errores por código y plazos), cola y borrador de fichas, la interfaz sin spoilers, la trivia de la llegada (con el `ai_template` real: 10, 0 o nada) y las fotos para uso sin conexión. Se comprobó con mutaciones que fallan si se quita el reinicio al cambiar de idioma, la región `aria-live` o el cableado de `PrepareView`.
+- Web, fase 7.1 (174 tests nuevos):
+  - el push (94): los estados, la forma de las peticiones, el orden de las llamadas, la marcha atrás si el POST falla, el cambio de clave VAPID, el worker (siempre muestra una notificación; una URL ajena pasa a `/`) y la fila de Ajustes (el toque llama a `enablePush` en el mismo turno);
+  - el recorrido que sigue a su ruta (33): la tienda y la interfaz;
+  - «Al llegar» en el editor y el borrador (27) y las acciones del detalle y de Mis rutas (19), más `confirm` con señal (1).
+
+  Se comprobó con mutaciones: de 17 roturas hechas a propósito en el push, los tests cazaron 16 (la otra no cambia el comportamiento), y quitar la protección de «No encontramos esta ruta.» al eliminar rompe su test.
 - **e2e (Playwright, Chromium):**
   - Recorrer "Leiria histórica" en simulación.
   - Reto con un punto fuera de orden.
@@ -1733,6 +1885,18 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - Fichas: todas listas **sin ningún texto de ficha en pantalla**; «Ver ficha» pide confirmación («Mejor no», «Ver ficha» y «Cerrar»).
   - Revisar: la línea de fichas. Guardar: el POST lleva `summary`, `interests`, dos `contentRef` y `contents[ref].es` con `generated.by: 'ai'`.
   - Recorrido en simulación: la primera llegada muestra la ficha y su trivia (`h2` «Pregunta rápida»), la respuesta correcta da «¡Correcto! +10 pts», «Continuar ruta», segundo lugar y resumen.
+- **e2e de la fase 7.1**, con la API simulada:
+  - `run.spec.ts`: una ficha de llegada que nadie cierra desaparece al salir de la zona y el punto cuenta: el progreso pasa de 0 a 1 de 2, y la llegada siguiente cierra la ruta.
+  - `create.spec.ts`: un lugar con pregunta propia y otro con aviso. El editor no deja guardar una pregunta sin terminar, C3 y C4 dicen lo que mostrará cada lugar, el POST lleva el aviso y el `quiz` como acciones propias (sin `contentRef` ni fichas) y, al recorrerla, sale «Llegaste a Sé de Leiria» sin hoja y luego la pregunta, con +10 puntos y su explicación (resumen: 10 pts).
+  - `my-routes.spec.ts` (5):
+    - editar desde el detalle (PUT con el token, y el nombre nuevo al reabrirla);
+    - eliminar desde el detalle (cancelar, y luego DELETE con el token, Mis rutas vacía y `goBack` a la página anterior a Mis rutas);
+    - una ruta eliminada dice que no existe;
+    - una ruta curada no tiene ninguna de las dos acciones;
+    - Mis rutas tiene su botón «Editar» a la vista, además del menú ⋯.
+  - `mid-run.spec.ts` (2):
+    - una ruta propia (Castelo, Sé y Museu) en simulación: se visita Castelo, «Ver ficha» abre su hoja en vista previa y se cierra sin cambiar el progreso; «Editar ruta» (sin pregunta, en `/create/places`) quita Museu y añade Jardim; se guarda (PUT con el token y los ids de punto conservados), sale el aviso y «Volver al recorrido» deja el recorrido en «1 de 3» con Castelo visitado; se camina hasta el resumen, «3/3»;
+    - quitar el último lugar pendiente termina el recorrido en su resumen.
 - **CI:** todo lo anterior en cada PR.
 
 ### 14.3 Definition of Done global
@@ -1886,6 +2050,26 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
   - Costes medidos: unos 0,017 USD por ficha de Wikipedia, 0,056 con búsqueda web y 0,012 por sugerencia (§12.5).
   - Queda para después: editar el texto de una ficha (con su carrusel de imágenes y la URL de video), invalidar las fichas cuando cambian los intereses, que cerrar la ficha con el gesto después de responder puntúe la trivia, y probar las fotos sin conexión en Safari/iOS.
 
+### Fase 7.1: ajustes tras las primeras pruebas · completada el 2026-10-08
+
+Salieron de la primera prueba de la fase 7 en un iPhone, hecha por el responsable del proyecto.
+
+- [x] La ficha de llegada se cierra sola al salir de la zona, y el punto cuenta como visitado (§9.3 y §9.7).
+- [x] Cada lugar elige qué pasa al llegar: la ficha, una hoja básica, una pregunta propia, un video de YouTube, un enlace o solo un aviso (§7.3). Los esquemas de esas acciones pasan a `route-spec` y `checkUserRoute` las acepta con parámetros estrictos (§11.3).
+- [x] Editar y eliminar una ruta propia desde su detalle, con un botón «Editar» a la vista en Mis rutas (§10.11).
+- [x] Editar una ruta mientras se recorre: el recorrido la sigue (`migrateSnapshot`, «Editar ruta» en la lista de puntos y «Volver al recorrido»), y los puntos visitados tienen «Ver ficha» (§8.10 y §10.11).
+- [x] Web Push para recordatorios: suscripciones, recordatorio a las 6 horas de un recorrido sin terminar y anuncios en la API (migración 0002), y el interruptor «Notificaciones push» en Ajustes (§10.11 y §11.1).
+- **DoD:** desplegada el 2026-10-08 (commit `e76be01`); faltan las pruebas en dispositivos reales.
+  - [x] Claves VAPID generadas y cargadas en `rumbo-api` como variables solo de ejecución; la migración 0002 se aplicó al arrancar y el log dice `Web Push is on` ([DEPLOY.md](DEPLOY.md)).
+  - [x] Comprobado en producción: `GET /push/key` da la clave pública; una suscripción de un servicio push no permitido o con claves falsas da `400`; en un iPhone emulado (WebKit), el detalle de una ruta propia muestra «Editar ruta» y «Eliminar ruta», y Ajustes, el interruptor de push con la indicación de instalar la app.
+  - [ ] Probar el push en un Android real y en un iPhone con la app en la pantalla de inicio: activar el interruptor, recibir un aviso y tocarlo (abre la app). Para un anuncio de prueba hace falta antes un `ADMIN_TOKEN`. Los e2e no pueden hacerlo: el Chrome de Playwright rechaza `subscribe()`.
+  - [ ] En el iPhone, recorrer una ruta con una pregunta propia y comprobar que la ficha se cierra al alejarse.
+- **Notas de implementación:**
+  - Precisiones en el §7.3 (creador), el §8.10 (motor), el §9.7 (salida de la zona), el §10.11 (web) y el §11.1 (API).
+  - Tests: 1.229 en total (852 en la fase 7). La API pasa de 287 a 393, la web de 240 a 414, el motor de 75 a 105, `event-system` de 81 a 95 y los e2e de 13 a 22.
+  - Una migración nueva (0002, `push_subscriptions` y `push_log`), una dependencia nueva de la API (`web-push`, MPL-2.0, sin modificar) y variables nuevas (`VAPID_*`, `PUSH_*` y `ADMIN_*`, §11.4). Sin las claves VAPID la API arranca y el push queda apagado.
+  - Queda para después: los avisos de llegada con la pantalla apagada (app nativa), una insignia monocromo para las notificaciones y un manejador de `pushsubscriptionchange`.
+
 ### Fase 8: Futuro (P2)
 
 - [ ] Cuentas de usuario y propiedad real de las rutas.
@@ -1894,7 +2078,8 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 - [ ] Editor visual avanzado.
 - [ ] Handlers `three_scene` y `ar_scene` (Three.js / WebXR / model-viewer).
 - [ ] Rankings y antitrampas (trazas con opt-in y validación en servidor).
-- [ ] Web Push para recordatorios y wrapper nativo (Capacitor) para geocercas en segundo plano.
+- [x] Web Push para recordatorios (adelantado a la fase 7.1).
+- [ ] App nativa (Capacitor) para geocercas en segundo plano: avisos de llegada con la pantalla apagada, que la web no puede dar.
 - [ ] Importar y exportar GPX (variante deportiva).
 - [ ] Mapas offline.
 - [ ] Panel privado de analytics.
@@ -1940,6 +2125,14 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 | La trivia va dentro de la ficha | Sale de la misma llamada, sin coste extra, funciona sin conexión y `ai_template` la puntúa (10 puntos) |
 | Una generación por lugar, idioma, versión del prompt e intereses, guardada para todos | Lo que se generó una vez no se paga otra. Presupuesto diario y límite por dispositivo para el resto |
 | Eventos y rutas de otros usuarios, a la fase 8 | La guía de la fase 7 se centra en sugerir, preparar y descubrir. Compartir rutas necesita un token de lectura aparte y, mejor, cuentas |
+| La ficha de llegada se cierra sola al salir de la zona | Quien se aleja con la ficha abierta no va a volver a por ella. El punto cuenta como visitado y se puede volver a ver con «Ver ficha» |
+| Cada lugar elige qué pasa al llegar | La ficha con IA es una opción entre seis (ficha, hoja básica, pregunta propia, video de YouTube, enlace o aviso). Las rutas de usuario siguen siendo una lista cerrada: solo YouTube, solo `https://` y el enlace siempre pide confirmar |
+| El recorrido sigue a su ruta cuando se edita | Se puede corregir una ruta sobre la marcha sin perder lo visitado: los ids de punto son estables y `migrateSnapshot` lleva el recorrido a la versión nueva. La puntuación de los puntos quitados se conserva |
+| «Editar ruta» y «Eliminar ruta» a la vista en el detalle | En la primera prueba con un iPhone no se encontraba el menú ⋯ |
+| Web Push solo para recordatorios y anuncios, nunca para llegadas | El servidor no sabe dónde está nadie (privacidad) y la web no puede vigilar zonas con la pantalla apagada: eso es de la app nativa |
+| Un solo recordatorio por recorrido, a las 6 horas y nunca de 22:00 a 08:00 en Lisboa | Un aviso útil sin molestar. La hora de silencio es la de Portugal, esté donde esté el usuario, y el aviso caduca a las 24 horas |
+| El service worker siempre muestra una notificación al recibir un push | Safari revoca el permiso si llega un push que no muestra nada |
+| Las direcciones de suscripción, solo de servicios push conocidos | Sin la lista, la API mandaría peticiones a donde le dijera el cliente (SSRF) |
 
 **Preguntas abiertas:**
 
@@ -1949,6 +2142,7 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 - Uso de PostGIS desde v1.
 - Estrategia de mapa base si el producto crece (cobro por teselas frente a sesiones, u otro proveedor de teselas).
 - Cómo se comparten las rutas de usuario (C5, «Compartir enlace»): hará falta un token de lectura aparte del de edición.
+- Cuándo hacer la app nativa (Capacitor) para los avisos de llegada con la pantalla apagada.
 
 ---
 

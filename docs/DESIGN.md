@@ -303,7 +303,7 @@ Base común:
   - Nombre (Fraunces 17).
   - Chips de categoría y estado.
   - Distancia ("a 340 m").
-  - Acciones: **Ver ficha** o **Ir a este punto** (solo en modo Libre).
+  - Acciones: **Ver ficha** o **Ir a este punto** (solo en modo Libre). En el recorrido, **Ver ficha** solo sale en los puntos ya visitados que tienen una ficha o una hoja con algo que mostrar, y la abre en vista previa (S05).
 - **En Explorar** muestra además el nombre de la ruta y la acción **Ver ruta**.
 
 ---
@@ -318,7 +318,7 @@ Base común:
 | **ActivityBadge** | A pie · Correr · Bici |
 | **StatChip** | Icono + valor + etiqueta ("3,4 km", "~2 h", "12 puntos", "Límite 1 h 30") |
 | **RouteCard** | Portada 16:9, ModeBadge sobre la imagen, título Fraunces, fila de stats, etiqueta "Creada por ti" (rutas de usuario). Estados: normal, sin portada (patrón de marca), skeleton |
-| **PointListItem** | Burbuja de orden (color del estado), miniatura de 48 px, nombre, categoría · distancia. Estados: bloqueado (atenuado + candado), activo, **siguiente** (barra Terracota a la izquierda), completado (check + hora). La variante del creador es la **PlaceListItem** (abajo) |
+| **PointListItem** | Burbuja de orden (color del estado), miniatura de 48 px, nombre, categoría · distancia. Estados: bloqueado (atenuado + candado), activo, **siguiente** (barra Terracota a la izquierda), completado (check + hora). En el recorrido, un punto visitado con ficha lleva a la derecha un botón secundario «Ver ficha». La variante del creador es la **PlaceListItem** (abajo) |
 | **HudTarget** | Tarjeta flotante superior: flecha de 40 px que **gira hacia el objetivo**, etiqueta "SIGUIENTE · 3/8", nombre, **distancia grande** + ETA. Estados: normal · acercándose (borde Terracota pulsante) · **confirmando llegada** (anillo de progreso + "Confirmando llegada…") · sin rumbo (punto cardinal "NE" en vez de flecha) · GPS débil (franja ámbar) · en pausa (atenuado) · modo Libre ("MÁS CERCANO", tocable para elegir otro) |
 | **GpsIndicator** | Chip: `good` (oculto o punto verde) · `weak` (ámbar "GPS débil") · `lost` (rojo "Sin señal") · `denied` (rojo + icono) · `waiting` ("Buscando señal…") |
 | **BottomSheet** | Puntos de anclaje: *peek* (96 px), medio y completo. Asa visible y cabecera fija |
@@ -391,13 +391,13 @@ El Stepper del creador muestra cuatro pasos (Datos ► Lugares ► Fichas ► Re
 - **Navegación inferior** (4 elementos): **Explorar** (brújula) · **Mis rutas** (marcador) · **Crear** (+, destacado) · **Ajustes** (engranaje).
 - **Las hojas no son pantallas:** llegada, decisión y pausa se apilan sobre `/run`. El gesto atrás cierra la hoja superior.
 - **Salir de `/run`:** con el gesto atrás aparece "¿Salir del mapa? La ruta sigue activa." Al salir, se muestra la **MiniRunBar** en el resto de pantallas.
-- **Desde una notificación:** abre `/run` con la ficha del punto ya desplegada.
+- **Desde una notificación:** abre `/run` con la ficha del punto ya desplegada. Tocar un recordatorio push («¿Seguimos?») abre `/run`; un anuncio, la dirección que traiga o `/`.
 - **Creador:**
   - `/create` retoma el borrador en el primer paso con algo pendiente. Cada paso exige los anteriores: sin nombre no se llega a Lugares, y sin 2 lugares no se llega a Fichas ni a Revisar.
   - `/create/content` (Fichas) nunca bloquea el paso siguiente. `/create` lo abre mientras algún lugar no tenga ficha, esté pendiente o espere conexión.
   - La flecha atrás lleva al paso anterior. En Datos sale del creador (el borrador queda guardado), y en Lista lleva a Mis rutas.
   - El gesto atrás cierra primero el editor de lugar si está abierto, como con las hojas de `/run`.
-  - Editar una ruta no lleva parámetros en la URL (nada de `?edit=`): Mis rutas carga la ruta en el borrador y abre `/create/details`.
+  - Editar una ruta no lleva parámetros en la URL (nada de `?edit=`): Mis rutas y el detalle de la ruta cargan la ruta en el borrador y abren `/create/details`, y «Editar ruta» del recorrido abre `/create/places` (S05).
 
 ---
 
@@ -448,15 +448,15 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
 ### S02 · Mis rutas (`/my-routes`)
 
 - **Entradas:** las rutas creadas por el usuario, que viven en el dispositivo (resumen + estado de subida). El **último recorrido de cada una** queda aplazado: no entra en la fase 6.
-- **Salidas:** abrir → detalle; Iniciar; **Nueva ruta** (→ creador); Editar (→ creador, con la ruta cargada); Eliminar (diálogo destructivo).
+- **Salidas:** abrir → detalle; Iniciar; **Nueva ruta** (→ creador); **Editar** (→ creador, con la ruta cargada), un botón a la vista en cada tarjeta; Eliminar (diálogo destructivo, en el menú ⋯).
 - **Layout:**
   - Cabecera con «Nueva ruta».
-  - Lista de RouteCards, la más nueva primero, con la etiqueta "Creada por ti", su línea de estado y un menú ⋯ (Editar, Eliminar) fuera del enlace de la tarjeta.
+  - Lista de RouteCards, la más nueva primero, con la etiqueta "Creada por ti", su línea de estado, un botón secundario **Editar** (con lápiz; `aria-label` «Editar: {nombre}») y un menú ⋯ (Editar, Eliminar), los dos fuera del enlace de la tarjeta. Una tarjeta cuya subida falló lleva en su lugar el botón de estado (Reintentar o Editar), así que nunca tiene dos botones. Una ruta ilegible solo ofrece Eliminar.
 - **Estado de subida** (una línea bajo la tarjeta):
   - ya subida: sin línea de estado;
   - pendiente: «Solo en este dispositivo · se subirá al conectar»;
   - con error: el motivo según el código («El servidor rechazó la ruta. Edítala y guárdala de nuevo.», «Has llegado al máximo de rutas en el servidor.» o «No se pudo subir») y [Reintentar] o, si el servidor rechazó la ruta, [Editar].
-- **Editar:** si hay otro borrador con contenido, pide confirmar que se descarta («Tienes un borrador sin guardar»). Si la ruta es el recorrido en curso, avisa de que ese recorrido seguirá con la versión anterior.
+- **Editar:** si hay otro borrador con contenido, pide confirmar que se descarta («Tienes un borrador sin guardar»). Si la ruta es el recorrido en curso, avisa de que se actualizará con los cambios y conservará lo que ya visitaste (S05).
 - **Eliminar:** diálogo destructivo («Se borrará de este dispositivo y del servidor. No se puede deshacer.»). Si la ruta es el recorrido en curso, avisa de que lo termina. Borra también la copia descargada y el último resumen de esa ruta, y confirma con el aviso «Ruta eliminada».
 - **Estados:**
   - vacío ("Crea tu primera ruta" + ilustración + botón Crear);
@@ -467,18 +467,21 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
 ### S03 · Detalle de ruta (`/routes/:routeId`)
 
 - **Entradas:** `RouteBundle` (spec: nombre, modo, actividad, puntos con orden, categoría y posición, `path`, `timeLimit`; contents: miniaturas), resumen (distancia, duración) y estado de la descarga offline.
-- **Salidas:** **Iniciar ruta** → `/routes/:routeId/prepare`; tocar un punto → el mapa se centra y abre su popup; mapa a pantalla completa; "Probar en simulación" (solo en modo demo).
+- **Salidas:** **Iniciar ruta** → `/routes/:routeId/prepare`; tocar un punto → el mapa se centra y abre su popup; mapa a pantalla completa; "Probar en simulación" (solo en modo demo); **Editar ruta** y **Eliminar ruta** (solo en las rutas propias).
 - **Layout:**
   - Mapa arriba (≈45 % de la altura) con los puntos numerados y el trazado.
   - Debajo, una hoja con:
     - Título `h1`.
     - ModeBadge + ActivityBadge.
     - Fila de StatChips: distancia, duración, nº de puntos y, en reto, límite de tiempo.
+    - **Solo en rutas propias:** una fila con dos botones de borde, **Editar ruta** (lápiz) y **Eliminar ruta** (papelera, texto rojo). Se apilan a 320 px y se desactivan mientras corre una acción. Van a la vista y no en un menú ⋯ porque en la prueba con un iPhone no se encontraba, y no en el pie fijo, para que la barra de «Iniciar ruta» siga siendo fina.
     - Descripción expandible.
     - **Caja de reglas en modo Reto:** "Orden obligatorio · Límite 1 h 30 · Pasa por los 9 checkpoints".
     - **Lista ordenada de puntos** (PointListItem con la distancia desde el anterior).
   - **CTA fija abajo:** "Iniciar ruta". Debajo, en pequeño: "✓ Disponible sin conexión", o el progreso de la descarga.
-- **Estados:** carga, error, ruta sin portada.
+- **Editar ruta:** como en Mis rutas (S02): si hay otro borrador con contenido, pide confirmar que se descarta, y abre el creador (C1). La flecha atrás del creador vuelve al detalle.
+- **Eliminar ruta:** diálogo destructivo con el nombre de la ruta, como en S02. Si la ruta es el recorrido en curso, lo termina. Confirma con «Ruta eliminada» y vuelve a Mis rutas (con atrás en el historial si venía de ahí; si no, lo reemplaza), sin pasar por «No encontramos esta ruta.».
+- **Estados:** carga, error, ruta sin portada y ruta curada o desconocida (sin los dos botones).
 
 ### S04 · Preparación y permisos (`/routes/:routeId/prepare`)
 
@@ -509,8 +512,10 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
   - Elegir objetivo (Libre) → `setTarget(pointId)`.
   - Recentrar (solo UI).
   - **"Estoy aquí"** → `manualCheckIn(pointId)` (solo Libre, si el GPS está débil y el punto está cerca).
-  - Tocar un marcador → popup.
-  - Abrir la lista de puntos.
+  - Tocar un marcador → popup (con **Ver ficha** si el punto está visitado y tiene ficha, §6.3).
+  - Abrir la lista de puntos, que ofrece:
+    - **Editar ruta**, junto al título, solo en las rutas propias y nunca en una prueba: abre el creador en Lugares sin terminar el recorrido, que sigue activo debajo. Si hay otro borrador, pide confirmar que se descarta, y no sale «¿Salir del mapa?». Al guardar, el recorrido toma los cambios: lo visitado se mantiene, los lugares nuevos empiezan pendientes, el tiempo y la pausa siguen igual y sale el aviso «Ruta actualizada: lo que ya visitaste se mantiene». Si los cambios no dejan nada que visitar, el recorrido termina y va al resumen (S10);
+    - **Ver ficha**, en cada punto visitado que tenga una ficha o una hoja con algo que mostrar (`aria-label` «Ver la ficha de {nombre}»): la abre en vista previa, sin puntuar ni cambiar nada. Una pregunta, un video, un enlace o un aviso no se reabren.
   - En modo demo: controles de simulación.
 - **Layout:**
   - Mapa a pantalla completa, siguiendo al usuario.
@@ -519,7 +524,7 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
   - Botones flotantes a la derecha (Recentrar, Filtro y, en demo, Simulación).
   - **BottomSheet:**
     - *Peek*: ProgressBar + "2 de 8 · 1:05:23 · 150 pts" + botón **⏸ Pausar** (56 px).
-    - Medio: lista de puntos con estados.
+    - Medio: lista de puntos con estados, con **Editar ruta** y **Ver ficha** (ver arriba).
     - Completo: detalles de la ruta.
   - Botón "Estoy aquí" (Libre), que solo aparece cuando aplica.
 - **Microinteracciones:**
@@ -541,6 +546,7 @@ Se abre con el evento `enter` y el handler `ai_template` o `info_sheet`.
   - `generated.by`.
   - Además: orden del punto, total de puntos y puntuación.
 - **Salidas:** **Continuar ruta** → completa el punto; menú ⋯ → **Pausar** / **Terminar recorrido**; reproducir el video; abrir las fuentes; responder la pregunta rápida (la respuesta sale con Continuar, Pausar o Terminar, y una correcta suma 10 puntos).
+- **Al salir de la zona:** si el usuario se aleja del lugar (su radio más 10 m de margen) sin cerrar la hoja de llegada, la hoja se cierra sola y el punto cuenta como visitado, igual que con **Continuar ruta**. Sin aviso ni sonido. Lo que esté a medias (una trivia respondida, pero sin Continuar ruta) no suma puntos. Solo se cierra la hoja de llegada de ese lugar: una interrupción u otra hoja no. Si se cierra antes de tiempo, se puede volver a ver desde la lista de puntos (S05).
 - **Momento de llegada:**
   - Ondas que salen del marcador (700 ms) y vibración + sonido.
   - La hoja sube al 85 %.
@@ -565,9 +571,10 @@ Se abre con el evento `enter` y el handler `ai_template` o `info_sheet`.
   - **S06b Quiz:** pregunta, opciones grandes, feedback de correcto o incorrecto con explicación y puntos.
   - **S06c Video:** reproductor que se puede ampliar a pantalla completa.
   - **S06d Web externa:** "Vas a abrir una web externa: visitleiria.pt" [Abrir] [Ahora no].
-  - **S06e Checkpoint de reto sin contenido:** CheckpointToast (no bloquea).
+  - **S06e Checkpoint de reto sin contenido:** CheckpointToast (no bloquea). También es el aviso «Llegaste a {nombre}» de «Solo un aviso».
   - **S06f Experiencia 3D/RA** *(futuro)*: pantalla completa con un botón de cerrar. En v1 solo se diseña el placeholder "Próximamente".
-  - **Vista previa (desde C3):** el mismo marco sin la etiqueta «LLEGASTE» y con un solo botón **Cerrar**, que cierra sin resultado. La pregunta rápida funciona, pero no puntúa ni se registra.
+  - **Vista previa (desde C3 y desde la lista de puntos de S05):** el mismo marco sin la etiqueta «LLEGASTE» y con un solo botón **Cerrar**, que cierra sin resultado. La pregunta rápida funciona, pero no puntúa ni se registra.
+  - **Lo que elige el creador en «Al llegar» (C2):** «Tu propia pregunta» usa S06b (10 puntos por acertar), «Un video de YouTube» usa S06c, «Un enlace web» usa S06d (con el texto del enlace y su dominio) y «Solo un aviso» usa S06e: un aviso y la ruta sigue, sin hoja.
 - **Estados:** carga de la imagen (skeleton), sin imagen (patrón de marca), video no disponible, ficha mínima (solo nombre + texto) y ficha breve de la IA (sin datos, consejo ni pregunta: «no hemos encontrado información fiable»).
 - **Límite conocido:** si se cierra la hoja con el gesto de deslizar o con Escape después de responder, la respuesta no se puntúa.
 
@@ -650,7 +657,15 @@ Las interrupciones comparten estructura: icono grande, título, texto con el dat
   - Un punto personalizado se llama «Punto personalizado {n}» (categoría «otro») y se abre en el editor, con un marcador provisional en el mapa que se quita si se cancela.
   - **«Sugerir lugares»** (IA), un botón bajo la búsqueda: abre la hoja de sugerencias (más abajo) y añade los lugares elegidos, en el orden sugerido.
   - **Reordenar:** arrastrando el asa, o con **Subir** y **Bajar** en el menú ⋯ de cada lugar. Se anuncia «{nombre}: posición 2 de 5» y el foco vuelve al lugar movido.
-  - **Editar un lugar** en una hoja no modal: nombre, tipo (solo en puntos personalizados; el de Wikidata ya viene puesto), radio (slider de 20 a 200 m, de 5 en 5, con el círculo cambiando en el mapa mientras se mueve) y obligatoriedad. Pie con [Cancelar] y [Guardar] o [Añadir], más [Eliminar] en un lugar que ya está en la lista. Al abrirla, el mapa se centra en el lugar, por encima de la hoja.
+  - **Editar un lugar** en una hoja no modal: nombre, tipo (solo en puntos personalizados; el de Wikidata ya viene puesto), radio (slider de 20 a 200 m, de 5 en 5, con el círculo cambiando en el mapa mientras se mueve), obligatoriedad y **«Al llegar»** (más abajo). Pie con [Cancelar] y [Guardar] o [Añadir], más [Eliminar] en un lugar que ya está en la lista. Al abrirla, el mapa se centra en el lugar, por encima de la hoja.
+  - **«Al llegar»** (fase 7.1): un apartado de la hoja del lugar para elegir lo que verá quien llegue, con un botón de radio por opción (icono, nombre y ayuda). Los campos de la elegida salen debajo:
+    - **Ficha del lugar** (por defecto): «La ficha con IA si está lista; si no, el nombre y la dirección.»
+    - **Nombre y dirección:** «Una hoja sencilla, sin IA.»
+    - **Tu propia pregunta:** «Una pregunta con respuestas y puntos, escrita por ti.» Campos: la pregunta, de 2 a 4 respuestas («De 2 a 4. Toca el círculo de la correcta.»; Añadir respuesta y Quitar la respuesta n) y una explicación opcional («Se muestra después de responder.»). «Una respuesta correcta suma 10 puntos.»
+    - **Un video de YouTube:** «Se reproduce en la hoja de llegada.» Campos: un enlace o un ID de YouTube («Pega el enlace del video o su ID de 11 caracteres.»; al reconocerlo, «Video encontrado: {id}») y un título opcional.
+    - **Un enlace web:** «Se abre en el navegador, siempre tras confirmar.» Campos: la dirección (empieza por `https://`) y el texto del enlace.
+    - **Solo un aviso:** «Un breve «Llegaste a…» y la ruta sigue, sin ficha.»
+    - Los errores salen al pulsar [Guardar] (o al salir del campo del enlace o del video), con el foco en el primer campo mal. Una elección incompleta no se guarda. Lo escrito bajo otra opción se conserva mientras la hoja sigue abierta.
   - **Eliminar:** sin confirmación, pero con el aviso «{nombre} eliminado» y [Deshacer], que lo devuelve a su posición.
   - Siguiente (mínimo 2 lugares, máximo 30).
 - **Layout móvil** (la pantalla no se desplaza entera):
@@ -691,6 +706,7 @@ La app prepara con la IA una ficha de cada lugar y **no la enseña**: lo bueno d
   - Texto explicativo: «Preparamos una ficha de cada lugar con información de Wikipedia o de la web. No la verás aquí: la descubrirás al llegar, y se guarda para que funcione sin conexión.» y una nota: «Las fichas las escribe una IA a partir de fuentes reales, que aparecen en cada ficha.»
   - Progreso: «Preparando fichas 2 de 5» con una barra. Al terminar, «5 de 5 fichas listas», y una región `aria-live` educada anuncia «Fichas preparadas: 5 de 5 con IA.»
   - Lista «Fichas de los lugares», con una fila por lugar (CardStatusRow): su nombre y su estado en texto: «En espera» · «Preparando la ficha…» · «**Ficha lista · 3 fuentes**» · «Ficha breve: no encontramos información fiable» · «Ficha básica: nombre y dirección» · el error.
+  - Los lugares que no usan la ficha en «Al llegar» salen en la lista con lo que mostrarán: «Tu pregunta: «…»», «Video de YouTube» (o «Video de YouTube: «título»»), «Enlace: {texto} · {dominio}», «Solo un aviso al llegar» o «Nombre y dirección, sin IA». Solo los lugares con ficha cuentan en el progreso. Una nota lo explica («Los lugares con otra opción en «Al llegar» no llevan ficha con IA.»), y si ninguno usa la ficha: «Ningún lugar usa ficha con IA, así que no hay nada que preparar.»
   - Menú ⋯ de cada fila: **Regenerar** y **Usar ficha básica**. En una ficha básica, **Generar con IA**. En un error, **Reintentar** y **Usar ficha básica**.
   - Pie fijo con **Siguiente** y la pista «Los lugares sin ficha lista usarán la ficha básica.»
 - **«Ver ficha» y los spoilers:** antes de abrirla sale un diálogo: «¿Ver la ficha? Te adelantará lo que descubrirás al llegar.» [Mejor no] [Ver ficha]. Si se confirma, se abre la hoja de llegada (S06) en vista previa, con un solo botón **Cerrar**.
@@ -717,6 +733,7 @@ La app prepara con la IA una ficha de cada lugar y **no la enseña**: lo bueno d
     - ✓ «Las zonas no se solapan» o ⚠ «{n} zonas se solapan», con [Corregir], que vuelve a Lugares;
     - ✓ «Cada lugar muestra su ficha con nombre y dirección» o ⓘ «{n} lugares sin dirección: sus fichas mostrarán solo el nombre» (solo cuenta los lugares que mostrarán la ficha básica);
     - una línea de fichas: «{n} fichas con IA · {m} básicas» o, si no hay ninguna con IA, «Sin fichas con IA: cada lugar mostrará su nombre y dirección.»;
+    - si algún lugar muestra otra cosa que la ficha, «Al llegar: 1 pregunta propia · 1 aviso» (con las cuentas de nombre y dirección, preguntas propias, videos, enlaces y avisos);
     - ⚠ mientras haya fichas en preparación: «{n} fichas aún en preparación: si guardas ahora, usarán la ficha básica.», con [Ver fichas], que vuelve a Fichas;
     - en Reto, ⚠ si el límite de tiempo es menor que la duración estimada;
     - una línea de error bloqueante («La ruta tiene errores: revisa los pasos anteriores») si la ruta no se puede construir o sus acciones no son válidas.
@@ -733,14 +750,21 @@ La app prepara con la IA una ficha de cada lugar y **no la enseña**: lo bueno d
 - "Tu ruta está lista" + RouteCard. Queda fuera del Stepper, y la flecha atrás lleva a Mis rutas.
 - Una línea de estado, que cambia sola cuando termina la subida: «Guardada. Puedes recorrerla cuando quieras.» o, si aún no se ha subido, «Guardada en este dispositivo. La subiremos cuando vuelva la conexión.»
 - [Iniciar ahora] → `/routes/:routeId/prepare` · [Ver mis rutas] · Compartir enlace *(futuro)*.
+- **Si la ruta guardada es la del recorrido en curso** (se editó desde S05), el recorrido ya usa los cambios: sale la línea «Tu recorrido en curso ya usa estos cambios. Lo que visitaste se mantiene.» y el botón principal es **Volver al recorrido** (→ `/run`) en lugar de [Iniciar ahora]. Si guardar dejó el recorrido sin nada que visitar, este termina y la pantalla pasa directa al resumen (S10).
 
 ### S12 · Ajustes (`/settings`)
 
 - **Secciones:**
-  - **Avisos:** sonido, vibración (oculto si no hay soporte), notificaciones (estado + botón).
+  - **Avisos:** sonido, vibración (oculto si no hay soporte), notificaciones (estado + botón) y **Notificaciones push**: un interruptor con una línea de ayuda según el estado. Son recordatorios y novedades de Rumbo, incluso con la app cerrada. Nunca avisan de llegadas: el servidor no sabe dónde estás, y en la web el seguimiento fiable exige la pantalla encendida. Estados:
+    - desactivadas: «Recordatorios y novedades de Rumbo, incluso con la app cerrada.»;
+    - activadas: «Activadas en este dispositivo.»;
+    - en iPhone o iPad sin instalar: «En iPhone y iPad, primero añade Rumbo a la pantalla de inicio: toca Compartir y después «Añadir a pantalla de inicio».» (iOS 16.4 o más; el interruptor no se puede usar hasta entonces);
+    - bloqueadas: «Bloqueadas. Actívalas en los ajustes del navegador o del dispositivo.» (con la app instalada en un iPhone, están en los Ajustes de iOS). Al volver de allí, la fila lee el estado otra vez;
+    - no disponibles (el servidor las tiene apagadas): «No disponibles ahora mismo.»;
+    - sin soporte en el navegador: «Este navegador no admite notificaciones push.»
   - **Pantalla:** tema (Sistema/Claro/Oscuro) y **alto contraste "Sol"**.
   - **General:** idioma y unidades (km/mi). El idioma usa las mismas tarjetas que S00 y el cambio se aplica al instante, sin recargar. Las fichas ya generadas por IA se quedan en su idioma.
-  - **Privacidad:** estadísticas anónimas (toggle) y "Borrar mis datos locales". El diálogo cuenta cuántas rutas creadas se borrarán también del servidor (las ya subidas, que la app intenta eliminar antes) y cuántas se perderán por no haberse subido.
+  - **Privacidad:** estadísticas anónimas (toggle) y "Borrar mis datos locales". El diálogo cuenta cuántas rutas creadas se borrarán también del servidor (las ya subidas, que la app intenta eliminar antes) y cuántas se perderán por no haberse subido. También cancela la suscripción push de este dispositivo.
   - **Demo:** **Modo simulación**.
   - **Acerca de:** versión y créditos (Esri/ArcGIS, Wikipedia/Wikimedia, fuentes).
 
@@ -785,7 +809,7 @@ Los catálogos `apps/web/src/i18n/{es,en,pt}.json` son la fuente de verdad; esta
 
 Las claves que entrega el sistema de eventos (`run.*`, `decision.*`, `end.confirm.*`, `notify.*`, `redirect.*`) están en `UI_TEXT_KEYS` de `@rumbo/event-system`, y los tres catálogos deben tenerlas todas. Sus parámetros: `name` es el nombre del punto (un `LocalizedText` que la UI resuelve en el idioma activo), `distance` va en metros y `minutes` es un número; la UI los formatea según el idioma.
 
-Los textos de la fase 7 (`create.details.*`, `create.interests.*`, `create.suggest.*`, `create.content.*`, `create.review.cards*`, `errors.ai.*` y `arrival.trivia.*`) ya están en los tres catálogos; la tabla recoge los principales.
+Los textos de la fase 7 (`create.details.*`, `create.interests.*`, `create.suggest.*`, `create.content.*`, `create.review.cards*`, `errors.ai.*` y `arrival.trivia.*`) ya están en los tres catálogos; la tabla recoge los principales. Lo mismo con los de la fase 7.1 (`create.arrival.*`, `create.done.*`, `route.edit`, `route.delete`, `run.editRoute`, `run.viewCard` y `settings.push.*`).
 
 | Clave | Texto |
 |---|---|
@@ -904,6 +928,19 @@ Los textos de la fase 7 (`create.details.*`, `create.interests.*`, `create.sugge
 | `create.trial.finished` | Prueba completada: {done} de {total} lugares |
 | `create.done.title` | Tu ruta está lista |
 | `create.done.synced` / `create.done.local` | Guardada. Puedes recorrerla cuando quieras. / Guardada en este dispositivo. La subiremos cuando vuelva la conexión. |
+| `create.done.backToRun` / `create.done.runUpdated` | Volver al recorrido / Tu recorrido en curso ya usa estos cambios. Lo que visitaste se mantiene. |
+| `route.edit` / `route.delete` | Editar ruta / Eliminar ruta |
+| `run.editRoute` / `run.viewCard` | Editar ruta / Ver ficha |
+| `run.routeUpdated` | Ruta actualizada: lo que ya visitaste se mantiene |
+| `run.arrivedAt` | Llegaste a {name} |
+| `myRoutes.activeRunEdit` | Tienes un recorrido en curso de esta ruta: se actualizará con tus cambios y conservará lo que ya visitaste. |
+| `create.arrival.title` | Al llegar |
+| `create.arrival.types.card` / `.basic` / `.quiz` / `.video` / `.link` / `.check` | Ficha del lugar / Nombre y dirección / Tu propia pregunta / Un video de YouTube / Un enlace web / Solo un aviso |
+| `create.review.arrivalMix` | Al llegar: {mix} |
+| `settings.push.label` | Notificaciones push |
+| `settings.push.off` / `.on` | Recordatorios y novedades de Rumbo, incluso con la app cerrada. / Activadas en este dispositivo. |
+| `settings.push.needsInstall` | En iPhone y iPad, primero añade Rumbo a la pantalla de inicio: toca Compartir y después «Añadir a pantalla de inicio». |
+| `settings.push.denied` / `.unavailable` / `.unsupported` | Bloqueadas. Actívalas en los ajustes del navegador o del dispositivo. / No disponibles ahora mismo. / Este navegador no admite notificaciones push. |
 | `myRoutes.sync.pending` | Solo en este dispositivo · se subirá al conectar |
 | `sim.banner` | Modo simulación: tu ubicación es simulada |
 | `consent.body` | Ayúdanos a mejorar con estadísticas anónimas. Nunca guardamos tu ubicación. |
