@@ -1,6 +1,10 @@
-import { localizedText } from '@rumbo/route-spec';
+import {
+  type DecisionParams,
+  DecisionParamsSchema,
+  type Interruption,
+  localizedText,
+} from '@rumbo/route-spec';
 import { z } from 'zod';
-import { INTERRUPTIONS, type Interruption } from '../defaults.ts';
 import type { ActionHandler, HandlerContext, UiText, ViewOutcome } from '../types.ts';
 import { fromOutcome, pointProps } from './shared.ts';
 
@@ -34,15 +38,6 @@ export const toastHandler: ActionHandler<z.infer<typeof ToastParams>> = {
     return { status: 'done' };
   },
 };
-
-const DecisionParams = z.union([
-  z.strictObject({ preset: z.enum(INTERRUPTIONS) }),
-  z.strictObject({
-    title: localizedText({ max: 120 }),
-    body: localizedText({ max: 500 }).optional(),
-    primaryLabel: localizedText({ max: 60 }).optional(),
-  }),
-]);
 
 /** Name of a point of the route, if it exists. */
 function nameOf(context: HandlerContext, pointId: string | null | undefined) {
@@ -97,10 +92,11 @@ function presetTexts(preset: Interruption, context: HandlerContext) {
 /**
  * Interruption sheet with three choices (S07): the primary action resolves
  * as 'continue', then Pause and End the run. Swiping it away dismisses it.
+ * Its params schema lives in route-spec: the API checks user routes with it.
  */
-export const decisionHandler: ActionHandler<z.infer<typeof DecisionParams>> = {
+export const decisionHandler: ActionHandler<DecisionParams> = {
   type: 'decision',
-  paramsSchema: DecisionParams,
+  paramsSchema: DecisionParamsSchema,
   async run(params, context) {
     const texts =
       'preset' in params

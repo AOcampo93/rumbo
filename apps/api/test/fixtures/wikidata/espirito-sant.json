@@ -1,0 +1,146 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=espirito+sant*+haswbstatement%3AP625+nearcoord%3A20km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": []
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=espirito+sant+haswbstatement%3AP625+nearcoord%3A20km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": []
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=espirito+haswbstatement%3AP625+nearcoord%3A20km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": [
+          {
+            "ns": 0,
+            "title": "Q76956778"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q76956778&props=labels%7Cdescriptions%7Cclaims&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q76956778": {
+          "id": "Q76956778",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Igreja do Espírito Santo"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Igreja do Espírito Santo"
+            },
+            "es": {
+              "value": "Igreja do Espírito Santo",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Igreja do Espírito Santo",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "pt": {
+              "language": "pt",
+              "value": "igreja em Leiria, Portugal"
+            },
+            "en": {
+              "language": "en",
+              "value": "church building in Leiria, Portugal"
+            },
+            "es": {
+              "value": "church building in Leiria, Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "church building in Leiria, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q16970"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.743018,
+                      "longitude": -8.806537,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18468276"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q206933"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

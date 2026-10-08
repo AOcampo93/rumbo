@@ -23,7 +23,13 @@ describe('the API', () => {
         '/v1/runs',
         '/v1/runs/{runId}',
         '/v1/analytics/batch',
+        '/v1/geo/suggest',
+        '/v1/geo/resolve',
       ]),
+    );
+    expect(Object.keys(doc.paths['/v1/routes'])).toEqual(expect.arrayContaining(['get', 'post']));
+    expect(Object.keys(doc.paths['/v1/routes/{id}'])).toEqual(
+      expect.arrayContaining(['get', 'put', 'delete']),
     );
     expect(doc.servers).toEqual([{ url: '/api' }]);
   });

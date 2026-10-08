@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { pointContents, routes } from '../src/db/schema.js';
+import { pointContents, routes, runs } from '../src/db/schema.js';
 import { seedCuratedRoutes } from '../src/db/seed.js';
-import { routesFolder, setupApi } from './helpers.js';
+import { DEVICE, resetDatabase, routesFolder, setupApi, TOKEN, userRoute } from './helpers.js';
 
 const leiria = JSON.parse(
   readFileSync(new URL('../../../data/routes/leiria-historica.json', import.meta.url), 'utf8'),
@@ -67,5 +67,59 @@ describe('seeding the curated routes', () => {
     const dir = await routesFolder({ 'broken.json': { spec: { id: 'broken' }, contents: {} } });
     expect(await seedCuratedRoutes(api.db, dir)).toMatchObject({ invalid: ['broken.json'] });
     expect(await api.db.select().from(routes).where(eq(routes.id, 'broken'))).toEqual([]);
+  });
+
+  it('skips a file whose route is not curated', async () => {
+    const spec = userRoute('ruta-de-fichero-abcdefghij');
+    const dir = await routesFolder({ 'user.json': { spec, contents: {} } });
+    expect(await seedCuratedRoutes(api.db, dir)).toMatchObject({ invalid: ['user.json'] });
+    expect(await api.db.select().from(routes).where(eq(routes.id, spec.id))).toEqual([]);
+  });
+
+  it('replaces a user route holding a curated id, and leaves every other route alone', async () => {
+    await resetDatabase(api.database);
+    const create = (spec: unknown) =>
+      api.app.inject({
+        method: 'POST',
+        url: '/api/v1/routes',
+        headers: { 'x-edit-token': TOKEN, 'x-device-id': DEVICE },
+        payload: { spec, contents: {} },
+      });
+    expect((await create(userRoute('leiria-historica', 'Primeiro'))).statusCode).toBe(201);
+    expect((await create(userRoute('mi-ruta-abcdefghij'))).statusCode).toBe(201);
+    const run = await api.app.inject({
+      method: 'POST',
+      url: '/api/v1/runs',
+      headers: { 'x-device-id': DEVICE },
+      payload: {
+        routeId: 'leiria-historica',
+        specHash: 'f'.repeat(64),
+        mode: 'free',
+        simulated: true,
+        locale: 'pt',
+        startedAt: '2026-10-08T09:00:00.000Z',
+      },
+    });
+    expect(run.statusCode).toBe(201);
+    const [mine] = await api.db.select().from(routes).where(eq(routes.id, 'mi-ruta-abcdefghij'));
+
+    const warnings: unknown[] = [];
+    const dir = await routesFolder({ 'leiria-historica.json': leiria });
+    const result = await seedCuratedRoutes(api.db, dir, { warn: (obj) => warnings.push(obj) });
+    expect(result).toMatchObject({ inserted: ['leiria-historica'] });
+    expect(warnings).toEqual([{ id: 'leiria-historica' }]);
+
+    const [curated] = await api.db.select().from(routes).where(eq(routes.id, 'leiria-historica'));
+    expect(curated).toMatchObject({
+      source: 'curated',
+      spec: leiria.spec,
+      ownerDeviceId: null,
+      editTokenHash: null,
+    });
+    expect(await api.db.select().from(runs).where(eq(runs.routeId, 'leiria-historica'))).toEqual(
+      [],
+    );
+    const [after] = await api.db.select().from(routes).where(eq(routes.id, 'mi-ruta-abcdefghij'));
+    expect(after).toEqual(mine);
   });
 });

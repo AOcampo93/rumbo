@@ -46,6 +46,18 @@ describe('validateRouteBundle', () => {
     ]);
   });
 
+  it('never takes an inherited name like "toString" for a card', () => {
+    const input = bundle();
+    input.spec.points[1]!.contentRef = 'toString';
+    expect(validateRouteBundle(input).errors).toEqual([
+      {
+        path: 'spec.points[1].contentRef',
+        code: 'missing_content',
+        message: 'No card "toString" in contents',
+      },
+    ]);
+  });
+
   it('requires every language of a referenced card when asked', () => {
     const input = bundle();
     delete (input.contents['c-castelo'] as Record<string, unknown>)['pt'];

@@ -29,6 +29,7 @@ export {
   type RoutePoint,
   RoutePointSchema,
   type RouteSettingsInput,
+  RouteSettingsInputSchema,
   type RouteSource,
   RouteSourceSchema,
   type RouteSpec,
@@ -62,3 +63,13 @@ export {
 } from './content.ts';
 export { type RouteBundle, type RouteBundleValidation, validateRouteBundle } from './bundle.ts';
 export { type Poi, type PoiCollection, PoiCollectionSchema, PoiSchema } from './poi.ts';
+export {
+  type AiTemplateParams,
+  AiTemplateParamsSchema,
+  type DecisionParams,
+  DecisionParamsSchema,
+  type InfoSheetParams,
+  InfoSheetParamsSchema,
+  INTERRUPTIONS,
+  type Interruption,
+} from './actions.ts';

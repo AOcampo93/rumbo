@@ -77,7 +77,8 @@ export function validateRouteBundle(
   }
 
   for (const [ref, path] of referenced) {
-    const entry = contents[ref];
+    // Own keys only, as for trigger targets: "toString" is not a card.
+    const entry = Object.hasOwn(contents, ref) ? contents[ref] : undefined;
     if (!entry || Object.keys(entry).length === 0) {
       errors.push({ path, code: 'missing_content', message: `No card "${ref}" in contents` });
       continue;

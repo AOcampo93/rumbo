@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { canonicalJson, LOCALES, type RouteSpec, validateRouteBundle } from '@rumbo/route-spec';
 import { eq } from 'drizzle-orm';
-import { routeRow } from '../summary.js';
+import { contentRows, routeRow } from '../summary.js';
 import type { Db } from './index.js';
 import { pointContents, routes } from './schema.js';
 
@@ -20,7 +20,10 @@ interface Logger {
  * Loads the curated routes of data/routes into the database on every start:
  * new ones are inserted, changed ones replaced (with their cards), equal ones
  * left alone so `updatedAt` stays meaningful. CI already validates the files;
- * an invalid one is skipped, never half-written.
+ * an invalid one is skipped, never half-written. Curated wins: a user route
+ * holding a curated id (its id was public on `main` before the deploy) is
+ * deleted, with its cards and runs, and the curated route takes its place.
+ * Rows with any other id are never touched.
  */
 export async function seedCuratedRoutes(db: Db, dir: URL, log?: Logger): Promise<SeedResult> {
   const result: SeedResult = { inserted: [], updated: [], unchanged: [], invalid: [] };
@@ -32,9 +35,14 @@ export async function seedCuratedRoutes(db: Db, dir: URL, log?: Logger): Promise
       contents?: unknown;
     };
     const validation = validateRouteBundle(input, { requireLocales: LOCALES });
-    if (!validation.bundle) {
+    if (!validation.bundle || validation.bundle.spec.source !== 'curated') {
       log?.warn(
-        { file, errors: validation.errors.slice(0, 5) },
+        {
+          file,
+          errors: validation.bundle
+            ? [{ path: 'spec.source', message: 'Must be "curated"' }]
+            : validation.errors.slice(0, 5),
+        },
         'seed: invalid curated route skipped',
       );
       result.invalid.push(file);
@@ -42,25 +50,22 @@ export async function seedCuratedRoutes(db: Db, dir: URL, log?: Logger): Promise
     }
     const { spec, contents } = validation.bundle;
     const row = routeRow(input.spec, spec);
+    const cards = contentRows(spec.id, contents);
 
     await db.transaction(async (tx) => {
-      const [existing] = await tx.select().from(routes).where(eq(routes.id, spec.id));
+      let [existing] = await tx.select().from(routes).where(eq(routes.id, spec.id));
+      if (existing && existing.source !== 'curated') {
+        await tx.delete(routes).where(eq(routes.id, spec.id));
+        log?.warn({ id: spec.id }, 'seed: a user route held a curated id; replaced it');
+        existing = undefined;
+      }
       const sameSpec = existing && canonicalJson(existing.spec) === canonicalJson(row.spec);
-      const contentRows = Object.entries(contents).flatMap(([contentRef, byLocale]) =>
-        Object.entries(byLocale).map(([locale, content]) => ({
-          routeId: spec.id,
-          contentRef,
-          locale,
-          content,
-          status: content?.status ?? 'approved',
-        })),
-      );
       const existingContents = existing
         ? await tx.select().from(pointContents).where(eq(pointContents.routeId, spec.id))
         : [];
       const sameContents =
-        existingContents.length === contentRows.length &&
-        contentRows.every((wanted) =>
+        existingContents.length === cards.length &&
+        cards.every((wanted) =>
           existingContents.some(
             (have) =>
               have.contentRef === wanted.contentRef &&
@@ -83,7 +88,7 @@ export async function seedCuratedRoutes(db: Db, dir: URL, log?: Logger): Promise
         await tx.insert(routes).values(row);
         result.inserted.push(spec.id);
       }
-      if (contentRows.length > 0) await tx.insert(pointContents).values(contentRows);
+      if (cards.length > 0) await tx.insert(pointContents).values(cards);
     });
   }
   return result;

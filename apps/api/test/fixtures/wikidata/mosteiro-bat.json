@@ -1,0 +1,318 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=mosteiro+bat*+haswbstatement%3AP625+nearcoord%3A20km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": [
+          {
+            "ns": 0,
+            "title": "Q174779"
+          },
+          {
+            "ns": 0,
+            "title": "Q810715"
+          },
+          {
+            "ns": 0,
+            "title": "Q112010720"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q174779%7CQ810715%7CQ112010720&props=labels%7Cdescriptions%7Cclaims&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q174779": {
+          "id": "Q174779",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Batalha Monastery"
+            },
+            "es": {
+              "language": "es",
+              "value": "Monasterio de Batalha"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Mosteiro da Batalha"
+            },
+            "mul": {
+              "value": "Batalha Monastery",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "building in Batalha, Leiria District, Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "mosteiro na Batalha, Leiria, Portugal"
+            },
+            "es": {
+              "value": "building in Batalha, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "building in Batalha, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q94483283"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q840482"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.659166666667,
+                      "longitude": -8.8261111111111,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q2652681"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q810715": {
+          "id": "Q810715",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Batalha"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Batalha"
+            },
+            "es": {
+              "language": "es",
+              "value": "Batalha"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Batalha"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "municipality of Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "municipio de Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "município de Portugal"
+            },
+            "mul": {
+              "value": "municipality of Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q13217644"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.65,
+                      "longitude": -8.8166666666667,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q244512"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q22162581"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q112010720": {
+          "id": "Q112010720",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Mosteiro View"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Mosteiro View"
+            },
+            "es": {
+              "value": "Mosteiro View",
+              "language": "mul",
+              "for-language": "es"
+            },
+            "pt": {
+              "value": "Mosteiro View",
+              "language": "mul",
+              "for-language": "pt"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "hotel in Batalha, Portugal"
+            },
+            "es": {
+              "value": "hotel in Batalha, Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "pt": {
+              "value": "hotel in Batalha, Portugal",
+              "language": "en",
+              "for-language": "pt"
+            },
+            "mul": {
+              "value": "hotel in Batalha, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q27686"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.65821,
+                      "longitude": -8.82496,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q2652681"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

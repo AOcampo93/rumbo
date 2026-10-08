@@ -1,0 +1,75 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q112568674&props=labels%7Cclaims&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q112568674": {
+          "id": "Q112568674",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Banco das Artes Galeria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q1007870"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.7450055555556,
+                      "longitude": -8.80714722222222,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P6375": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "text": "Largo 5 de Outubro nº 43 2400-120 Leiria",
+                      "language": "pt"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18468276"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,516 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=caste*+haswbstatement%3AP625+nearcoord%3A20km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": [
+          {
+            "ns": 0,
+            "title": "Q2969701"
+          },
+          {
+            "ns": 0,
+            "title": "Q5049818"
+          },
+          {
+            "ns": 0,
+            "title": "Q109661393"
+          },
+          {
+            "ns": 0,
+            "title": "Q114918174"
+          },
+          {
+            "ns": 0,
+            "title": "Q109451806"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q2969701%7CQ5049818%7CQ109661393%7CQ114918174%7CQ109451806&props=labels%7Cdescriptions%7Cclaims&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q2969701": {
+          "id": "Q2969701",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Castle of Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Leiria"
+            },
+            "es": {
+              "language": "es",
+              "value": "Castillo de Leiria"
+            },
+            "mul": {
+              "value": "Castle of Leiria",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "building in Leiria, Leiria District, Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "castillo medieval localizado en la ciudad de Leiría, Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "castelo medieval em Leiria"
+            },
+            "mul": {
+              "value": "building in Leiria, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q23413"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.747,
+                      "longitude": -8.81,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18468276"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q5049818": {
+          "id": "Q5049818",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Castelo de Porto de Mós"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Porto de Mós"
+            },
+            "es": {
+              "value": "Castelo de Porto de Mós",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Castelo de Porto de Mós",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "building in Porto de Mós, Leiria District, Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "castelo em Porto de Mós"
+            },
+            "es": {
+              "value": "building in Porto de Mós, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "building in Porto de Mós, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q23413"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.60333333,
+                      "longitude": -8.81861111,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18464532"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q109661393": {
+          "id": "Q109661393",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Monumento comemorativo a D. Afonso Henriques"
+            },
+            "en": {
+              "language": "en",
+              "value": "Monumento comemorativo a D. Afonso Henriques"
+            },
+            "es": {
+              "value": "Monumento comemorativo a D. Afonso Henriques",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Monumento comemorativo a D. Afonso Henriques",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "pt": {
+              "language": "pt",
+              "value": "Memorial a Dom Afonso Henriques na encosta do Castelo de Leiria"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q5003624"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q179700"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.746024,
+                      "longitude": -8.809426,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18468276"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q114918174": {
+          "id": "Q114918174",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Parque da Ermida de Santo António"
+            },
+            "en": {
+              "language": "en",
+              "value": "Parque da Ermida de Santo António"
+            },
+            "es": {
+              "value": "Parque da Ermida de Santo António",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Parque da Ermida de Santo António",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "pt": {
+              "language": "pt",
+              "value": "Parque / Outeiro num morro secundário fronteiro ao Castelo de Porto de Mós, sendo coroado pela Ermida de Santo António"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q22698"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.600264,
+                      "longitude": -8.817674,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18464532"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q109451806": {
+          "id": "Q109451806",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Casa Emília Ferreira da Cruz"
+            },
+            "en": {
+              "language": "en",
+              "value": "Casa Emília Ferreira da Cruz"
+            },
+            "es": {
+              "value": "Casa Emília Ferreira da Cruz",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Casa Emília Ferreira da Cruz",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "House built in 1926, designed by Ernesto Korrodi"
+            },
+            "es": {
+              "value": "House built in 1926, designed by Ernesto Korrodi",
+              "language": "en",
+              "for-language": "es"
+            },
+            "pt": {
+              "value": "House built in 1926, designed by Ernesto Korrodi",
+              "language": "en",
+              "for-language": "pt"
+            },
+            "mul": {
+              "value": "House built in 1926, designed by Ernesto Korrodi",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q3947"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q126807"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.7454805555556,
+                      "longitude": -8.81295555555556,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18468276"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

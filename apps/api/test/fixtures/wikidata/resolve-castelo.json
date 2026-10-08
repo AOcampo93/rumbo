@@ -1,0 +1,113 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q2969701&props=labels%7Cclaims&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q2969701": {
+          "id": "Q2969701",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Castle of Leiria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Leiria"
+            },
+            "es": {
+              "language": "es",
+              "value": "Castillo de Leiria"
+            },
+            "mul": {
+              "value": "Castle of Leiria",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q23413"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.747,
+                      "longitude": -8.81,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q18468276"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q18468276&props=labels&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q18468276": {
+          "id": "Q18468276",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Leiria, Pousos, Barreira e Cortes"
+            },
+            "en": {
+              "language": "en",
+              "value": "Leiria, Pousos, Barreira e Cortes"
+            },
+            "es": {
+              "language": "es",
+              "value": "Leiría, Pousos, Barreira e Cortes"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Leiria, Pousos, Barreira e Cortes"
+            }
+          }
+        }
+      }
+    }
+  }
+]

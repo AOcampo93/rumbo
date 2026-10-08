@@ -48,6 +48,46 @@ describe('GET /api/v1/health', () => {
   });
 });
 
+describe('configuration', () => {
+  it('has defaults for the limits and the place search', () => {
+    expect(loadConfig({})).toMatchObject({
+      rateLimitPerMinute: 300,
+      writeRateLimitPerMinute: 20,
+      writeRateLimitPerDay: 200,
+      geoRateLimitPerMinute: 120,
+      userRoutesMax: 5000,
+      geocodingProvider: 'wikidata',
+      arcgisApiKeyServer: null,
+    });
+    expect(loadConfig({}).wikimediaUserAgent).toMatch(
+      /^Rumbo\/\d+\.\d+\.\d+ \(https:\/\/github\.com\/AOcampo93\/rumbo\)$/,
+    );
+  });
+
+  it('reads them from the environment, falling back on invalid numbers', () => {
+    const config = loadConfig({
+      WRITE_RATE_LIMIT_PER_MINUTE: '5',
+      WRITE_RATE_LIMIT_PER_DAY: 'many',
+      GEO_RATE_LIMIT_PER_MINUTE: '0',
+      USER_ROUTES_MAX: '10',
+      GEOCODING_PROVIDER: 'none',
+      WIKIMEDIA_USER_AGENT: 'Rumbo/1.0 (contact: ops)',
+      ARCGIS_API_KEY_SERVER: '',
+    });
+    expect(config).toMatchObject({
+      writeRateLimitPerMinute: 5,
+      writeRateLimitPerDay: 200,
+      geoRateLimitPerMinute: 120,
+      userRoutesMax: 10,
+      geocodingProvider: 'none',
+      wikimediaUserAgent: 'Rumbo/1.0 (contact: ops)',
+      arcgisApiKeyServer: null,
+    });
+    expect(loadConfig({ GEOCODING_PROVIDER: '' }).geocodingProvider).toBe('wikidata');
+    expect(() => loadConfig({ GEOCODING_PROVIDER: 'arcgis' })).toThrow(/GEOCODING_PROVIDER/);
+  });
+});
+
 describe('without a ready database', () => {
   it('answers 503 { code: "unavailable" } on data endpoints', async () => {
     const res = await request(null, '/api/v1/routes');

@@ -1,0 +1,256 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=leir&language=es&uselang=es&type=item&limit=11&format=json&formatversion=2",
+    "body": {
+      "search": [
+        {
+          "id": "Q68241456",
+          "label": "Leir",
+          "description": "apellido",
+          "display": {
+            "label": {
+              "value": "Leir",
+              "language": "es"
+            },
+            "description": {
+              "value": "apellido",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q206933",
+          "label": "Leiría",
+          "description": "municipio de Portugal",
+          "display": {
+            "label": {
+              "value": "Leiría",
+              "language": "es"
+            },
+            "description": {
+              "value": "municipio de Portugal",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q42302",
+          "label": "arcilla",
+          "description": "material plástico constituido por agregados de silicatos de aluminio hidratados, procedentes de la descomposición de minerales de aluminio",
+          "display": {
+            "label": {
+              "value": "arcilla",
+              "language": "es"
+            },
+            "description": {
+              "value": "material plástico constituido por agregados de silicatos de aluminio hidratados, procedentes de la descomposición de minerales de aluminio",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q48870",
+          "label": "Leirfjord",
+          "description": "municipio en Nordland, Noruega",
+          "display": {
+            "label": {
+              "value": "Leirfjord",
+              "language": "es"
+            },
+            "description": {
+              "value": "municipio en Nordland, Noruega",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q18468276",
+          "label": "Leiría, Pousos, Barreira e Cortes",
+          "description": "freguesia portuguesa del municipio y distrito de Leiría",
+          "display": {
+            "label": {
+              "value": "Leiría, Pousos, Barreira e Cortes",
+              "language": "es"
+            },
+            "description": {
+              "value": "freguesia portuguesa del municipio y distrito de Leiría",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q1800394",
+          "label": "Leir de Bretaña",
+          "description": "rey legendario de los britanos",
+          "display": {
+            "label": {
+              "value": "Leir de Bretaña",
+              "language": "es"
+            },
+            "description": {
+              "value": "rey legendario de los britanos",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q244512",
+          "label": "Leiría",
+          "description": "distrito de Portugal",
+          "display": {
+            "label": {
+              "value": "Leiría",
+              "language": "es"
+            },
+            "description": {
+              "value": "distrito de Portugal",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q796",
+          "label": "Irak",
+          "description": "país de Asia Occidental",
+          "display": {
+            "label": {
+              "value": "Irak",
+              "language": "es"
+            },
+            "description": {
+              "value": "país de Asia Occidental",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q6520198",
+          "label": "Leire",
+          "description": "nombre femenino",
+          "display": {
+            "label": {
+              "value": "Leire",
+              "language": "es"
+            },
+            "description": {
+              "value": "nombre femenino",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q12262121",
+          "label": "Leire Bilbao",
+          "description": "escritora española",
+          "display": {
+            "label": {
+              "value": "Leire Bilbao",
+              "language": "es"
+            },
+            "description": {
+              "value": "escritora española",
+              "language": "es"
+            }
+          }
+        },
+        {
+          "id": "Q41770778",
+          "label": "Leire Azpilicueta",
+          "description": "researcher",
+          "display": {
+            "label": {
+              "value": "Leire Azpilicueta",
+              "language": "es"
+            },
+            "description": {
+              "value": "researcher",
+              "language": "en"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&prop=coordinates&titles=Q68241456%7CQ206933%7CQ42302%7CQ48870%7CQ18468276%7CQ1800394%7CQ244512%7CQ796%7CQ6520198%7CQ12262121%7CQ41770778&colimit=max&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "pages": [
+          {
+            "title": "Q796",
+            "coordinates": [
+              {
+                "lat": 33,
+                "lon": 43,
+                "primary": true,
+                "globe": "earth"
+              }
+            ]
+          },
+          {
+            "title": "Q42302"
+          },
+          {
+            "title": "Q48870",
+            "coordinates": [
+              {
+                "lat": 66.11277778,
+                "lon": 13.13083333,
+                "primary": true,
+                "globe": "earth"
+              }
+            ]
+          },
+          {
+            "title": "Q206933",
+            "coordinates": [
+              {
+                "lat": 39.74305556,
+                "lon": -8.80694444,
+                "primary": true,
+                "globe": "earth"
+              }
+            ]
+          },
+          {
+            "title": "Q244512",
+            "coordinates": [
+              {
+                "lat": 39.74388889,
+                "lon": -8.80694444,
+                "primary": true,
+                "globe": "earth"
+              }
+            ]
+          },
+          {
+            "title": "Q1800394"
+          },
+          {
+            "title": "Q6520198"
+          },
+          {
+            "title": "Q12262121"
+          },
+          {
+            "title": "Q18468276",
+            "coordinates": [
+              {
+                "lat": 39.7196,
+                "lon": -8.7904,
+                "primary": true,
+                "globe": "earth"
+              }
+            ]
+          },
+          {
+            "title": "Q41770778"
+          },
+          {
+            "title": "Q68241456"
+          }
+        ]
+      }
+    }
+  }
+]

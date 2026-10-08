@@ -14,18 +14,35 @@ export interface RouteSummary {
   bbox: BBox;
 }
 
+/**
+ * Moving time at `expectedSpeed` (m/s) plus a stop at each point, rounded to
+ * 5 min and never under 5. Shared by routes and the creator's live estimate.
+ */
+export function estimateMinutes(
+  distanceMeters: number,
+  stops: number,
+  mode: RouteMode,
+  expectedSpeed: number,
+): number {
+  const minutes = distanceMeters / expectedSpeed / 60 + stops * VISIT_MINUTES[mode];
+  return Math.max(5, Math.round(minutes / 5) * 5);
+}
+
 /** The numbers shown on route cards and stored next to each route for listing. */
 export function summarizeRoute(spec: RouteSpec): RouteSummary {
   const route = normalizeRouteSpec(spec);
   const stops = route.points.map((p) => p.position);
   const distanceMeters = polylineLength(route.path ?? stops);
-  const movingMinutes = distanceMeters / route.settings.expectedSpeed / 60;
-  const minutes = movingMinutes + route.points.length * VISIT_MINUTES[route.mode];
   const everything = [...stops, ...(route.path ?? [])];
   return {
     pointCount: route.points.length,
     distanceMeters: Math.round(distanceMeters),
-    estimatedMinutes: Math.max(5, Math.round(minutes / 5) * 5),
+    estimatedMinutes: estimateMinutes(
+      distanceMeters,
+      route.points.length,
+      route.mode,
+      route.settings.expectedSpeed,
+    ),
     centroid: centroid(everything),
     bbox: bbox(everything),
   };

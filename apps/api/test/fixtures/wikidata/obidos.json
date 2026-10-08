@@ -1,0 +1,1425 @@
+[
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=obidos*+haswbstatement%3AP625+nearcoord%3A20km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": []
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=obidos+haswbstatement%3AP625+nearcoord%3A20km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": []
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=obidos*+haswbstatement%3AP625+nearcoord%3A100km%2C39.744%2C-8.807&srnamespace=0&srlimit=20&srprop=&format=json&formatversion=2",
+    "body": {
+      "query": {
+        "search": [
+          {
+            "ns": 0,
+            "title": "Q275862"
+          },
+          {
+            "ns": 0,
+            "title": "Q2579998"
+          },
+          {
+            "ns": 0,
+            "title": "Q1475814"
+          },
+          {
+            "ns": 0,
+            "title": "Q59779523"
+          },
+          {
+            "ns": 0,
+            "title": "Q2119669"
+          },
+          {
+            "ns": 0,
+            "title": "Q474083"
+          },
+          {
+            "ns": 0,
+            "title": "Q1800558"
+          },
+          {
+            "ns": 0,
+            "title": "Q25442581"
+          },
+          {
+            "ns": 0,
+            "title": "Q17000336"
+          },
+          {
+            "ns": 0,
+            "title": "Q73381315"
+          },
+          {
+            "ns": 0,
+            "title": "Q20061134"
+          },
+          {
+            "ns": 0,
+            "title": "Q10348237"
+          },
+          {
+            "ns": 0,
+            "title": "Q73642924"
+          },
+          {
+            "ns": 0,
+            "title": "Q73640935"
+          },
+          {
+            "ns": 0,
+            "title": "Q8187811"
+          },
+          {
+            "ns": 0,
+            "title": "Q66814172"
+          },
+          {
+            "ns": 0,
+            "title": "Q10352208"
+          },
+          {
+            "ns": 0,
+            "title": "Q49294872"
+          },
+          {
+            "ns": 0,
+            "title": "Q949960"
+          },
+          {
+            "ns": 0,
+            "title": "Q132367292"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q275862%7CQ2579998%7CQ1475814%7CQ59779523%7CQ2119669%7CQ474083%7CQ1800558%7CQ25442581%7CQ17000336%7CQ73381315%7CQ20061134%7CQ10348237%7CQ73642924%7CQ73640935&props=labels%7Cdescriptions%7Cclaims&languages=es%7Cpt%7Cen%7Cmul&languagefallback=1&format=json&formatversion=2",
+    "body": {
+      "entities": {
+        "Q275862": {
+          "id": "Q275862",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Óbidos"
+            },
+            "es": {
+              "language": "es",
+              "value": "Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Óbidos"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Óbidos"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "municipality and town of Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "municipio y villa de Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "município de Portugal"
+            },
+            "mul": {
+              "value": "municipality and town of Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q13217644"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.361952,
+                      "longitude": -9.157131,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q244512"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q1500660"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q742117"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q2579998": {
+          "id": "Q2579998",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Óbidos"
+            },
+            "es": {
+              "language": "es",
+              "value": "Castillo de Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Castle of Óbidos"
+            },
+            "mul": {
+              "value": "Castle of Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "Medieval Castle in Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Castelo medieval em Óbidos"
+            },
+            "es": {
+              "value": "Medieval Castle in Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Medieval Castle in Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q23413"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.364167,
+                      "longitude": -9.157646,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q20061134"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q1475814": {
+          "id": "Q1475814",
+          "labels": {
+            "es": {
+              "language": "es",
+              "value": "Freguesia de Santa Maria"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Freguesia de Santa Maria"
+            },
+            "en": {
+              "language": "en",
+              "value": "Freguesia de Santa Maria"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Freguesia de Santa Maria"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "former civil parish in Óbidos, Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "antiga freguesia do Município de Óbidos, Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "antigua freguesia portuguesa del municipio de Óbidos y distrito de Leiría"
+            },
+            "mul": {
+              "value": "former civil parish in Óbidos, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q56046844"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.36991,
+                      "longitude": -9.17224,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q275862"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q59779523": {
+          "id": "Q59779523",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Museu Municipal de Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Municipal Museum of Óbidos"
+            },
+            "es": {
+              "value": "Municipal Museum of Óbidos",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Municipal Museum of Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "pt": {
+              "language": "pt",
+              "value": "museu em Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "museum in Obidos"
+            },
+            "es": {
+              "value": "museum in Obidos",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "museum in Obidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q33506"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.3618,
+                      "longitude": -9.1574,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P6375": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "text": "Rua Direita 97, 2510-001 Óbidos",
+                      "language": "pt"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q275862"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q2119669": {
+          "id": "Q2119669",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "São Pedro"
+            },
+            "es": {
+              "language": "es",
+              "value": "São Pedro"
+            },
+            "en": {
+              "language": "en",
+              "value": "São Pedro"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "São Pedro"
+            }
+          },
+          "descriptions": {
+            "pt": {
+              "language": "pt",
+              "value": "antiga freguesia de Óbidos, Portugal"
+            },
+            "en": {
+              "language": "en",
+              "value": "former civil parish in Óbidos, Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "antigua freguesia portuguesa del municipio de Óbidos y distrito de Leiría"
+            },
+            "mul": {
+              "value": "former civil parish in Óbidos, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q56046844"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.3554,
+                      "longitude": -9.14778,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q275862"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q474083": {
+          "id": "Q474083",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Amoreira"
+            },
+            "es": {
+              "language": "es",
+              "value": "Amoreira"
+            },
+            "en": {
+              "language": "en",
+              "value": "Amoreira"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Amoreira"
+            }
+          },
+          "descriptions": {
+            "es": {
+              "language": "es",
+              "value": "freguesia de Portugal"
+            },
+            "en": {
+              "language": "en",
+              "value": "civil parish in Óbidos"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "freguesia do Município de Óbidos, Portugal"
+            },
+            "mul": {
+              "value": "civil parish in Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q1131296"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.345,
+                      "longitude": -9.2066666666667,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q275862"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q1800558": {
+          "id": "Q1800558",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Lagoa de Óbidos"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Lagoa de Óbidos"
+            },
+            "es": {
+              "value": "Lagoa de Óbidos",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Lagoa de Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "lake in Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "lago de Portugal"
+            },
+            "pt": {
+              "value": "lake in Portugal",
+              "language": "en",
+              "for-language": "pt"
+            },
+            "mul": {
+              "value": "lake in Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q23397"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q187223"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.40969,
+                      "longitude": -9.20775,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q275689"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q275862"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q25442581": {
+          "id": "Q25442581",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Igreja de Santa Maria de Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Igreja de Santa Maria de Óbidos"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Igreja de Santa Maria de Óbidos"
+            },
+            "es": {
+              "value": "Igreja de Santa Maria de Óbidos",
+              "language": "mul",
+              "for-language": "es"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "church building in Óbidos, Leiria District, Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "igreja em Óbidos"
+            },
+            "es": {
+              "value": "church building in Óbidos, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "church building in Óbidos, Leiria District, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q16970"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.362003326416,
+                      "longitude": -9.1567993164062,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q20061134"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q17000336": {
+          "id": "Q17000336",
+          "labels": {
+            "en": {
+              "language": "en",
+              "value": "Óbidos halt"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "Apeadeiro de Óbidos"
+            },
+            "es": {
+              "value": "Óbidos halt",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Óbidos halt",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "railway halt in Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "apeadeiro em Portugal"
+            },
+            "es": {
+              "value": "railway halt in Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "railway halt in Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q55488"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.36485556,
+                      "longitude": -9.15907778,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q20061134"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q73381315": {
+          "id": "Q73381315",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Castelo de Óbidos e todo o conjunto urbano da vila"
+            },
+            "en": {
+              "language": "en",
+              "value": "Castelo de Óbidos e todo o conjunto urbano da vila"
+            },
+            "es": {
+              "value": "Castelo de Óbidos e todo o conjunto urbano da vila",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Castelo de Óbidos e todo o conjunto urbano da vila",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {},
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q676050"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q23413"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.35954,
+                      "longitude": -9.158211,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q20061134"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q20061134": {
+          "id": "Q20061134",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Santa Maria, São Pedro e Sobral da Lagoa"
+            },
+            "en": {
+              "language": "en",
+              "value": "Santa Maria, São Pedro e Sobral da Lagoa"
+            },
+            "es": {
+              "language": "es",
+              "value": "Santa Maria, São Pedro e Sobral da Lagoa"
+            },
+            "mul": {
+              "language": "mul",
+              "value": "Santa Maria, São Pedro e Sobral da Lagoa"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "civil parish in Óbidos"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "freguesia do Município de Óbidos, Portugal"
+            },
+            "es": {
+              "language": "es",
+              "value": "freguesia portuguesa del municipio de Óbidos y distrito de Leiría"
+            },
+            "mul": {
+              "value": "civil parish in Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q1131296"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.355,
+                      "longitude": -9.161389,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q275862"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q10348237": {
+          "id": "Q10348237",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Pelourinho de Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Pelourinho de Óbidos"
+            },
+            "es": {
+              "value": "Pelourinho de Óbidos",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Pelourinho de Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "pillory in Óbidos, Portugal"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "pelourinho em Óbidos, Portugal"
+            },
+            "es": {
+              "value": "pillory in Óbidos, Portugal",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "pillory in Óbidos, Portugal",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q241212"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.361974,
+                      "longitude": -9.157307,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q20061134"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q73642924": {
+          "id": "Q73642924",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Igreja da Misericórdia de Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Igreja da Misericórdia de Óbidos"
+            },
+            "es": {
+              "value": "Igreja da Misericórdia de Óbidos",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Igreja da Misericórdia de Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "pt": {
+              "language": "pt",
+              "value": "igreja em Óbidos"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q16970"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.361533,
+                      "longitude": -9.156706,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q20061134"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Q73640935": {
+          "id": "Q73640935",
+          "labels": {
+            "pt": {
+              "language": "pt",
+              "value": "Hospital da Santa Casa da Misericórdia de Óbidos"
+            },
+            "en": {
+              "language": "en",
+              "value": "Santa Casa da Misericórdia de Óbidos"
+            },
+            "es": {
+              "value": "Santa Casa da Misericórdia de Óbidos",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "Santa Casa da Misericórdia de Óbidos",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "descriptions": {
+            "en": {
+              "language": "en",
+              "value": "hospital"
+            },
+            "pt": {
+              "language": "pt",
+              "value": "edifício histórico e actual Pousada"
+            },
+            "es": {
+              "value": "hospital",
+              "language": "en",
+              "for-language": "es"
+            },
+            "mul": {
+              "value": "hospital",
+              "language": "en",
+              "for-language": "mul"
+            }
+          },
+          "claims": {
+            "P31": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q64578911"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q210272"
+                    }
+                  }
+                }
+              },
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q27686"
+                    }
+                  }
+                }
+              }
+            ],
+            "P625": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "latitude": 39.361301,
+                      "longitude": -9.156691,
+                      "globe": "http://www.wikidata.org/entity/Q2"
+                    }
+                  }
+                }
+              }
+            ],
+            "P131": [
+              {
+                "rank": "normal",
+                "mainsnak": {
+                  "snaktype": "value",
+                  "datavalue": {
+                    "value": {
+                      "id": "Q20061134"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

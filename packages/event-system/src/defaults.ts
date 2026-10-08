@@ -1,9 +1,9 @@
 import type { AnyEngineEvent, EngineEventType } from '@rumbo/geo-engine';
-import type { ActionDef } from '@rumbo/route-spec';
+import { type ActionDef, INTERRUPTIONS, type Interruption } from '@rumbo/route-spec';
 
-/** Events that interrupt the run with a Continue · Pause · End sheet. */
-export const INTERRUPTIONS = ['deviation', 'idle', 'out_of_order', 'timeout'] as const;
-export type Interruption = (typeof INTERRUPTIONS)[number];
+// Defined in route-spec, next to the decision params, so the API checks user
+// routes with the same list; re-exported to keep this package's API.
+export { INTERRUPTIONS, type Interruption };
 
 export function isInterruption(type: EngineEventType): type is Interruption {
   return (INTERRUPTIONS as readonly string[]).includes(type);

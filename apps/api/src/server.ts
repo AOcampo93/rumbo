@@ -3,6 +3,7 @@ import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDatabase, type Database } from './db/index.js';
 import { seedCuratedRoutes } from './db/seed.js';
+import { createWikidataGeocoder } from './geo/wikidata.js';
 
 const config = loadConfig();
 const MIGRATIONS = fileURLToPath(new URL('../drizzle', import.meta.url));
@@ -15,9 +16,14 @@ const database = config.databaseUrl
   ? createDatabase(config.databaseUrl, (err) => app.log.warn({ err }, 'database pool error'))
   : null;
 let ready: Database | null = null;
+const geocoder =
+  config.geocodingProvider === 'wikidata'
+    ? createWikidataGeocoder({ userAgent: config.wikimediaUserAgent })
+    : null;
 
-const app = await buildApp(config, { database, data: () => ready });
+const app = await buildApp(config, { database, data: () => ready, geocoder });
 if (!database) app.log.warn('DATABASE_URL is not set: running without a database');
+if (!geocoder) app.log.warn('GEOCODING_PROVIDER=none: place search is off');
 
 /**
  * Migrations, then the curated routes. If the database is down at boot the API

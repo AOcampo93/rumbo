@@ -131,6 +131,22 @@ describe('validateRouteSpec: errors', () => {
     expect(paths).toEqual(['points[0].triggers.onEnter', 'triggers.onDeviation']);
   });
 
+  it('never resolves a trigger to an inherited name like "constructor"', () => {
+    const route = freeRoute({ triggers: { onStart: 'constructor', onFinish: '__proto__' } });
+    route.points[0]!.triggers = { onEnter: 'toString' };
+    const paths = validateRouteSpec(route)
+      .errors.filter((e) => e.code === 'unknown_action')
+      .map((e) => e.path);
+    expect(paths).toEqual(['points[0].triggers.onEnter', 'triggers.onStart', 'triggers.onFinish']);
+  });
+
+  it('accepts an action that really is called "constructor"', () => {
+    const route = freeRoute();
+    route.actions['constructor'] = { type: 'info_sheet', params: { title: 'Ok' } };
+    route.points[1]!.triggers = { onEnter: 'constructor' };
+    expect(validateRouteSpec(route).ok).toBe(true);
+  });
+
   it('rejects a path with fewer than two points', () => {
     const result = validateRouteSpec(freeRoute({ path: [{ lat: 39.7476, lng: -8.807 }] }));
     expect(codes(result.errors)).toContain('path_too_short');
@@ -254,5 +270,15 @@ describe('validateRouteSpec: translations', () => {
         message: 'Missing pt',
       },
     ]);
+  });
+
+  it('survives absurdly nested params instead of overflowing the stack', () => {
+    let nested: unknown = { es: 'Hondo' };
+    for (let i = 0; i < 20_000; i++) nested = { inner: nested };
+    const route = freeRoute();
+    route.actions['castelo_info']!.params = { nested, title: { es: 'Solo es' } };
+    const result = validateRouteSpec(route, { requireLocales: ['es', 'en', 'pt'] });
+    // Only the shallow text is checked: real texts never sit that deep.
+    expect(result.errors.map((e) => e.path)).toEqual(['actions.castelo_info.params.title']);
   });
 });

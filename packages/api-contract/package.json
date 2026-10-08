@@ -12,10 +12,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@rumbo/geo-utils": "workspace:*",
     "@rumbo/route-spec": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@rumbo/route-builder": "workspace:*",
     "typescript": "~6.0.3",
     "vitest": "^5.0.3"
   }

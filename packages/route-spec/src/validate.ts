@@ -130,7 +130,8 @@ function triggerRefs(spec: RouteSpec): Array<[string, string]> {
 
 function checkTriggerTargets(spec: RouteSpec, errors: Issue[]): void {
   for (const [path, ref] of triggerRefs(spec)) {
-    if (!(ref in spec.actions)) {
+    // Own keys only: "constructor" or "toString" must not resolve to Object's.
+    if (!Object.hasOwn(spec.actions, ref)) {
       errors.push({
         path,
         code: 'unknown_action',
@@ -193,6 +194,12 @@ function checkActions(spec: RouteSpec, options: ValidateOptions, warnings: Issue
 }
 
 /**
+ * How deep findLocalizedTexts looks. Real texts sit a few levels down; the cap
+ * keeps a maliciously nested value from overflowing the stack.
+ */
+const MAX_TEXT_DEPTH = 16;
+
+/**
  * Finds the LocalizedText objects inside free-form action params: any object
  * whose keys are all language codes and whose values are all strings.
  */
@@ -200,8 +207,17 @@ export function findLocalizedTexts(
   value: unknown,
   path: string,
 ): Array<{ path: string; text: LocalizedText }> {
+  return findTexts(value, path, 0);
+}
+
+function findTexts(
+  value: unknown,
+  path: string,
+  depth: number,
+): Array<{ path: string; text: LocalizedText }> {
+  if (depth > MAX_TEXT_DEPTH) return [];
   if (Array.isArray(value)) {
-    return value.flatMap((item, i) => findLocalizedTexts(item, `${path}[${i}]`));
+    return value.flatMap((item, i) => findTexts(item, `${path}[${i}]`, depth + 1));
   }
   if (value === null || typeof value !== 'object') return [];
   const entries = Object.entries(value);
@@ -211,7 +227,7 @@ export function findLocalizedTexts(
       ([key, text]) => (LOCALES as readonly string[]).includes(key) && typeof text === 'string',
     );
   if (isLocalized) return [{ path, text: value as LocalizedText }];
-  return entries.flatMap(([key, child]) => findLocalizedTexts(child, `${path}.${key}`));
+  return entries.flatMap(([key, child]) => findTexts(child, `${path}.${key}`, depth + 1));
 }
 
 function checkTranslations(

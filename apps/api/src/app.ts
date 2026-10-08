@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
@@ -13,21 +12,22 @@ import type { AppConfig } from './config.js';
 import type { Database } from './db/index.js';
 import { deviceIdFrom } from './device.js';
 import { installErrorHandling } from './errors.js';
+import type { GeocodingProvider } from './geo/provider.js';
+import { trustProxyHop } from './limits.js';
 import { analyticsRoutes } from './routes/analytics.js';
+import { geoRoutes } from './routes/geo.js';
 import { healthRoutes } from './routes/health.js';
 import { routeRoutes } from './routes/routes.js';
 import { runRoutes } from './routes/runs.js';
-
-// Read at runtime so it works from src/ (tsx) and dist/ (node) alike.
-const { version } = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-) as { version: string };
+import { VERSION } from './version.js';
 
 export interface AppDeps {
   /** The database, for /health even before migrations ran. */
   database: Database | null;
   /** The database once it's ready for queries (migrated); null until then. */
   data: () => Database | null;
+  /** Place search; null or absent: /geo answers 503 geocoding_unavailable. */
+  geocoder?: GeocodingProvider | null;
 }
 
 export interface BuildOptions {
@@ -66,8 +66,8 @@ export async function buildApp(
             },
           },
     rewriteUrl: (req) => stripPublicPrefix(req.url ?? '/'),
-    // Behind Traefik: the client's address is in X-Forwarded-For.
-    trustProxy: true,
+    // Behind Traefik: the client's address is the X-Forwarded-For entry it adds.
+    trustProxy: trustProxyHop,
     bodyLimit: 1024 * 1024,
   });
   app.setValidatorCompiler(validatorCompiler);
@@ -86,7 +86,7 @@ export async function buildApp(
     openapi: {
       info: {
         title: 'Rumbo API',
-        version,
+        version: VERSION,
         description: 'Errors answer { code }; texts are LocalizedText.',
       },
       servers: [{ url: PUBLIC_PREFIX }],
@@ -95,9 +95,22 @@ export async function buildApp(
   });
   await app.register(swaggerUi, { routePrefix: '/v1/docs', staticCSP: true });
 
-  await app.register(healthRoutes, { version, commit: config.commit, database: deps.database });
-  await app.register(routeRoutes, { database: deps.data });
+  await app.register(healthRoutes, {
+    version: VERSION,
+    commit: config.commit,
+    database: deps.database,
+  });
+  await app.register(routeRoutes, {
+    database: deps.data,
+    writeRateLimitPerMinute: config.writeRateLimitPerMinute,
+    writeRateLimitPerDay: config.writeRateLimitPerDay,
+    userRoutesMax: config.userRoutesMax,
+  });
   await app.register(runRoutes, { database: deps.data });
   await app.register(analyticsRoutes, { database: deps.data, enabled: config.analyticsEnabled });
+  await app.register(geoRoutes, {
+    geocoder: deps.geocoder ?? null,
+    rateLimitPerMinute: config.geoRateLimitPerMinute,
+  });
   return app;
 }

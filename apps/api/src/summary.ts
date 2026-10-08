@@ -9,12 +9,14 @@ import {
   type LocalizedText,
   type MediaRef,
   type NormalizedRouteSpec,
+  type RouteBundle,
   type RouteSpec,
 } from '@rumbo/route-spec';
-import type { routes } from './db/schema.js';
+import type { pointContents, routes } from './db/schema.js';
 
 type RouteRow = typeof routes.$inferSelect;
 type RouteInsert = typeof routes.$inferInsert;
+type ContentInsert = typeof pointContents.$inferInsert;
 
 /** Languages in which every text of the route exists (plain strings count for all). */
 export function completeLocales(spec: RouteSpec): Locale[] {
@@ -22,7 +24,10 @@ export function completeLocales(spec: RouteSpec): Locale[] {
   return LOCALES.filter((locale) => texts.every((text) => localesOf(text).includes(locale)));
 }
 
-/** The row for a validated route: the authored spec plus the columns used to list it. */
+/**
+ * The row for a validated route: the authored spec plus the columns used to
+ * list it. Owner and edit token are the caller's business.
+ */
 export function routeRow(
   authored: RouteSpec,
   normalized: NormalizedRouteSpec,
@@ -49,6 +54,19 @@ export function routeRow(
     bbox: summary.bbox,
     status: 'published',
   };
+}
+
+/** The point_contents rows of a validated bundle: one per card and language. */
+export function contentRows(routeId: string, contents: RouteBundle['contents']): ContentInsert[] {
+  return Object.entries(contents).flatMap(([contentRef, byLocale]) =>
+    Object.entries(byLocale).map(([locale, content]) => ({
+      routeId,
+      contentRef,
+      locale,
+      content,
+      status: content?.status ?? 'approved',
+    })),
+  );
 }
 
 /** What GET /routes lists for each route. */
