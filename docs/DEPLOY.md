@@ -146,3 +146,4 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] `data/**` en las watch paths de `rumbo-web` y `rumbo-api` (2026-10-08).
 - [x] Despliegue de las fases 4 y 5 (2026-10-08, commit `1c151bb`). Al arrancar, la API aplicó las migraciones y sembró la ruta de Leiria. La web carga las rutas desde la API.
 - [x] `pnpm deploy:prod` lanza los despliegues por la API de Coolify, porque la GitHub App no tiene webhook (2026-10-08).
+- [x] Despliegue de la fase 6, el creador de rutas (2026-10-08, commit `7f6456b`). Comprobado en producción: una ruta creada con lugares reales de Wikidata, probada en simulación, guardada (`POST` 201) y eliminada (`DELETE` 204).
