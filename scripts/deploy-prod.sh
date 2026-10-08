@@ -130,8 +130,13 @@ wait_for() { # $1 = label, $2 = URL returning {"commit": "..."}, $3 = deployment
   local served="" status=""
   for _ in $(seq 1 60); do
     served=$(served_commit "$2")
-    if [[ "$served" == "$SHA" ]]; then echo "✓ $1 serves ${SHA:0:7}"; return 0; fi
     status=$(coolify "/deployments/$3" 2>/dev/null | sed -nE 's/.*"status":"([a-z_-]+)".*/\1/p' | head -1 || true)
+    # During Coolify's rolling update the old and the new container both answer:
+    # done only once the new commit is served AND Coolify has finished.
+    if [[ "$served" == "$SHA" && "$status" == finished ]]; then
+      echo "✓ $1 serves ${SHA:0:7}"
+      return 0
+    fi
     if [[ "$status" == failed || "$status" == cancelled* ]]; then
       echo "✗ $1: deployment $3 $status; see its log in Coolify." >&2
       return 1
