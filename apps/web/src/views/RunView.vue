@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { FlaskConical, LocateFixed, MapPinCheck, Pause, Play } from '@lucide/vue';
+import { ArrowLeft, FlaskConical, LocateFixed, MapPinCheck, Pause, Play } from '@lucide/vue';
 import type { PointState } from '@rumbo/geo-engine';
 import type { LatLng } from '@rumbo/geo-utils';
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import {
+  type ComponentPublicInstance,
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
 import { useI18n } from 'vue-i18n';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import AppButton from '../components/AppButton.vue';
@@ -23,7 +32,9 @@ import { useUiStore } from '../stores/ui.ts';
 
 // S05 · The run, the central screen (DESIGN §9): the map follows the user, the
 // HUD says where to go, the panel shows progress and Pause. Arrival cards and
-// interruptions arrive on the overlay stack from the event system.
+// interruptions arrive on the overlay stack from the event system. A trial of
+// the creator ("Probar ruta") is always simulated: its purple banner carries
+// the "Prueba" chip and "Volver al editor", and its simulation panel starts open.
 const RouteMap = defineAsyncComponent(() => import('../map/RouteMap.vue'));
 
 const { t } = useI18n();
@@ -36,7 +47,8 @@ const format = useFormat();
 
 const follow = ref(true);
 const panelOpen = ref(false);
-const simOpen = ref(false);
+// A trial is there to be walked in simulation: its controls start open.
+const simOpen = ref(run.trial);
 
 const spec = computed(() => run.spec);
 const state = computed(() => run.state);
@@ -240,11 +252,67 @@ watch(
   },
 );
 
+// ---------------------------------------------------------------- layout
+
+// What covers the map, measured: the banner and the HUD on top, the
+// simulation panel and the panel's peek below. Their heights change with the
+// language, a trial's two-row banner and text enlarged up to 200 %, so the
+// map's padding, the toasts and the panels follow them instead of guessing.
+const HANDLE_HEIGHT = 22;
+const overlay = ref<HTMLElement | null>(null);
+const peek = ref<HTMLElement | null>(null);
+const simPanel = ref<ComponentPublicInstance | null>(null);
+const sizes = reactive({ overlay: 0, peek: 0, sim: 0 });
+
+function measure(): void {
+  sizes.overlay = overlay.value?.offsetHeight ?? 0;
+  sizes.peek = peek.value?.offsetHeight ?? 0;
+  sizes.sim = (simPanel.value?.$el as HTMLElement | undefined)?.offsetHeight ?? 0;
+}
+const resizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+watch(
+  () => [overlay.value, peek.value, simPanel.value?.$el as Element | undefined],
+  (elements, previous) => {
+    for (const element of previous ?? []) if (element) resizes?.unobserve(element);
+    for (const element of elements) if (element) resizes?.observe(element);
+    measure();
+  },
+);
+
+const layoutStyle = computed(() => ({
+  ...(sizes.peek ? { '--panel-peek': `${sizes.peek + HANDLE_HEIGHT}px` } : {}),
+  ...(sizes.overlay ? { '--overlay-height': `${sizes.overlay}px` } : {}),
+}));
+// The map centres the user in what stays visible: under the HUD, above the simulation panel.
+const mapPadding = computed(() => ({
+  top: sizes.overlay ? sizes.overlay + 8 : 120,
+  bottom: simOpen.value && sizes.sim ? sizes.sim + 24 : 0,
+}));
+
+/** Toasts go under the banner and the HUD (they add the safe area themselves). */
+function placeToasts(): void {
+  document.documentElement.style.setProperty(
+    '--toast-top',
+    sizes.overlay ? `calc(${sizes.overlay + 8}px - var(--safe-top))` : '124px',
+  );
+}
+watch(() => sizes.overlay, placeToasts);
+
 // ---------------------------------------------------------------- leaving
+
+/** "Volver al editor": ends the trial and goes back to the review step (safe to tap twice). */
+function backToEditor(): void {
+  void run.endTrial();
+}
 
 onBeforeRouteLeave(async (to) => {
   // The back gesture closes the top sheet first (DESIGN §8.2).
   if (ui.dismissTop()) return false;
+  // Leaving ends a trial, without asking (finishTrial ignores repeated calls).
+  if (run.trial) {
+    void run.finishTrial('left', { navigate: false });
+    return true;
+  }
   if (!run.active || to.name === 'summary') return true;
   return ui.confirm({
     title: { key: 'run.exit.title' },
@@ -254,26 +322,27 @@ onBeforeRouteLeave(async (to) => {
   });
 });
 
-onMounted(() => {
-  // Toasts sit under the HUD on this screen.
-  document.documentElement.style.setProperty('--toast-top', '124px');
-});
+// Toasts sit under the HUD on this screen.
+onMounted(placeToasts);
 onBeforeUnmount(() => {
+  resizes?.disconnect();
   document.documentElement.style.removeProperty('--toast-top');
+  // Backstop: a trial never outlives its screen.
+  if (run.trial) void run.finishTrial('left', { navigate: false });
 });
 </script>
 
 <template>
-  <main class="run" :class="{ 'run--paused': paused, 'run--sim': run.simulated }">
+  <main
+    class="run"
+    :class="{ 'run--paused': paused, 'run--sim': run.simulated }"
+    :style="layoutStyle"
+  >
     <template
       v-if="
         spec && state && (run.active || state.status === 'finished' || state.status === 'cancelled')
       "
     >
-      <p v-if="run.simulated" class="run__simbanner" role="status">
-        <FlaskConical :size="16" aria-hidden="true" />{{ t('sim.banner') }}
-      </p>
-
       <section class="run__map">
         <RouteMap
           :markers="markers"
@@ -286,7 +355,7 @@ onBeforeUnmount(() => {
           :theme="theme"
           :large="settings.sol"
           :basemap="spec.activity === 'walk' ? 'streets' : 'topo'"
-          :padding="{ top: 120 }"
+          :padding="mapPadding"
           :label="name(spec.name)"
           @action="onMarkerAction"
           @map-click="onMapClick"
@@ -312,17 +381,31 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <div class="run__top">
-        <HudTarget
-          v-if="hud"
-          v-bind="hud"
-          :weak-gps="state.gps === 'weak'"
-          :paused="paused"
-          :choosable="isFree"
-          @choose="panelOpen = true"
-        />
-        <div v-else class="run__done t-title">{{ t('run.hud.allDone') }}</div>
-        <GpsIndicator v-if="state.gps !== 'weak'" :state="state.gps" class="run__gps" />
+      <!-- The banner and the HUD flow in one column, so the HUD is never under the banner. -->
+      <div ref="overlay" class="run__overlay">
+        <div v-if="run.simulated" class="run__simbanner" :class="{ 'is-trial': run.trial }">
+          <p class="run__simtext" role="status">
+            <FlaskConical :size="16" aria-hidden="true" />{{ t('sim.banner') }}
+          </p>
+          <template v-if="run.trial">
+            <span class="run__trialchip">{{ t('create.trial.badge') }}</span>
+            <button type="button" class="run__trialback" @click="backToEditor">
+              <ArrowLeft :size="18" aria-hidden="true" />{{ t('create.trial.back') }}
+            </button>
+          </template>
+        </div>
+        <div class="run__top">
+          <HudTarget
+            v-if="hud"
+            v-bind="hud"
+            :weak-gps="state.gps === 'weak'"
+            :paused="paused"
+            :choosable="isFree"
+            @choose="panelOpen = true"
+          />
+          <div v-else class="run__done t-title">{{ t('run.hud.allDone') }}</div>
+          <GpsIndicator v-if="state.gps !== 'weak'" :state="state.gps" class="run__gps" />
+        </div>
       </div>
 
       <AppButton
@@ -337,6 +420,7 @@ onBeforeUnmount(() => {
 
       <SimControls
         v-if="run.simulated && simOpen"
+        ref="simPanel"
         class="run__sim"
         :speed="run.simSpeed"
         :weak-gps="run.weakGps"
@@ -357,7 +441,7 @@ onBeforeUnmount(() => {
         >
           <span />
         </button>
-        <div class="run__peek">
+        <div ref="peek" class="run__peek">
           <ProgressBar
             :segments="segments"
             :percent="state.progress.percent"
@@ -430,18 +514,95 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: var(--color-surface-2);
 }
-.run__simbanner {
+/* Banner and HUD: one column over the map; only their contents take taps. */
+.run__overlay {
   position: absolute;
   inset: 0 0 auto;
   z-index: 5;
   display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.run__simbanner {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px 12px;
   padding: calc(6px + var(--safe-top)) 16px 6px;
   background: var(--color-sim);
-  color: #fff;
+  /* White on the light theme's purple, ink on the dark theme's lighter one. */
+  color: var(--color-on-primary);
   font: 600 14px/20px var(--font-ui);
+  pointer-events: auto;
+}
+.run__simtext {
+  min-width: 0;
+  text-align: center;
+}
+/* Inline, so it stays next to the first word when the notice wraps. */
+.run__simtext svg {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: -3px;
+}
+/* A trial: the notice on its own row, then the "Prueba" chip and the way back. */
+.run__simbanner.is-trial {
+  justify-content: space-between;
+  padding-bottom: 8px;
+}
+.is-trial .run__simtext {
+  flex: 1 0 100%;
+}
+.run__trialchip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--radius-xs);
+  font: 700 12px/16px var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.run__trialback {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0 16px 0 12px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-on-primary);
+  color: var(--color-sim);
+  font: 700 15px/20px var(--font-ui);
+  text-align: start;
+}
+/* 48 px to tap, without making the banner taller. */
+.run__trialback::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+.run__trialback svg {
+  flex: none;
+}
+@media (min-width: 720px) {
+  .run__simbanner.is-trial {
+    flex-wrap: nowrap;
+  }
+  .is-trial .run__simtext {
+    flex: 1 1 auto;
+    order: 1;
+  }
+  .run__trialchip {
+    order: 0;
+  }
+  .run__trialback {
+    order: 2;
+  }
 }
 .run__map {
   position: absolute;
@@ -461,20 +622,19 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 .run__top {
-  position: absolute;
-  top: calc(12px + var(--safe-top));
-  left: 16px;
-  right: 16px;
-  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  width: calc(100% - 32px);
   max-width: 560px;
-  margin: 0 auto;
+  margin: calc(12px + var(--safe-top)) auto 0;
+}
+.run__top > * {
+  pointer-events: auto;
 }
 .run--sim .run__top {
-  top: calc(44px + var(--safe-top));
+  margin-top: 12px;
 }
 .run__done {
   width: 100%;
@@ -494,6 +654,10 @@ onBeforeUnmount(() => {
   left: 16px;
   right: 16px;
   bottom: calc(var(--panel-peek) + 16px);
+  /* Never over the HUD: with large text it scrolls instead. */
+  max-height: calc(100% - var(--panel-peek) - var(--overlay-height, 160px) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 6;
   max-width: 440px;
 }

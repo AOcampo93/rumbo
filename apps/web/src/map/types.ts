@@ -26,6 +26,8 @@ export interface MapMarker {
   order?: number | null;
   /** Optional points get a dashed ring. */
   optional?: boolean;
+  /** Needs attention (the creator's overlapping zones): an amber ring and a "!" badge. */
+  warning?: boolean;
   /** 0..1 while an arrival is being confirmed (target only). */
   dwell?: number;
   /** Name shown under the target marker. */
@@ -56,6 +58,15 @@ export interface MapZone {
   radius: number;
 }
 
+/** 'warning': the zone overlaps another one (creator). */
+export type MapZoneTone = 'default' | 'warning';
+
+/** One radius circle among many (the creator's places), kept in sync by `id`. */
+export interface MapZoneItem extends MapZone {
+  id: string;
+  tone?: MapZoneTone;
+}
+
 export type MapTheme = 'light' | 'dark';
 export type BasemapKind = 'streets' | 'topo';
 
@@ -65,4 +76,18 @@ export interface MapPadding {
   bottom?: number;
   left?: number;
   right?: number;
+}
+
+/** What RouteMap exposes to its parent (type the template ref with it). */
+export interface RouteMapApi {
+  openPopup(markerId: string): void;
+  closePopup(): void;
+  /** Back to the user (when there is one) or to `fit`. */
+  recenter(): Promise<void>;
+  /** Frames these positions (default: the `fit` prop); a single one at zoom 17. */
+  fitTo(points?: readonly LatLng[] | null): Promise<void>;
+  /** Centres the map on `center`, at `zoom` or at least 16. Does nothing until the map is ready. */
+  goTo(center: LatLng, zoom?: number): Promise<void>;
+  /** Centre of the visible area (inside the padding); null until the map is ready. */
+  center(): LatLng | null;
 }

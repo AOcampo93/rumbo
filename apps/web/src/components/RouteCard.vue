@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, Clock, MapPin, Route } from '@lucide/vue';
+import { CircleCheck, Clock, MapPin, Route, UserRound } from '@lucide/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useFormat } from '../i18n/useFormat.ts';
@@ -10,8 +10,11 @@ import ModeBadge from './ModeBadge.vue';
 import StatChip from './StatChip.vue';
 
 // RouteCard (DESIGN §7): 16:9 cover (or the brand pattern), mode badge,
-// Fraunces title, activity, summary and the stats row.
-const props = defineProps<{ route: CatalogRoute; downloaded?: boolean }>();
+// "Created by you" on the user's own routes, Fraunces title, activity,
+// summary and the stats row. `menuSpace` keeps the cover's top-right corner
+// free for a menu button laid over the card (My routes): it can't go inside
+// the link.
+const props = defineProps<{ route: CatalogRoute; downloaded?: boolean; menuSpace?: boolean }>();
 const { t } = useI18n();
 const texts = useTexts();
 const format = useFormat();
@@ -26,10 +29,15 @@ const cover = computed(() => spec.value.coverImage);
   <RouterLink :to="{ name: 'route', params: { routeId: route.id } }" class="card">
     <div class="card__cover" :class="{ azulejo: !cover }">
       <img v-if="cover" :src="cover.url" :alt="texts.text(cover.alt, spec.locale)" loading="lazy" />
-      <ModeBadge :mode="spec.mode" class="card__mode" />
-      <span v-if="downloaded" class="card__offline">
-        <CircleCheck :size="15" aria-hidden="true" />{{ t('route.downloaded') }}
-      </span>
+      <div class="card__badges" :class="{ 'card__badges--menu': menuSpace }">
+        <ModeBadge :mode="spec.mode" />
+        <span v-if="route.mine" class="card__badge card__badge--mine">
+          <UserRound :size="15" aria-hidden="true" />{{ t('route.createdByYou') }}
+        </span>
+        <span v-if="downloaded" class="card__badge card__badge--offline">
+          <CircleCheck :size="15" aria-hidden="true" />{{ t('route.downloaded') }}
+        </span>
+      </div>
     </div>
     <div class="card__body">
       <div class="card__titlerow">
@@ -75,24 +83,35 @@ const cover = computed(() => spec.value.coverImage);
   height: 100%;
   object-fit: cover;
 }
-.card__mode {
+/* Badges wrap instead of overlapping when the text is long or large. */
+.card__badges {
   position: absolute;
-  left: 12px;
-  top: 12px;
+  inset: 12px 12px auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
 }
-.card__offline {
-  position: absolute;
-  right: 12px;
-  top: 12px;
+/* On the cover (a photo or the brand pattern): the same colours in every theme. */
+.card__badges--menu {
+  right: 64px;
+}
+.card__badge {
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 28px;
+  min-height: 28px;
   padding: 0 10px 0 8px;
   border-radius: var(--radius-xs);
   background: #fff;
+  font: 700 13px/16px var(--font-ui);
+}
+.card__badge--mine {
+  color: #1e4fa3;
+}
+.card__badge--offline {
+  margin-left: auto;
   color: #1a7f45;
-  font: 700 13px var(--font-ui);
 }
 .card__body {
   display: flex;

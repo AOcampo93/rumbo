@@ -11,7 +11,7 @@ import {
   SunMedium,
   Trash2,
 } from '@lucide/vue';
-import type { Locale } from '@rumbo/route-spec';
+import { LOCALES, type Locale, type LocalizedText } from '@rumbo/route-spec';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppButton from '../components/AppButton.vue';
@@ -25,7 +25,9 @@ import {
 } from '../services/notifications.ts';
 import { supports } from '../services/platform.ts';
 import { forgetDeviceId } from '../services/device.ts';
+import { deleteAllMyRoutesRemote, listMyRoutes, stopRouteSync } from '../services/myRoutes.ts';
 import { db, local } from '../services/storage.ts';
+import { useCreatorStore } from '../stores/creator.ts';
 import { type ThemeSetting, useSettingsStore } from '../stores/settings.ts';
 import { useUiStore } from '../stores/ui.ts';
 
@@ -34,6 +36,7 @@ import { useUiStore } from '../stores/ui.ts';
 const { t } = useI18n();
 const settings = useSettingsStore();
 const ui = useUiStore();
+const creator = useCreatorStore();
 
 const locale = computed<Locale>({
   get: () => settings.locale ?? 'es',
@@ -72,16 +75,55 @@ onMounted(async () => {
   }
 });
 
+/**
+ * The confirmation's body: what goes, plus what happens to the routes the user
+ * created (deleted from the server too, or lost if they never got there). In
+ * every language, so the dialog follows a language change.
+ */
+function clearDataBody(online: number, lost: number): LocalizedText {
+  const body: Partial<Record<Locale, string>> = {};
+  for (const lang of LOCALES) {
+    const parts = [t('settings.clearData.body', {}, { locale: lang })];
+    if (online > 0)
+      parts.push(
+        t('settings.clearData.routesOnline', { n: online }, { locale: lang, plural: online }),
+      );
+    if (lost > 0)
+      parts.push(t('settings.clearData.routesLost', { n: lost }, { locale: lang, plural: lost }));
+    body[lang] = parts.join('\n\n');
+  }
+  return body as LocalizedText;
+}
+
+const clearing = ref(false);
+
 async function clearData(): Promise<void> {
+  if (clearing.value) return;
+  // Read first: the dialog says how many routes go from the server and how many are lost.
+  const { records } = await listMyRoutes();
+  const online = records.filter((record) => record.remote !== 'no').length;
   const confirmed = await ui.confirm({
     title: { key: 'settings.clearData.title' },
-    body: { key: 'settings.clearData.body' },
+    body: clearDataBody(online, records.length - online),
     confirmLabel: { key: 'settings.clearData.yes' },
     cancelLabel: { key: 'settings.clearData.no' },
     destructive: true,
   });
   if (!confirmed) return;
-  await db.clear();
+  clearing.value = true;
+  // Nothing may write again while the data goes: no uploads, no draft autosave.
+  stopRouteSync();
+  creator.stopAutosave();
+  try {
+    // Best effort, a few seconds at most: the routes the server has go first.
+    await deleteAllMyRoutesRemote().catch(() => undefined);
+    await db.clear();
+  } catch (error) {
+    console.warn('settings: the local data could not be cleared', error);
+    clearing.value = false;
+    ui.toast({ key: 'errors.generic' }, { tone: 'warning' });
+    return;
+  }
   forgetDeviceId();
   local.remove('rumbo.settings');
   try {
@@ -197,7 +239,7 @@ async function clearData(): Promise<void> {
             @update:model-value="settings.analyticsConsent = $event"
           />
         </div>
-        <AppButton variant="danger" size="m" block @click="clearData">
+        <AppButton variant="danger" size="m" block :loading="clearing" @click="clearData">
           <template #icon><Trash2 :size="20" aria-hidden="true" /></template>
           {{ t('settings.clearData.label') }}
         </AppButton>

@@ -3,14 +3,17 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
 // The frame of every sheet on the overlay stack (DESIGN §7 BottomSheet,
 // §12 focus order): slides up, takes focus, gives it back on close, and can be
-// dragged down from its handle to dismiss it.
+// dragged down from its handle to dismiss it. `modal: false` keeps what is
+// behind it usable (the creator's place editor over a live map): no scrim, no
+// aria-modal, pointer events only on the panel, and a shorter panel.
 const props = withDefaults(
   defineProps<{
     variant?: 'sheet' | 'modal' | 'fullscreen';
     label?: string;
     dismissible?: boolean;
+    modal?: boolean;
   }>(),
-  { variant: 'sheet', label: undefined, dismissible: true },
+  { variant: 'sheet', label: undefined, dismissible: true, modal: true },
 );
 const emit = defineEmits<{ dismiss: [] }>();
 
@@ -54,13 +57,13 @@ function onPointerUp(): void {
 </script>
 
 <template>
-  <div class="frame" :class="`frame--${variant}`" @keydown="onKey">
-    <div class="frame__scrim" aria-hidden="true" />
+  <div class="frame" :class="[`frame--${variant}`, { 'frame--inline': !modal }]" @keydown="onKey">
+    <div v-if="modal" class="frame__scrim" aria-hidden="true" />
     <div
       ref="panel"
       class="frame__panel"
       role="dialog"
-      aria-modal="true"
+      :aria-modal="modal ? 'true' : undefined"
       :aria-label="label"
       :style="dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined"
     >
@@ -124,6 +127,14 @@ function onPointerUp(): void {
   height: 100dvh;
   max-height: none;
   border-radius: 0;
+}
+/* Non-modal: taps outside the panel reach the screen behind it. */
+.frame--inline {
+  pointer-events: none;
+}
+.frame--inline .frame__panel {
+  max-height: 55dvh;
+  pointer-events: auto;
 }
 .frame__handle {
   display: flex;

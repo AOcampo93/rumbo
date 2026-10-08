@@ -14,7 +14,7 @@ import {
   Trees,
   Utensils,
 } from 'lucide';
-import type { MarkerState } from './types.ts';
+import type { MapZoneTone, MarkerState } from './types.ts';
 
 // Marker artwork of DESIGN §6.1, drawn as SVG so every state × category is
 // exact (and cached): a 36 px circle with a white ring, a white category
@@ -26,12 +26,47 @@ export const MAP_COLORS = {
   secondary: '#0B7A75',
   accent: '#C4491F',
   success: '#1A7F45',
+  /**
+   * Overlapping zones. A mid amber between DESIGN's light (#8A5A00) and dark
+   * (#F2C14E) warning colours, so it reads on light and dark basemaps alike.
+   */
+  warning: '#B07400',
   locked: '#8A94A0',
   ink: '#16191D',
   user: '#2F80ED',
   sim: '#7C3AED',
   white: '#FFFFFF',
 } as const;
+
+/** A fixed colour with an alpha, as the SDK's [r, g, b, a]. */
+export function rgba(hex: string, alpha: number): number[] {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255, alpha];
+}
+
+export interface ZoneLook {
+  fill: number[];
+  outline: number[];
+  /** Outline width in px. */
+  width: number;
+}
+
+/**
+ * Radius circles. 'default' is the run's target zone (DESIGN §6.1: accent at
+ * 10 % with a 40 % outline); 'warning' marks the creator's overlapping zones.
+ */
+export const ZONE_LOOKS: Record<MapZoneTone, ZoneLook> = {
+  default: {
+    fill: rgba(MAP_COLORS.accent, 0.1),
+    outline: rgba(MAP_COLORS.accent, 0.4),
+    width: 1.5,
+  },
+  warning: {
+    fill: rgba(MAP_COLORS.warning, 0.2),
+    outline: rgba(MAP_COLORS.warning, 0.9),
+    width: 2,
+  },
+};
 
 /** Route colours on the Explore map (DESIGN §5.1), always shown with a legend. */
 export const ROUTE_COLORS = ['#1E4FA3', '#0B7A75', '#C4491F', '#6D4AA8', '#1A7F45'] as const;
@@ -82,6 +117,8 @@ export interface MarkerLook {
   color?: string;
   order?: number | null;
   optional?: boolean;
+  /** Needs attention (overlapping zones): an amber ring and a "!" warning badge. */
+  warning?: boolean;
   dwell?: number;
   /** "Sol" high contrast: 20 % bigger markers with a thicker ring. */
   large?: boolean;
@@ -146,6 +183,12 @@ export function markerSvg(look: MarkerLook): { svg: string; size: number } {
         `stroke-dasharray="${rr * 2.2} ${rr * 4.1}" stroke-linecap="round"/>`,
     );
   }
+  // Needs attention: an amber ring, plus the "!" badge drawn last.
+  if (look.warning) {
+    parts.push(
+      `<circle cx="${c}" cy="${c}" r="${r + 4 * scale}" fill="none" stroke="${MAP_COLORS.warning}" stroke-width="${3 * scale}"/>`,
+    );
+  }
 
   const shadow = `<circle cx="${c}" cy="${c + 1}" r="${r}" fill="#16191D" fill-opacity="0.18"/>`;
   const dash = look.optional ? ` stroke-dasharray="${4 * scale} ${3 * scale}"` : '';
@@ -183,6 +226,22 @@ export function markerSvg(look: MarkerLook): { svg: string; size: number } {
       `<circle cx="${bx}" cy="${by}" r="${br}" fill="${MAP_COLORS.ink}" stroke="${MAP_COLORS.white}" stroke-width="${1.5 * scale}"/>`,
       `<text x="${bx}" y="${by + 3.8 * scale}" text-anchor="middle" font-family="Inter, Arial, sans-serif" ` +
         `font-weight="700" font-size="${11 * scale}" fill="${MAP_COLORS.white}">${look.order}</text>`,
+    );
+  }
+  // Warning badge: a triangle with "!" at the top left, opposite the order
+  // badge, so the warning never relies on colour alone (DESIGN §12).
+  if (look.warning) {
+    const half = 10.5 * scale; // half the side
+    const height = half * Math.sqrt(3);
+    const bx = c - r * 0.72;
+    const by = c - r * 0.72; // centroid
+    const top = by - (height * 2) / 3;
+    const base = by + height / 3;
+    parts.push(
+      `<path d="M${bx} ${top}L${bx + half} ${base}L${bx - half} ${base}Z" fill="${MAP_COLORS.warning}" ` +
+        `stroke="${MAP_COLORS.white}" stroke-width="${1.5 * scale}" stroke-linejoin="round"/>`,
+      `<text x="${bx}" y="${by + 4.8 * scale}" text-anchor="middle" font-family="Inter, Arial, sans-serif" ` +
+        `font-weight="800" font-size="${12 * scale}" fill="${MAP_COLORS.ink}">!</text>`,
     );
   }
 

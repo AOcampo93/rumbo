@@ -1,6 +1,12 @@
 # The nginx image renders this template at container start (envsubst). Only
 # ${SOURCE_COMMIT} is substituted (NGINX_ENVSUBST_FILTER in the Dockerfile);
 # nginx's own variables such as $uri are left alone.
+#
+# Security headers (docs/SECURITY.md): no plugins, no <base> tricks, no
+# framing, forms only to this site; no MIME sniffing; the full URL never
+# leaves the site as a referrer. A location with its own add_header doesn't
+# inherit the server's, so each location repeats them. A script/img/connect
+# CSP can follow once the map SDK's needs (blob workers, wasm) are mapped.
 server {
   listen 80;
   server_name _;
@@ -12,12 +18,18 @@ server {
   location = /version.json {
     default_type application/json;
     add_header Cache-Control "no-store";
+    add_header Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     return 200 '{"commit":"${SOURCE_COMMIT}"}';
   }
 
   # Hashed build assets never change: cache them for a year.
   location /assets/ {
     add_header Cache-Control "public, max-age=31536000, immutable";
+    add_header Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     try_files $uri =404;
   }
 
@@ -25,6 +37,9 @@ server {
   # web manifest). Unknown paths fall back to index.html for the SPA router.
   location / {
     add_header Cache-Control "no-cache";
+    add_header Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     try_files $uri $uri/ /index.html;
   }
 }

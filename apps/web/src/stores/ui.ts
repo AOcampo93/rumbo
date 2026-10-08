@@ -20,12 +20,19 @@ export interface SheetEntry {
   close(outcome?: ViewOutcome): void;
 }
 
+/** A button inside a toast, e.g. "Deshacer" after removing a place (DESIGN §7). */
+export interface ToastAction {
+  label: UiText;
+  run(): void;
+}
+
 export interface ToastEntry {
   id: number;
   message: UiText;
   icon?: string;
   tone: 'info' | 'success' | 'warning';
   sourceLocale: Locale;
+  action?: ToastAction;
 }
 
 export interface ConfirmOptions {
@@ -43,6 +50,8 @@ export interface ConfirmEntry extends ConfirmOptions {
 }
 
 const TOAST_MS = 3500;
+/** Toasts with an action stay longer: there must be time to reach the button. */
+const ACTION_TOAST_MS = 6000;
 
 export const useUiStore = defineStore('ui', () => {
   const sheets = shallowRef<SheetEntry[]>([]);
@@ -100,6 +109,7 @@ export const useUiStore = defineStore('ui', () => {
       durationMs?: number;
       tone?: ToastEntry['tone'];
       sourceLocale?: Locale;
+      action?: ToastAction;
     } = {},
   ): void {
     const id = nextId++;
@@ -109,14 +119,25 @@ export const useUiStore = defineStore('ui', () => {
       tone: options.tone ?? 'info',
       sourceLocale: options.sourceLocale ?? 'es',
       ...(options.icon ? { icon: options.icon } : {}),
+      ...(options.action ? { action: options.action } : {}),
     };
     // Newest on top; never more than three at once.
     toasts.value = [entry, ...toasts.value].slice(0, 3);
-    setTimeout(() => dismissToast(id), options.durationMs ?? TOAST_MS);
+    setTimeout(
+      () => dismissToast(id),
+      options.durationMs ?? (options.action ? ACTION_TOAST_MS : TOAST_MS),
+    );
   }
 
   function dismissToast(id: number): void {
     toasts.value = toasts.value.filter((toast) => toast.id !== id);
+  }
+
+  /** Runs a toast's action once and closes the toast. */
+  function runToastAction(id: number): void {
+    const entry = toasts.value.find((toast) => toast.id === id);
+    dismissToast(id);
+    entry?.action?.run();
   }
 
   function confirm(options: ConfirmOptions): Promise<boolean> {
@@ -152,6 +173,7 @@ export const useUiStore = defineStore('ui', () => {
     dismissTop,
     toast,
     dismissToast,
+    runToastAction,
     confirm,
     clear,
   };

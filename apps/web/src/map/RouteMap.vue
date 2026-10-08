@@ -16,6 +16,7 @@ import PictureMarkerSymbol from '@arcgis/core/symbols/PictureMarkerSymbol.js';
 import SimpleFillSymbol from '@arcgis/core/symbols/SimpleFillSymbol.js';
 import SimpleLineSymbol from '@arcgis/core/symbols/SimpleLineSymbol.js';
 import TextSymbol from '@arcgis/core/symbols/TextSymbol.js';
+import type { ClickEvent, HoldEvent } from '@arcgis/core/views/input/types.js';
 import type { LatLng } from '@rumbo/geo-utils';
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -23,8 +24,18 @@ import { currentLocale, LOCALE_TAGS, onLocaleChange } from '../i18n/index.ts';
 import { createBasemap } from './basemap.ts';
 import './map.css';
 import { popupContent } from './popup.ts';
-import { MAP_COLORS, markerImage, userImage } from './symbols.ts';
-import type { BasemapKind, MapMarker, MapPadding, MapTheme, MapUser, MapZone } from './types.ts';
+import { MAP_COLORS, markerImage, userImage, ZONE_LOOKS } from './symbols.ts';
+import type {
+  BasemapKind,
+  MapMarker,
+  MapPadding,
+  MapTheme,
+  MapUser,
+  MapZone,
+  MapZoneItem,
+  MapZoneTone,
+  RouteMapApi,
+} from './types.ts';
 
 // The only component that talks to the ArcGIS SDK (PROJECT_PLAN §10.3). It
 // wraps the <arcgis-map> component (the recommended way in SDK 5.x) and keeps
@@ -38,6 +49,8 @@ const props = withDefaults(
     track?: LatLng[] | null;
     user?: MapUser | null;
     zone?: MapZone | null;
+    /** Radius circles of many points (creator), kept in sync by id. */
+    zones?: MapZoneItem[];
     /** Positions to show when the map opens (and on fitTo()). */
     fit?: LatLng[] | null;
     padding?: MapPadding;
@@ -54,6 +67,7 @@ const props = withDefaults(
     track: null,
     user: null,
     zone: null,
+    zones: () => [],
     fit: null,
     padding: () => ({}),
     follow: false,
@@ -65,8 +79,12 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   ready: [];
+  /** The view could not start (no WebGL, the SDK failed): the screen shows its fallback. */
+  failed: [];
   action: [payload: { markerId: string; action: string }];
   mapClick: [position: LatLng];
+  /** Long press off the markers (creator: add a point there). */
+  mapHold: [position: LatLng];
   userPan: [];
 }>();
 
@@ -77,6 +95,8 @@ const failed = ref(false);
 /** Data providers of the current basemap, shown in our own attribution strip. */
 const attribution = ref('');
 
+// Bottom to top. 'zones' holds the creator's circles, 'zone' the run's target.
+const zonesLayer = new GraphicsLayer({ title: 'zones' });
 const zoneLayer = new GraphicsLayer({ title: 'zone' });
 const pathLayer = new GraphicsLayer({ title: 'path' });
 const trackLayer = new GraphicsLayer({ title: 'track' });
@@ -85,7 +105,7 @@ const labelsLayer = new GraphicsLayer({ title: 'labels', minScale: 6000 });
 const userLayer = new GraphicsLayer({ title: 'user' });
 const map = new Map({
   basemap: createBasemap(props.basemap, props.theme),
-  layers: [zoneLayer, pathLayer, trackLayer, pointsLayer, labelsLayer, userLayer],
+  layers: [zonesLayer, zoneLayer, pathLayer, trackLayer, pointsLayer, labelsLayer, userLayer],
 });
 
 const markerGraphics = new globalThis.Map<
@@ -93,9 +113,16 @@ const markerGraphics = new globalThis.Map<
   { graphic: Graphic; look: string; label: Graphic | null }
 >();
 const latest = new globalThis.Map<string, MapMarker>();
+/** The creator's circles by zone id; `shape` is what their geometry was built from. */
+const zoneGraphics = new globalThis.Map<
+  string,
+  { graphic: Graphic; shape: string; tone: MapZoneTone }
+>();
 const userGraphics = shallowRef<{ dot: Graphic; accuracy: Graphic } | null>(null);
 let offLocale: (() => void) | null = null;
 const handles: Array<{ remove(): void }> = [];
+/** Set on unmount: the view may still be loading then. */
+let disposed = false;
 
 const point = (p: LatLng) => new Point({ latitude: p.lat, longitude: p.lng });
 
@@ -121,6 +148,7 @@ function markerSymbol(marker: MapMarker): { symbol: PictureMarkerSymbol; key: st
     color: marker.color,
     order: marker.order ?? null,
     optional: marker.optional ?? false,
+    warning: marker.warning ?? false,
     dwell: marker.dwell !== undefined ? Math.round(marker.dwell * 20) / 20 : undefined,
     large: props.large,
   };
@@ -205,7 +233,7 @@ function syncMarkers(markers: readonly MapMarker[]): void {
   }
 }
 
-// ---------------------------------------------------------------- lines and zone
+// ---------------------------------------------------------------- lines and zones
 
 function syncLine(
   layer: GraphicsLayer,
@@ -238,23 +266,60 @@ const trackSymbol = new SimpleLineSymbol({
   join: 'round',
 });
 
+const zoneCircle = (zone: MapZone) =>
+  new Circle({
+    center: point(zone.center),
+    radius: zone.radius,
+    radiusUnit: 'meters',
+    geodesic: true,
+  });
+
+function zoneSymbol(tone: MapZoneTone): SimpleFillSymbol {
+  const look = ZONE_LOOKS[tone];
+  return new SimpleFillSymbol({
+    color: look.fill,
+    outline: { color: look.outline, width: `${look.width}px` },
+  });
+}
+
+/** The run's target zone. */
 function syncZone(zone: MapZone | null): void {
   zoneLayer.removeAll();
   if (!zone) return;
-  zoneLayer.add(
-    new Graphic({
-      geometry: new Circle({
-        center: point(zone.center),
-        radius: zone.radius,
-        radiusUnit: 'meters',
-        geodesic: true,
-      }),
-      symbol: new SimpleFillSymbol({
-        color: [196, 73, 31, 0.1],
-        outline: { color: [196, 73, 31, 0.4], width: '1.5px' },
-      }),
-    }),
-  );
+  zoneLayer.add(new Graphic({ geometry: zoneCircle(zone), symbol: zoneSymbol('default') }));
+}
+
+/**
+ * The creator's zones, one circle per id. A changed circle gets a new
+ * geometry or symbol in place, so a radius slider doesn't redraw them all.
+ */
+function syncZones(zones: readonly MapZoneItem[]): void {
+  const seen = new Set<string>();
+  for (const zone of zones) {
+    seen.add(zone.id);
+    const shape = `${zone.center.lat},${zone.center.lng},${zone.radius}`;
+    const tone = zone.tone ?? 'default';
+    const entry = zoneGraphics.get(zone.id);
+    if (!entry) {
+      const graphic = new Graphic({ geometry: zoneCircle(zone), symbol: zoneSymbol(tone) });
+      zonesLayer.add(graphic);
+      zoneGraphics.set(zone.id, { graphic, shape, tone });
+      continue;
+    }
+    if (entry.shape !== shape) {
+      entry.graphic.geometry = zoneCircle(zone);
+      entry.shape = shape;
+    }
+    if (entry.tone !== tone) {
+      entry.graphic.symbol = zoneSymbol(tone);
+      entry.tone = tone;
+    }
+  }
+  for (const [id, entry] of zoneGraphics) {
+    if (seen.has(id)) continue;
+    zonesLayer.remove(entry.graphic);
+    zoneGraphics.delete(id);
+  }
 }
 
 // ---------------------------------------------------------------- user
@@ -380,7 +445,40 @@ function closePopup(): void {
   mapEl.value?.view?.closePopup();
 }
 
-defineExpose({ openPopup, closePopup, recenter, fitTo });
+/** The view, once it's ready to move (camera calls before that do nothing). */
+function readyView() {
+  const view = mapEl.value?.view;
+  return ready.value && view?.ready ? view : null;
+}
+
+async function goTo(center: LatLng, zoom?: number): Promise<void> {
+  const view = readyView();
+  if (!view) return;
+  try {
+    await view.goTo(
+      { target: point(center), zoom: zoom ?? Math.max(view.zoom, 16) },
+      { animate: !reduceMotion },
+    );
+  } catch {
+    // Interrupted.
+  }
+}
+
+function centerOfView(): LatLng | null {
+  const center = readyView()?.center;
+  if (center?.latitude == null || center.longitude == null) return null;
+  return { lat: center.latitude, lng: center.longitude };
+}
+
+const api: RouteMapApi = {
+  openPopup,
+  closePopup,
+  recenter,
+  fitTo,
+  goTo,
+  center: centerOfView,
+};
+defineExpose(api);
 
 // ---------------------------------------------------------------- lifecycle
 
@@ -418,8 +516,12 @@ onMounted(async () => {
     await element.viewOnReady();
   } catch {
     failed.value = true;
+    if (!disposed) emit('failed');
     return;
   }
+  // Unmounted while the view was loading (quick step changes in the creator):
+  // wire nothing up, the element destroys its view on its own.
+  if (disposed) return;
   const view = element.view;
   view.padding = { top: 0, bottom: 0, left: 0, right: 0, ...props.padding };
   // A compact card popup: no dock, no action bar, no feature paging (DESIGN §6.3).
@@ -441,8 +543,16 @@ onMounted(async () => {
   syncLine(pathLayer, props.path, pathSymbol);
   syncLine(trackLayer, props.track, trackSymbol);
   syncZone(props.zone);
+  syncZones(props.zones);
   syncUser(props.user);
   if (props.fit?.length) void fitTo(props.fit);
+
+  /** Where a tap or a long press landed, or null when it was on a marker. */
+  const offMarkers = async (event: ClickEvent | HoldEvent): Promise<LatLng | null> => {
+    const hit = await view.hitTest(event, { include: [pointsLayer] });
+    if (hit.results.length > 0 || !event.mapPoint) return null;
+    return { lat: event.mapPoint.latitude ?? 0, lng: event.mapPoint.longitude ?? 0 };
+  };
 
   handles.push(
     reactiveUtils.watch(
@@ -471,10 +581,15 @@ onMounted(async () => {
       if (event.action === 'start') emit('userPan');
     }),
     view.on('click', async (event) => {
-      const hit = await view.hitTest(event, { include: [pointsLayer] });
-      if (hit.results.length === 0 && event.mapPoint) {
-        emit('mapClick', { lat: event.mapPoint.latitude ?? 0, lng: event.mapPoint.longitude ?? 0 });
-      }
+      const position = await offMarkers(event);
+      if (position) emit('mapClick', position);
+    }),
+    // Long press (DESIGN C2: hold the map to add a point): 500 ms without
+    // dragging, and the SDK sends no click after it. No check on `button`:
+    // after a little finger jitter the SDK passes the last pointermove (-1).
+    view.on('hold', async (event) => {
+      const position = await offMarkers(event);
+      if (position) emit('mapHold', position);
     }),
   );
   ready.value = true;
@@ -482,6 +597,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  disposed = true;
   offLocale?.();
   if (followFrame) cancelAnimationFrame(followFrame);
   for (const handle of handles) handle.remove();
@@ -512,6 +628,10 @@ watch(
 watch(
   () => props.zone,
   (zone) => ready.value && syncZone(zone),
+);
+watch(
+  () => props.zones,
+  (zones) => ready.value && syncZones(zones),
 );
 watch(
   () => props.user,

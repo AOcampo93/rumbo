@@ -7,6 +7,7 @@ import OverlayHost from './components/OverlayHost.vue';
 import RecoverSheet from './components/RecoverSheet.vue';
 import { applyLocale } from './i18n/index.ts';
 import { clearAnalytics, initAnalytics, track } from './services/analytics.ts';
+import { startRouteSync } from './services/myRoutes.ts';
 import { flushRunOutbox } from './services/runs.ts';
 import { useThemeEffect } from './services/theme.ts';
 import { useRunStore } from './stores/run.ts';
@@ -35,13 +36,16 @@ watch(
 );
 
 const showNav = computed(() => route.meta.nav === true);
-const showMiniRun = computed(() => showNav.value && run.active);
+// A trial belongs to the creator: it never shows up as a run in progress.
+const showMiniRun = computed(() => showNav.value && run.active && !run.trial);
 
 onMounted(async () => {
   await initAnalytics(() => settings.analyticsConsent === true);
   track('app_open', {});
   // Run ends that couldn't reach the API last time (offline).
   void flushRunOutbox();
+  // Routes made with the creator that the API doesn't have yet (or must delete).
+  startRouteSync();
   // A run left half done (reload, closed tab): offer to continue (S11).
   if (settings.onboarded) await run.checkRecoverable();
 });

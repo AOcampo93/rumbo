@@ -25,10 +25,12 @@ export async function registerRunStart(body: RunStartBody): Promise<string | nul
 /** True when the server has it or will never take it (4xx): nothing to retry. */
 async function sendEnd(end: PendingEnd): Promise<boolean> {
   try {
+    // Small, and often sent as the run screen closes: it may outlive the page.
     const response = await api(`/runs/${end.runId}`, {
       method: 'PATCH',
       body: end.body,
       device: true,
+      keepalive: true,
     });
     return response.status < 500;
   } catch {

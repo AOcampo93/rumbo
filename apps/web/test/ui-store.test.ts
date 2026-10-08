@@ -46,4 +46,22 @@ describe('the overlay stack', () => {
     expect(ui.toasts).toHaveLength(0);
     vi.useRealTimers();
   });
+
+  it('runs a toast action once ("Deshacer") and keeps such toasts longer', () => {
+    vi.useFakeTimers();
+    const ui = useUiStore();
+    const run = vi.fn();
+    ui.toast(
+      { key: 'create.places.removed', params: { name: 'Sé' } },
+      { action: { label: { key: 'create.places.undo' }, run } },
+    );
+    vi.advanceTimersByTime(4000);
+    const [toast] = ui.toasts;
+    expect(toast?.action?.label).toEqual({ key: 'create.places.undo' });
+    ui.runToastAction(toast?.id ?? 0);
+    ui.runToastAction(toast?.id ?? 0);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(ui.toasts).toHaveLength(0);
+    vi.useRealTimers();
+  });
 });

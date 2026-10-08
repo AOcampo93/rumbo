@@ -1,0 +1,92 @@
+{
+  "spec": {
+    "specVersion": 1,
+    "id": "paseo-por-el-centro-e2e0000001",
+    "name": "Paseo por el centro",
+    "locale": "es",
+    "mode": "free",
+    "activity": "walk",
+    "source": "user",
+    "points": [
+      {
+        "id": "praca-rodrigues-lobo",
+        "name": "Praça Rodrigues Lobo",
+        "position": {
+          "lat": 39.74452,
+          "lng": -8.80693
+        },
+        "order": 1,
+        "category": "culture",
+        "triggers": {
+          "onEnter": "content_praca-rodrigues-lobo"
+        },
+        "meta": {
+          "address": "Leiria"
+        }
+      },
+      {
+        "id": "jardim-luis-de-camoes",
+        "name": "Jardim Luís de Camões",
+        "position": {
+          "lat": 39.74166,
+          "lng": -8.80492
+        },
+        "order": 2,
+        "category": "nature",
+        "triggers": {
+          "onEnter": "content_jardim-luis-de-camoes"
+        },
+        "meta": {
+          "address": "Leiria"
+        }
+      }
+    ],
+    "actions": {
+      "content_praca-rodrigues-lobo": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Praça Rodrigues Lobo",
+          "body": "Leiria"
+        }
+      },
+      "content_jardim-luis-de-camoes": {
+        "type": "info_sheet",
+        "params": {
+          "title": "Jardim Luís de Camões",
+          "body": "Leiria"
+        }
+      },
+      "decision_deviation": {
+        "type": "decision",
+        "params": {
+          "preset": "deviation"
+        }
+      },
+      "decision_idle": {
+        "type": "decision",
+        "params": {
+          "preset": "idle"
+        }
+      },
+      "decision_out_of_order": {
+        "type": "decision",
+        "params": {
+          "preset": "out_of_order"
+        }
+      },
+      "decision_timeout": {
+        "type": "decision",
+        "params": {
+          "preset": "timeout"
+        }
+      }
+    },
+    "triggers": {
+      "onDeviation": "decision_deviation",
+      "onIdle": "decision_idle",
+      "onOutOfOrder": "decision_out_of_order",
+      "onTimeout": "decision_timeout"
+    }
+  },
+  "contents": {}
+}

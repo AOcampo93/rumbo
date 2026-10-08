@@ -25,7 +25,8 @@ export default defineConfig(
     languageOptions: { parserOptions: { parser: tseslint.parser } },
     // TypeScript already checks undefined names (globals, DOM and SDK types):
     // typescript-eslint turns this rule off for .ts files, not for .vue.
-    rules: { 'no-undef': 'off' },
+    // v-html would render third-party text (Wikidata, route names) as markup.
+    rules: { 'no-undef': 'off', 'vue/no-v-html': 'error' },
   },
 
   { files: ['apps/web/src/**'], languageOptions: { globals: globals.browser } },

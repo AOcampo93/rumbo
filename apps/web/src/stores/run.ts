@@ -1,3 +1,4 @@
+import type { RunEndBody } from '@rumbo/api-contract';
 import {
   builtinHandlers,
   createEventSystem,
@@ -43,7 +44,9 @@ import { useUiStore } from './ui.ts';
 // The run in progress (PROJECT_PLAN §8 + §9 wired to the app): the engine with
 // a GPS or simulated source, the event system talking to the overlay stack
 // and the device, snapshots for "Continue route" after a reload, and the
-// summary when it ends.
+// summary when it ends. A trial ("Probar ruta" in the creator) runs a route
+// that may not be saved yet, always simulated and in isolation: no snapshot,
+// no summary, no API and no analytics; it ends back in the creator.
 
 /** What survives a reload (IndexedDB), PROJECT_PLAN §8.7. */
 interface ActiveRunRecord {
@@ -78,8 +81,20 @@ export interface Recoverable {
   changed: boolean;
 }
 
+/** How the last trial went (the creator's toast); never mixed with real summaries. */
+export interface TrialResult {
+  /** Walked to the end, ended on the run screen, or left by navigating away. */
+  kind: 'finished' | 'cancelled' | 'left';
+  completed: number;
+  total: number;
+}
+
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 const SAVE_EVERY_MS = 2000;
+/** How long a trial waits for the navigation away from /run before tidying up anyway. */
+const LEAVE_TIMEOUT_MS = 10_000;
+/** RunEndBodySchema's ceiling. */
+const MAX_RUN_MS = 7 * 24 * 3_600_000;
 export const SIM_SPEEDS = [1, 5, 20] as const;
 export type SimSpeed = (typeof SIM_SPEEDS)[number];
 
@@ -97,6 +112,9 @@ export const useRunStore = defineStore('run', () => {
   const weakGps = ref(false);
   const lastSummary = shallowRef<RunSummaryRecord | null>(null);
   const recoverable = shallowRef<Recoverable | null>(null);
+  /** The run is a trial of the creator. Set by every way a run starts, cleared by reset(). */
+  const trial = ref(false);
+  const trialResult = shallowRef<TrialResult | null>(null);
 
   let engine: GeoEngine | null = null;
   /** The run's id on the server, for its end and for analytics. */
@@ -105,6 +123,10 @@ export const useRunStore = defineStore('run', () => {
   let sim: SimulatedSource | null = null;
   let cleanups: Array<() => void> = [];
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Bumped whenever a run starts: async steps of an older run stop there. */
+  let generation = 0;
+  /** finishTrial() is under way: further calls (the leave guard, the unmount backstop) do nothing. */
+  let trialEnding = false;
 
   const spec = computed<NormalizedRouteSpec | null>(() => bundle.value?.spec ?? null);
   const active = computed(() => {
@@ -173,6 +195,7 @@ export const useRunStore = defineStore('run', () => {
   }
 
   function wire(next: GeoEngine): void {
+    const isTrial = trial.value;
     engine = next;
     state.value = next.getState();
     // The UI gets at most one state per frame (PROJECT_PLAN §10.3).
@@ -206,23 +229,31 @@ export const useRunStore = defineStore('run', () => {
       engine: next,
       route,
       handlers: builtinHandlers,
-      ui: uiAdapter,
+      // A trial never goes to the summary: finishTrial() takes the user back to the creator.
+      ui: isTrial ? { ...uiAdapter, navigate: () => {} } : uiAdapter,
       feedback: feedbackAdapter,
       content: async (ref) => bundle.value?.contents[ref] ?? null,
-      // Analytics of a run carry its server id (never a position).
-      analytics: (name, props) => track(name, { ...props, ...(runId ? { runId } : {}) }),
+      // Analytics of a run carry its server id (never a position); a trial sends none.
+      analytics: isTrial
+        ? () => {}
+        : (name, props) => track(name, { ...props, ...(runId ? { runId } : {}) }),
       logger: { warn: (message, data) => console.warn(message, data) },
     });
     events.start();
   }
 
-  function teardown(): void {
+  /** Stops listening to the engine (no more sheets, saves or state) but keeps it and its last state. */
+  function detach(): void {
     events?.stop();
     events = null;
     for (const cleanup of cleanups) cleanup();
     cleanups = [];
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
+  }
+
+  function teardown(): void {
+    detach();
     engine?.destroy();
     engine = null;
     sim = null;
@@ -239,7 +270,8 @@ export const useRunStore = defineStore('run', () => {
   }
 
   async function save(): Promise<void> {
-    if (!engine || !routeId.value) return;
+    // A trial never writes run:active: a real run may be waiting there.
+    if (!engine || !routeId.value || trial.value) return;
     const status = engine.getState().status;
     if (status === 'finished' || status === 'cancelled') return;
     const record: ActiveRunRecord = {
@@ -253,6 +285,12 @@ export const useRunStore = defineStore('run', () => {
   }
 
   async function onEnded(status: 'finished' | 'cancelled', final: EngineState): Promise<void> {
+    if (trial.value) {
+      // One tick later: the event system still gets this last event (its sound), not its summary.
+      await Promise.resolve();
+      await closeTrial(status, true, final);
+      return;
+    }
     const route = spec.value;
     if (!route) return;
     const record: RunSummaryRecord = {
@@ -296,51 +334,151 @@ export const useRunStore = defineStore('run', () => {
 
   // ------------------------------------------------------------ lifecycle
 
-  async function start(id: string): Promise<boolean> {
-    await catalog.load();
-    const route = catalog.byId(id);
-    if (!route) return false;
+  /** Every run starts here; `trial` is always set explicitly. */
+  function begin(next: RouteBundle, options: { simulated: boolean; trial: boolean }): void {
     teardown();
-    routeId.value = id;
-    bundle.value = route.bundle;
-    simulated.value = settings.simulation;
+    generation += 1;
+    trialEnding = false;
+    trial.value = options.trial;
+    if (options.trial) trialResult.value = null;
+    routeId.value = next.spec.id;
+    bundle.value = next;
+    simulated.value = options.simulated;
     weakGps.value = false;
-    const next = markRaw(
-      createGeoEngine(route.bundle.spec, {
-        source: createSource(route.bundle.spec, simulated.value),
+    const created = markRaw(
+      createGeoEngine(next.spec, {
+        source: createSource(next.spec, simulated.value),
         logger: { warn: (message, data) => console.warn(message, data) },
       }),
     );
     runId = null;
-    wire(next);
-    next.start();
+    wire(created);
+    created.start();
+    if (options.trial) return;
     void save();
     // Best effort: the run goes on whether or not the API answers.
     const startedAt = new Date().toISOString();
     void registerRunStart({
-      routeId: id,
-      specHash: next.getState().specHash,
-      mode: route.bundle.spec.mode,
+      routeId: next.spec.id,
+      specHash: created.getState().specHash,
+      mode: next.spec.mode,
       simulated: simulated.value,
       locale: currentLocale(),
       startedAt,
     }).then((serverId) => {
-      if (engine !== next) return;
+      if (engine !== created) return;
       runId = serverId;
       void save();
     });
+  }
+
+  async function start(id: string): Promise<boolean> {
+    await catalog.load();
+    const route = catalog.byId(id);
+    if (!route) return false;
+    begin(route.bundle, { simulated: settings.simulation, trial: false });
     return true;
   }
 
-  /** On app start: is there a run to continue (S11)? */
+  /**
+   * "Probar ruta": runs the creator's route (normalized, maybe unsaved) in
+   * simulation whatever the settings say. A real run in progress must have
+   * been confirmed by the caller: its snapshot is saved first and stays in
+   * run:active, so it is offered again (paused) when the trial ends.
+   */
+  async function startTrial(next: RouteBundle): Promise<boolean> {
+    // save() skips a run that already ended.
+    if (engine && !trial.value) await save();
+    try {
+      begin(next, { simulated: true, trial: true });
+      return true;
+    } catch (error) {
+      console.warn('run: the trial could not start', error);
+      reset();
+      return false;
+    }
+  }
+
+  /** Resolves once the navigation under way has finished (or after a while, if none comes). */
+  function navigationSettled(): Promise<void> {
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        stop();
+        resolve();
+      };
+      const timer = setTimeout(done, LEAVE_TIMEOUT_MS);
+      const stop = router.afterEach(done);
+    });
+  }
+
+  /** Back to the review step: the history entry it came from when there is one, so Back isn't doubled. */
+  async function leaveRun(): Promise<void> {
+    if (router.currentRoute.value.name !== 'run') return;
+    const review = router.resolve({ name: 'create-review' }).fullPath;
+    if (router.options.history.state['back'] === review) {
+      const settled = navigationSettled();
+      router.back();
+      await settled;
+    } else {
+      await router.replace({ name: 'create-review' });
+    }
+  }
+
+  /**
+   * Ends a trial; every way out goes through here, in this order: ignore the
+   * engine, keep the result, leave /run (`navigate`) or let the navigation
+   * under way finish, reset, then the toast (reset clears toasts) and the
+   * check for a real run paused by the trial. Safe to call more than once.
+   */
+  function finishTrial(kind: TrialResult['kind'], options: { navigate: boolean }): Promise<void> {
+    return closeTrial(kind, options.navigate, engine?.getState() ?? state.value);
+  }
+
+  async function closeTrial(
+    kind: TrialResult['kind'],
+    navigate: boolean,
+    final: EngineState | null,
+  ): Promise<void> {
+    if (!trial.value || trialEnding) return;
+    trialEnding = true;
+    const current = generation;
+    detach();
+    const done = final?.progress.completed ?? 0;
+    const total = final?.progress.total ?? spec.value?.points.length ?? 0;
+    trialResult.value = { kind, completed: done, total };
+    if (navigate) await leaveRun();
+    else if (router.currentRoute.value.name === 'run') await navigationSettled();
+    if (current !== generation) return;
+    reset();
+    ui.toast(
+      kind === 'finished'
+        ? { key: 'create.trial.finished', params: { done, total } }
+        : { key: 'create.trial.ended' },
+      { tone: kind === 'finished' ? 'success' : 'info' },
+    );
+    void releaseScreen();
+    await checkRecoverable();
+  }
+
+  /** "Volver al editor". */
+  function endTrial(): Promise<void> {
+    return finishTrial('cancelled', { navigate: true });
+  }
+
+  /** On app start, and after a trial: is there a run to continue (S11)? */
   async function checkRecoverable(): Promise<void> {
-    if (engine) return;
+    // Something runs, or started while this was reading: never offer a run over it.
+    const busy = () => engine !== null || trial.value;
+    if (busy()) return;
     const record = await db.get<ActiveRunRecord>(KEYS.activeRun);
-    if (!record) return;
+    if (!record || busy()) return;
     await catalog.load();
+    if (busy()) return;
     const route = catalog.byId(record.routeId);
     if (!route) {
-      await db.del(KEYS.activeRun);
+      // Only when the catalog knows every route; otherwise (offline…) it waits for later.
+      if (catalog.authoritative) await db.del(KEYS.activeRun);
       return;
     }
     recoverable.value = {
@@ -355,6 +493,9 @@ export const useRunStore = defineStore('run', () => {
     const recovered = recoverable.value;
     if (!recovered || recovered.changed) return false;
     teardown();
+    generation += 1;
+    trialEnding = false;
+    trial.value = false;
     routeId.value = recovered.record.routeId;
     bundle.value = recovered.bundle;
     simulated.value = recovered.record.simulated;
@@ -371,8 +512,11 @@ export const useRunStore = defineStore('run', () => {
   }
 
   async function discardRecovered(): Promise<void> {
+    const record = recoverable.value?.record;
     recoverable.value = null;
     await db.del(KEYS.activeRun);
+    // Otherwise its row on the server would stay "running" forever.
+    if (record?.runId) void registerRunEnd(record.runId, abandonedEnd(record));
   }
 
   async function loadLastSummary(): Promise<RunSummaryRecord | null> {
@@ -426,6 +570,8 @@ export const useRunStore = defineStore('run', () => {
   /** Leaves the finished run behind (after the summary). */
   function reset(): void {
     teardown();
+    trialEnding = false;
+    trial.value = false;
     state.value = null;
     bundle.value = null;
     routeId.value = null;
@@ -441,9 +587,14 @@ export const useRunStore = defineStore('run', () => {
     weakGps,
     lastSummary,
     recoverable,
+    trial,
+    trialResult,
     active,
     targetPoint,
     start,
+    startTrial,
+    finishTrial,
+    endTrial,
     checkRecoverable,
     continueRecovered,
     discardRecovered,
@@ -461,3 +612,16 @@ export const useRunStore = defineStore('run', () => {
     reset,
   };
 });
+
+/** The end of a saved run the user discarded: as far as it got when it was last saved. */
+function abandonedEnd(record: ActiveRunRecord): RunEndBody {
+  const { snapshot } = record;
+  return {
+    status: 'cancelled',
+    endedAt: new Date(record.savedAt).toISOString(),
+    elapsedMs: Math.min(Math.max(0, Math.round(snapshot.elapsedMs)), MAX_RUN_MS),
+    completedPoints: snapshot.points.filter((point) => point.state === 'completed').length,
+    totalPoints: snapshot.points.length,
+    score: Math.round(snapshot.points.reduce((sum, point) => sum + point.score, 0)),
+  };
+}

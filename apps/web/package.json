@@ -28,6 +28,7 @@
     "lucide": "^1.52.0",
     "pinia": "^4.0.3",
     "vue": "^3.5.43",
+    "vue-draggable-plus": "^0.6.1",
     "vue-i18n": "^11.4.13",
     "vue-router": "^5.4.0",
     "workbox-core": "^7.4.1",

@@ -36,9 +36,17 @@ const TOAST_ICONS = { info: Info, success: CircleCheck, warning: TriangleAlert }
     variant="modal"
     @dismiss="entry.answer(false)"
   >
-    <div class="dialog" role="alertdialog" aria-modal="true">
-      <h2 class="t-h2">{{ texts.ui(entry.title, entry.sourceLocale ?? 'es') }}</h2>
-      <p v-if="entry.body" class="t-body t-muted">
+    <div
+      class="dialog"
+      role="alertdialog"
+      aria-modal="true"
+      :aria-labelledby="`confirm-${entry.id}-title`"
+      :aria-describedby="entry.body ? `confirm-${entry.id}-body` : undefined"
+    >
+      <h2 :id="`confirm-${entry.id}-title`" class="t-h2">
+        {{ texts.ui(entry.title, entry.sourceLocale ?? 'es') }}
+      </h2>
+      <p v-if="entry.body" :id="`confirm-${entry.id}-body`" class="dialog__body t-body t-muted">
         {{ texts.ui(entry.body, entry.sourceLocale ?? 'es') }}
       </p>
       <div class="dialog__actions">
@@ -59,17 +67,21 @@ const TOAST_ICONS = { info: Info, success: CircleCheck, warning: TriangleAlert }
 
   <div class="toasts" role="status" aria-live="polite">
     <TransitionGroup name="toast">
-      <button
-        v-for="toast in toasts"
-        :key="toast.id"
-        type="button"
-        class="toast"
-        :class="`toast--${toast.tone}`"
-        @click="ui.dismissToast(toast.id)"
-      >
-        <component :is="TOAST_ICONS[toast.tone]" :size="20" aria-hidden="true" />
-        <span>{{ texts.ui(toast.message, toast.sourceLocale) }}</span>
-      </button>
+      <div v-for="toast in toasts" :key="toast.id" class="toast" :class="`toast--${toast.tone}`">
+        <!-- Tapping the message dismisses it; the action ("Deshacer") is its own button. -->
+        <button type="button" class="toast__body" @click="ui.dismissToast(toast.id)">
+          <component :is="TOAST_ICONS[toast.tone]" :size="20" aria-hidden="true" />
+          <span>{{ texts.ui(toast.message, toast.sourceLocale) }}</span>
+        </button>
+        <button
+          v-if="toast.action"
+          type="button"
+          class="toast__action"
+          @click="ui.runToastAction(toast.id)"
+        >
+          {{ texts.ui(toast.action.label, toast.sourceLocale) }}
+        </button>
+      </div>
     </TransitionGroup>
   </div>
 </template>
@@ -79,7 +91,14 @@ const TOAST_ICONS = { info: Info, success: CircleCheck, warning: TriangleAlert }
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Long texts (or text at 200 %) scroll inside the frame's maximum height. */
+  min-height: 0;
   padding: 24px;
+  overflow-y: auto;
+}
+.dialog__body {
+  /* A body made of several paragraphs (joined with blank lines) keeps them apart. */
+  white-space: pre-line;
 }
 .dialog__actions {
   display: flex;
@@ -89,7 +108,8 @@ const TOAST_ICONS = { info: Info, success: CircleCheck, warning: TriangleAlert }
 }
 .dialog__actions :deep(.btn--danger) {
   background: var(--color-danger);
-  color: #fff;
+  /* White on the light theme's red, ink on the dark theme's lighter red. */
+  color: var(--color-on-accent);
 }
 .toasts {
   position: fixed;
@@ -105,27 +125,65 @@ const TOAST_ICONS = { info: Info, success: CircleCheck, warning: TriangleAlert }
 }
 .toast {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
   min-height: 48px;
-  padding: 10px 16px;
+  overflow: hidden;
   border: var(--control-border) solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
   box-shadow: var(--shadow-e2);
-  font: 600 15px/20px var(--font-ui);
-  text-align: left;
   pointer-events: auto;
 }
-.toast--success svg {
+/* The action shares the message's row while the message has about 12 words'
+   room (em: it scales with the text size), and goes under it otherwise. */
+.toast__body {
+  display: flex;
+  flex: 1 1 12em;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: 600 15px/20px var(--font-ui);
+  text-align: start;
+  overflow-wrap: break-word;
+}
+.toast__body svg {
+  flex: none;
+}
+.toast__body:focus-visible,
+.toast__action:focus-visible {
+  outline-offset: -3px;
+}
+.toast__action {
+  flex: none;
+  min-width: 48px;
+  min-height: 48px;
+  margin: 0 4px 0 auto;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary);
+  font: 700 15px/20px var(--font-ui);
+  text-align: center;
+}
+.toast__action:hover {
+  background: var(--color-surface-2);
+}
+.toast--success .toast__body svg {
   color: var(--color-success);
 }
 .toast--warning {
   background: var(--color-warning-bg);
   color: var(--color-warning);
 }
-.toast--info svg {
+.toast--info .toast__body svg {
   color: var(--color-accent);
 }
 .toast-enter-active,

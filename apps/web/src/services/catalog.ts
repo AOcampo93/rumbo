@@ -10,10 +10,12 @@ import {
 import type { RouteSummary as ApiRouteSummary } from '@rumbo/api-contract';
 import { ROUTE_COLORS } from '../map/symbols.ts';
 import { api } from './api.ts';
+import type { SyncState } from './myRoutes.ts';
 
 // Where routes come from (PROJECT_PLAN §10.6): the API when it answers
 // (phase 5), otherwise the curated routes bundled with the app from
-// data/routes. Both end up as validated RouteBundles.
+// data/routes. Both end up as validated RouteBundles. The user's own routes
+// come from this device (services/myRoutes.ts).
 
 export interface CatalogRoute {
   id: string;
@@ -25,6 +27,8 @@ export interface CatalogRoute {
   locales: readonly Locale[];
   /** Shipped inside the app: always available offline. */
   bundled: boolean;
+  /** Made with the creator on this device ("Creada por ti"), with its upload state. */
+  mine?: { sync: SyncState; error?: string };
 }
 
 export interface PoiLayer {
