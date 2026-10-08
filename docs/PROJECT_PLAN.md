@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 4 completadas (base, contratos, motor, sistema de eventos y la web para recorrer rutas); fase 5 (backend mínimo) terminada en código, a falta de desplegarla. Producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 5 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas y el backend mínimo). Producción activa en https://rumbo.arturoocampo.com, con la API y su base de datos desde el 2026-10-08 ([DEPLOY.md](DEPLOY.md)).
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -1119,7 +1119,7 @@ En marcha desde el 2026-10-07. El detalle operativo está en [DEPLOY.md](DEPLOY.
   - `rumbo-api`: Node 24;
   - `rumbo-db`: PostgreSQL 17 + PostGIS 3.5, con volumen persistente y sin puerto público.
 - **Un solo origen:** `https://rumbo.arturoocampo.com` para la web y `/api` para la API, con HTTPS de Let's Encrypt vía Traefik.
-- **Ramas:** `main` es desarrollo y `production` es lo desplegado. Desplegar es promover a `production` un commit de `main` con la CI en verde (`pnpm deploy:prod`), y solo cuando lo pide el responsable del proyecto.
+- **Ramas:** `main` es desarrollo y `production` es lo desplegado. Desplegar es promover a `production` un commit de `main` con la CI en verde y pedir a Coolify que lo construya (`pnpm deploy:prod`), y solo cuando lo pide el responsable del proyecto. Un push no basta: la GitHub App del servidor no tiene webhook ([DEPLOY.md](DEPLOY.md)).
 - **Migraciones:** la API aplica las pendientes al arrancar (§11.6).
 - **Backups:** dump diario de Postgres en Coolify desde el 2026-10-07 ([DEPLOY.md](DEPLOY.md)).
 - **CI:** GitHub Actions ejecuta formato, lint, typecheck, tests (los de la API, contra un PostgreSQL en contenedor), `validate:routes`, build, los e2e, las imágenes Docker y el escaneo de secretos.
@@ -1360,12 +1360,13 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
   - La demo se graba entera en simulación: Explorar → detalle → preparación → recorrido a 1×, 5× o 20× → fichas → resumen.
   - Precisiones de la implementación en el §10.9.
 
-### Fase 5: Backend mínimo y despliegue (P1)
+### Fase 5: Backend mínimo y despliegue (P1) · completada el 2026-10-08
 
 - [x] Fastify, Drizzle, migraciones, seed, `GET /routes`, `GET /routes/:id`, `POST /runs`, `PATCH /runs/:id` y `POST /analytics/batch` (2026-10-08).
 - [x] Despliegue en Coolify (web + api + postgres) con HTTPS. Se adelantó a la fase 0.
-- **DoD:** la app en producción carga las rutas desde la API. **Pendiente del despliegue.**
-  - En local ya funciona de punta a punta: la web carga las rutas de la API, y la API registra el inicio y el cierre del recorrido en Postgres.
+- **DoD:** la app en producción carga las rutas desde la API. ✓
+  - Desplegada el 2026-10-08 (commit `1c151bb`). Al arrancar, la API aplicó las migraciones y sembró la ruta de Leiria.
+  - Comprobado en producción con un navegador: la web pide `GET /api/v1/routes` y `GET /api/v1/routes/leiria-historica` (los dos con 200), el mapa carga en Explorar y en el detalle, el service worker queda activo y la consola no muestra errores.
   - Precisiones de la implementación en el §11.6.
 
 ### Fase 6: Creador en la web (P1)

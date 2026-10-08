@@ -15,23 +15,32 @@ Todo vive en el proyecto **Rumbo** de Coolify (entorno `production`). El VPS alo
 ## Ramas y flujo
 
 - **`main`**: desarrollo. La CI (GitHub Actions) corre en cada push: typecheck, tests, build y las dos imágenes Docker.
-- **`production`**: lo que está desplegado. Coolify despliega automáticamente cada push a esta rama.
-- **Watch paths:** cada app solo se redespliega si cambian sus archivos (`apps/web/**` o `apps/api/**`), `packages/**`, `data/**`, el lockfile, la configuración del workspace o `.dockerignore`. Las dos apps vigilan `data/**`: la web empaqueta las rutas curadas y los lugares de interés, y la API siembra las rutas en la base de datos al arrancar. La misma lista está en `scripts/deploy-prod.sh`: si cambia en Coolify, hay que cambiarla también ahí.
+- **`production`**: lo que está desplegado. Coolify construye las dos apps desde esta rama.
+- **Un push no despliega nada por sí solo.** La GitHub App con la que Coolify lee el repositorio no tiene webhook, así que GitHub no le avisa de los push. Esa App es de todo el servidor y la comparten otros proyectos: si se le activara el webhook, sus apps también se desplegarían solas en cada push. Por eso no se toca, y el despliegue lo lanza `pnpm deploy:prod` por la API de Coolify.
+- **Qué se despliega:** solo las apps con cambios en sus archivos desde el commit que sirven: `apps/web/**` o `apps/api/**`, `packages/**`, `data/**`, el lockfile, la configuración del workspace o `.dockerignore`. Las dos apps vigilan `data/**`: la web empaqueta las rutas curadas y los lugares de interés, y la API siembra las rutas en la base de datos al arrancar. La lista está en `scripts/deploy-prod.sh` y también en las *Watch Paths* de cada app en Coolify, por si algún día se activa el webhook: hay que mantenerlas iguales.
 - **Solo se despliega cuando lo pide el responsable del proyecto.**
-- **Si se borra y se recrea la rama `production`**, el webhook de una rama nueva no trae archivos cambiados y Coolify no despliega. Ese primer despliegue se lanza desde Coolify (botón *Deploy* o `GET /api/v1/deploy?uuid=…`).
 
 Para desplegar:
 
 ```bash
-pnpm deploy:prod      # o: bash scripts/deploy-prod.sh
+pnpm deploy:prod             # o: bash scripts/deploy-prod.sh
+pnpm deploy:prod --dry-run   # todas las comprobaciones y el plan, sin push ni despliegue
 ```
 
 El script:
 
 1. Exige el árbol limpio y que `HEAD` sea `origin/main`.
 2. Comprueba que la CI de ese commit terminó en verde.
-3. Hace *fast-forward* de `production` (nunca `--force`).
-4. Espera solo a las apps cuyos archivos cambiaron, hasta que sirvan el nuevo commit: la API en `/api/v1/health` y la web en `/version.json`. Si solo cambian docs o CI, no se redespliega nada.
+3. Decide qué apps desplegar comparando con el commit que sirve cada una: la API lo dice en `/api/v1/health` y la web en `/version.json`. Si solo cambian docs o CI, no se redespliega nada. Por eso se puede repetir sin riesgo: si un despliegue falló o no llegó a lanzarse, lo intenta de nuevo.
+4. Hace *fast-forward* de `production` (nunca `--force`).
+5. Pide a Coolify que despliegue cada app y espera hasta que sirva el nuevo commit. Si el despliegue falla en Coolify, se detiene y da su identificador para buscar el log.
+
+Necesita una configuración local, fuera del repo y con permisos 600, en `~/.config/rumbo/`:
+
+- `coolify-auth.header`: el token de la API de Coolify como cabecera de curl (`Authorization: Bearer …`).
+- `deploy.env`: `COOLIFY_SSH_HOST` (el alias SSH del VPS), `COOLIFY_API_APP` y `COOLIFY_WEB_APP` (el UUID de cada app en Coolify).
+
+El script llega a la API de Coolify por un túnel SSH al VPS. Si no hay uno abierto, lo abre él y lo cierra al terminar.
 
 ## Rutas: un solo origen
 
@@ -43,6 +52,7 @@ La web y la API comparten dominio. La PWA llama a `/api/v1/…` sin CORS, y el s
   - **API:** `http://127.0.0.1:3000/api/v1/health`. Devuelve versión, commit servido y estado de la BD, y siempre 200. El host es `127.0.0.1` y no `localhost` porque la imagen Alpine no trae `curl` y el `wget` de busybox resuelve `localhost` como IPv6 (`::1`), mientras que la API escucha en IPv4.
   - **Web:** `/`. La imagen de nginx sí incluye `curl`.
 - Las dos apps informan del commit que sirven: la API en `/api/v1/health` y la web en `/version.json`. Coolify inyecta `SOURCE_COMMIT` en ejecución.
+- La documentación OpenAPI está en `/api/v1/docs`.
 
 ## Variables de entorno
 
@@ -50,15 +60,13 @@ Las reglas completas sobre secretos están en [`docs/SECURITY.md`](SECURITY.md).
 
 - En producción se gestionan en Coolify, **nunca en el repo**. En local, en `apps/*/.env`, que git ignora. Las plantillas son los `.env.example`.
 - **API:** `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Opcionales, con valor por defecto: `RATE_LIMIT_PER_MINUTE` (300) y `ANALYTICS_ENABLED` (`true`). Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen.
+- **Web:** las `VITE_*` se inyectan en el bundle durante el build. Son públicas por definición: nunca secretos.
 
 ## Base de datos: migraciones y datos iniciales
 
 Al arrancar, la API aplica las migraciones pendientes (`apps/api/drizzle`, generadas con `pnpm --filter @rumbo/api db:generate`). Después carga las rutas curadas de `data/routes`: inserta las nuevas, reemplaza las que cambiaron y deja igual el resto.
 
 Si la base de datos no responde al arrancar, la API arranca igual: `/api/v1/health` informa del fallo, los endpoints de datos devuelven `503 { "code": "unavailable" }` y reintenta cada 10 s. Así un despliegue no queda bloqueado por una caída momentánea de Postgres.
-
-La documentación OpenAPI está en `/api/v1/docs`.
-- **Web:** las `VITE_*` se inyectan en el bundle durante el build. Son públicas por definición: nunca secretos.
 
 ## Copias de seguridad de la base de datos
 
@@ -99,3 +107,5 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] Backups programados de `rumbo-db` (diarios) en Coolify (2026-10-07). Ver «Copias de seguridad».
 - [ ] Copia de los backups fuera del VPS (S3).
 - [x] `data/**` en las watch paths de `rumbo-web` y `rumbo-api` (2026-10-08).
+- [x] Despliegue de las fases 4 y 5 (2026-10-08, commit `1c151bb`). Al arrancar, la API aplicó las migraciones y sembró la ruta de Leiria. La web carga las rutas desde la API.
+- [x] `pnpm deploy:prod` lanza los despliegues por la API de Coolify, porque la GitHub App no tiene webhook (2026-10-08).
