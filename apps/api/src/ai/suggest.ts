@@ -555,8 +555,9 @@ export function createPlaceCandidates(options: CandidatesOptions): PlaceCandidat
         const found = known.get(id);
         return {
           id,
-          // The article of the user's own Wikipedia names it; failing that, its name in the user's language, then the article found.
-          name: lang === query.locale || !found?.label ? title : found.label,
+          // The article of the user's own Wikipedia names it (without its "(Leiria)"-like
+          // qualifier); failing that, its name in the user's language, then the article found.
+          name: lang === query.locale || !found?.label ? withoutQualifier(title) : found.label,
           ...(description ? { description } : {}),
           position,
           category: found?.category ?? 'other',
@@ -582,6 +583,14 @@ export function createPlaceCandidates(options: CandidatesOptions): PlaceCandidat
 }
 
 // ------------------------------------------------------------------ the model
+
+/**
+ * A Wikipedia title without its trailing disambiguation, "Torre Sineira (Leiria)"
+ * → "Torre Sineira": the place is shown on a map of that very town.
+ */
+export function withoutQualifier(title: string): string {
+  return title.replace(/\s*\([^()]*\)$/u, '').trim() || title;
+}
 
 const LANGUAGE: Record<Locale, { name: string; style: string }> = {
   es: { name: 'Spanish', style: 'Use the informal "tú" (tuteo), never "usted".' },

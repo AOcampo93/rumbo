@@ -18,7 +18,7 @@ import {
   type AiStructuredRequest,
   type AiUsage,
 } from '../src/ai/provider.js';
-import { searchRadius, tourMinutes, tourOrder } from '../src/ai/suggest.js';
+import { searchRadius, tourMinutes, tourOrder, withoutQualifier } from '../src/ai/suggest.js';
 import { fail, installErrorHandling } from '../src/errors.js';
 import type { Fetch } from '../src/geo/wikidata.js';
 import { type SuggestOptions, suggestRoutes } from '../src/routes/suggest.js';
@@ -338,7 +338,7 @@ describe('POST /v1/suggest/places', () => {
     ]);
     expect(body.places[0]).toEqual({
       key: `wikidata:${FONTE}`,
-      name: 'Fonte das Três Bicas (Leiria)',
+      name: 'Fonte das Três Bicas',
       description: 'Fonte em estilo barroco do século 18 situado na cidade de Leiria, Portugal',
       position: { lat: 39.742994, lng: -8.805648 },
       category: 'monument',
@@ -387,7 +387,7 @@ describe('POST /v1/suggest/places', () => {
     });
     expect(candidates.find(({ id }) => id === 'Q10383715')).toEqual({
       id: 'Q10383715',
-      name: 'Torre Sineira (Leiria)',
+      name: 'Torre Sineira',
       category: '-',
       away: '241 m N',
       articles: '1/3',
@@ -399,7 +399,7 @@ describe('POST /v1/suggest/places', () => {
       category: 'museum',
     });
     expect(candidates.find(({ id }) => id === 'Q10300821')).toMatchObject({
-      name: 'Igreja de São Pedro (Leiria)',
+      name: 'Igreja de São Pedro',
       category: 'church',
     });
     expect(candidates.find(({ id }) => id === STATION)).toMatchObject({
@@ -499,7 +499,7 @@ describe('POST /v1/suggest/places', () => {
     await english.post({ ...BODY, locale: 'en' });
     expect(nameOf(english, CASTLE)).toBe('Castle of Leiria');
     expect(nameOf(english, MOINHO)).toBe('Moinho de Papel de Leiria');
-    expect(nameOf(english, 'Q120492085')).toBe('Museu da Imagem em Movimento (Leiria)');
+    expect(nameOf(english, 'Q120492085')).toBe('Museu da Imagem em Movimento');
     // The response names them the same way.
     const response = (await english.post({ ...BODY, locale: 'en' })).json();
     expect(response.places.map((place: { name: string }) => place.name)).toContain(
@@ -1377,5 +1377,16 @@ describe('the tour', () => {
     expect(walking).toBeCloseTo(3000 / 1.3 / 60 + 18, 1);
     expect(tourMinutes(START, [WEST, EAST_1, EAST_2], 'bike')).toBeCloseTo(3000 / 5 / 60 + 18, 1);
     expect(tourMinutes(START, [], 'walk')).toBe(0);
+  });
+});
+
+describe('withoutQualifier', () => {
+  it("drops a Wikipedia title's trailing disambiguation, and nothing else", () => {
+    expect(withoutQualifier('Torre Sineira (Leiria)')).toBe('Torre Sineira');
+    expect(withoutQualifier('Igreja (Nossa Senhora) da Pena')).toBe(
+      'Igreja (Nossa Senhora) da Pena',
+    );
+    expect(withoutQualifier('Castelo de Leiria')).toBe('Castelo de Leiria');
+    expect(withoutQualifier('(Leiria)')).toBe('(Leiria)');
   });
 });
