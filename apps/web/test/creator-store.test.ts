@@ -107,7 +107,8 @@ describe('the draft', () => {
     expect(store.recovered).toBe(true);
     expect(store.resumeStep).toBe('places');
     await store.addPlace(cathedral);
-    expect(store.resumeStep).toBe('review');
+    // Two places and no card looked at yet: the cards are next.
+    expect(store.resumeStep).toBe('content');
   });
 
   it('keeps a draft it cannot read aside and starts fresh', async () => {

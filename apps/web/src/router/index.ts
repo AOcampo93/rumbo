@@ -76,12 +76,15 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('../views/create/PlacesStep.vue'),
       },
       {
+        path: 'content',
+        name: 'create-content',
+        component: () => import('../views/create/ContentStep.vue'),
+      },
+      {
         path: 'review',
         name: 'create-review',
         component: () => import('../views/create/ReviewStep.vue'),
       },
-      // Step 3 "Contenido" arrives in phase 7.
-      { path: 'content', redirect: { name: 'create-review' } },
       {
         path: 'done',
         name: 'create-done',
@@ -127,7 +130,9 @@ export function createAppRouter(pinia: Pinia) {
       await creator.ensureDraft();
       const details = creator.stepIssues('details').length > 0;
       if (to.name === 'create-places' && details) return { name: 'create-details' };
-      if (to.name === 'create-review') {
+      // The cards (step 3) and the review need the details and at least two places;
+      // the cards themselves never block anything.
+      if (to.name === 'create-content' || to.name === 'create-review') {
         if (details) return { name: 'create-details' };
         if (creator.stepIssues('places').some((issue) => issue.code === 'too_few_places'))
           return { name: 'create-places' };

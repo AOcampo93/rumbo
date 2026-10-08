@@ -1,8 +1,15 @@
 <script setup lang="ts">
-import { Crosshair, LoaderCircle, MapPinOff, RotateCcw, TriangleAlert } from '@lucide/vue';
-import type { GeoSuggestion, ResolvedPlace } from '@rumbo/api-contract';
+import {
+  Crosshair,
+  LoaderCircle,
+  MapPinOff,
+  RotateCcw,
+  Sparkles,
+  TriangleAlert,
+} from '@lucide/vue';
+import type { GeoSuggestion, Interest, ResolvedPlace, SuggestedPlace } from '@rumbo/api-contract';
 import type { LatLng } from '@rumbo/geo-utils';
-import { DRAFT_LIMITS, type DraftPlace, findOverlaps } from '@rumbo/route-builder';
+import { DRAFT_LIMITS, type DraftPlace, findOverlaps, truncateText } from '@rumbo/route-builder';
 import type { PointCategory } from '@rumbo/route-spec';
 import { VueDraggable } from 'vue-draggable-plus';
 import {
@@ -24,12 +31,13 @@ import PlaceEditorSheet, {
 } from '../../components/PlaceEditorSheet.vue';
 import PlaceListItem, { type PlaceAction } from '../../components/PlaceListItem.vue';
 import PlaceSearch from '../../components/PlaceSearch.vue';
+import SuggestSheet from '../../components/SuggestSheet.vue';
 import { useFormat } from '../../i18n/useFormat.ts';
 import type { MapMarker, MapPadding, MapZoneItem, RouteMapApi } from '../../map/types.ts';
 import { track } from '../../services/analytics.ts';
 import { resolvePlace } from '../../services/geo.ts';
 import { resolvedTheme as theme } from '../../services/theme.ts';
-import { type PlacePatch, useCreatorStore } from '../../stores/creator.ts';
+import { type CardState, type PlacePatch, useCreatorStore } from '../../stores/creator.ts';
 import { useSettingsStore } from '../../stores/settings.ts';
 import { useUiStore } from '../../stores/ui.ts';
 
@@ -38,7 +46,8 @@ import { useUiStore } from '../../stores/ui.ts';
 // (amber where they overlap); below it one scrolling column with the place
 // search, the totals and the list, which reorders by dragging a handle or
 // with Subir / Bajar. Holding the map, or "Añadir el centro del mapa", adds a
-// point of one's own in a non-modal editor. Without the map (offline, no
+// point of one's own in a non-modal editor. "Sugerir lugares" asks the AI for
+// places around the map (phase 7) in a sheet. Without the map (offline, no
 // WebGL) search and list keep working. Desktop: list | map side by side.
 
 type MapState = 'loading' | 'ready' | 'failed';
@@ -81,6 +90,7 @@ const settings = useSettingsStore();
 const ui = useUiStore();
 const format = useFormat();
 const hintId = useId();
+const suggestHintId = useId();
 
 const mapState = ref<MapState>('loading');
 /** The map's code didn't load, or its view couldn't start: nothing under the notice. */
@@ -107,6 +117,9 @@ const searchFocused = ref(false);
 const resolvingKey = ref<string | null>(null);
 const resolvingName = ref('');
 let resolving: AbortController | null = null;
+
+/** The AI suggestions sheet, with the position it looks around (taken when it opened). */
+const suggesting = ref<{ near: LatLng } | null>(null);
 
 const editor = ref<Editing | null>(null);
 /** Space the editor sheet takes from the bottom of the map, px. */
@@ -274,6 +287,17 @@ function retryMap(): void {
 function onMarkerAction({ markerId, action }: { markerId: string; action: string }): void {
   if (action === 'edit') editPlace(markerId);
 }
+
+/** Suggestions need somewhere to look around: the map, the area of step 1 or the places. */
+const canSuggest = computed(
+  () => mapState.value === 'ready' || creator.draft?.area != null || count.value > 0,
+);
+/** Wikidata ids of the places in the route: the AI doesn't suggest them again. */
+const suggestExclude = computed(() =>
+  places.value
+    .map((place) => place.externalId)
+    .filter((id): id is string => id !== undefined && /^Q\d{1,12}$/.test(id)),
+);
 
 /** Results near what the user is looking at: the map, else the area, else the places. */
 function near(): LatLng | null {
@@ -494,13 +518,13 @@ async function removePlace(tempId: string): Promise<void> {
   if (!removed) return;
   if (editor.value?.tempId === tempId) closeEditor();
   mapRef.value?.closePopup();
-  const { place, index } = removed;
+  const { place, index, card } = removed;
   ui.toast(
     { key: 'create.places.removed', params: { name: place.name } },
     {
       action: {
         label: { key: 'create.places.undo' },
-        run: () => void restorePlace(place, index),
+        run: () => void restorePlace(place, index, card),
       },
     },
   );
@@ -511,8 +535,8 @@ async function removePlace(tempId: string): Promise<void> {
   else heading.value?.focus();
 }
 
-async function restorePlace(place: DraftPlace, index: number): Promise<void> {
-  if (!(await creator.restorePlace(place, index))) return;
+async function restorePlace(place: DraftPlace, index: number, card?: CardState): Promise<void> {
+  if (!(await creator.restorePlace(place, index, card))) return;
   say(t('create.places.added', { name: place.name, n: count.value, max: DRAFT_LIMITS.maxPlaces }));
   await nextTick();
   focusMenu(place.tempId);
@@ -559,11 +583,46 @@ function fixOverlap(): void {
 
 async function next(): Promise<void> {
   track('creator_step_completed', { step: 'places' });
-  await router.push({ name: 'create-review' });
+  await router.push({ name: 'create-content' });
 }
 
-// Back (the arrow, the stepper, the browser) closes the editor first (DESIGN §8.2).
+// ---------------------------------------------------------------- AI suggestions
+
+function openSuggest(): void {
+  const anchor = near();
+  if (!anchor || atMax.value) return;
+  suggesting.value = { near: anchor };
+}
+
+/** The places the user kept, in the suggested walking order (duplicates and overflow are skipped). */
+async function addSuggested(list: SuggestedPlace[]): Promise<void> {
+  let added = 0;
+  for (const suggestion of list) {
+    if (!suggestion.storable) continue;
+    const ok = await creator.addPlace({
+      name: suggestion.name,
+      position: suggestion.position,
+      category: suggestion.category ?? 'other',
+      externalId: suggestion.externalId,
+    });
+    if (ok) added += 1;
+  }
+  suggesting.value = null;
+  say(t('create.suggest.added', { n: added }, added));
+  await nextTick();
+  void mapRef.value?.fitTo(places.value.map((place) => place.position));
+}
+
+function applySuggestedTitle({ title, summary }: { title: string; summary: string }): void {
+  void creator.update({ name: truncateText(title, DRAFT_LIMITS.nameMax), summary });
+}
+
+// Back (the arrow, the stepper, the browser) closes the sheet or the editor first (DESIGN §8.2).
 onBeforeRouteLeave(() => {
+  if (suggesting.value) {
+    suggesting.value = null;
+    return false;
+  }
   if (!editor.value) return true;
   closeEditor();
   return false;
@@ -646,6 +705,22 @@ onBeforeUnmount(() => {
         />
       </div>
 
+      <div class="places__suggest">
+        <AppButton
+          variant="secondary"
+          size="s"
+          :disabled="atMax || !canSuggest"
+          :aria-describedby="canSuggest ? undefined : suggestHintId"
+          @click="openSuggest"
+        >
+          <template #icon><Sparkles :size="18" aria-hidden="true" /></template>
+          {{ t('create.suggest.open') }}
+        </AppButton>
+        <p v-if="!canSuggest" :id="suggestHintId" class="places__hint places__hint--left">
+          {{ t('create.suggest.needsArea') }}
+        </p>
+      </div>
+
       <template v-if="count > 0">
         <div class="places__summary">
           <p class="places__totals tabular">{{ summaryText }}</p>
@@ -716,6 +791,20 @@ onBeforeUnmount(() => {
       @cancel="closeEditor"
       @remove="removeEdited"
       @cover="onEditorCover"
+    />
+
+    <SuggestSheet
+      v-if="suggesting"
+      :near="suggesting.near"
+      :locale="creator.draft.locale"
+      :activity="creator.draft.activity"
+      :interests="creator.draft.interests ?? []"
+      :exclude="suggestExclude"
+      :room="DRAFT_LIMITS.maxPlaces - count"
+      @close="suggesting = null"
+      @interests="(list: Interest[]) => void creator.update({ interests: list })"
+      @add="addSuggested"
+      @use-title="applySuggestedTitle"
     />
 
     <p class="visually-hidden" aria-live="polite">{{ liveText }}</p>
@@ -828,6 +917,13 @@ onBeforeUnmount(() => {
   padding: 16px var(--gutter) 10px;
   background: var(--color-surface);
 }
+.places__suggest {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 var(--gutter) 8px;
+}
 .places__summary {
   display: flex;
   flex-wrap: wrap;
@@ -905,6 +1001,9 @@ onBeforeUnmount(() => {
   color: var(--color-text-muted);
   font: 400 14px/20px var(--font-ui);
   text-align: center;
+}
+.places__hint--left {
+  text-align: left;
 }
 @keyframes spin {
   to {

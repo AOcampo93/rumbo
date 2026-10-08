@@ -2,6 +2,7 @@ import { type RouteSummary, summarizeRoute } from '@rumbo/route-builder';
 import {
   LOCALES,
   type Locale,
+  type MediaRef,
   type Poi,
   PoiCollectionSchema,
   type RouteBundle,
@@ -118,4 +119,89 @@ export async function routesFromApi(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** More photos than any route shows; a runaway bundle can't make the download endless. */
+const MAX_PREFETCH_IMAGES = 60;
+const IMAGE_CONCURRENCY = 4;
+/** A photo that hasn't loaded by then is given up on (it keeps loading in the background). */
+const IMAGE_TIMEOUT_MS = 8000;
+/** The most the download waits for photos in all; the rest keeps loading without it. */
+const IMAGES_BUDGET_MS = 15_000;
+
+/** Every photo a route can show, once each: the cover, the cards' images and the info sheets' image. */
+export function routeImageUrls(bundle: RouteBundle): string[] {
+  const urls = new Set<string>();
+  const add = (url: unknown): void => {
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) urls.add(url);
+  };
+  add(bundle.spec.coverImage?.url);
+  for (const card of Object.values(bundle.contents)) {
+    for (const content of Object.values(card)) {
+      for (const image of content?.images ?? []) add(image.url);
+    }
+  }
+  for (const action of Object.values(bundle.spec.actions)) {
+    if (action.type === 'info_sheet') add((action.params?.['image'] as MediaRef | undefined)?.url);
+  }
+  return [...urls].slice(0, MAX_PREFETCH_IMAGES);
+}
+
+/**
+ * Loads a photo the way a card's <img> will: the service worker's image route
+ * (sw.ts) only sees requests whose destination is `image`, which a fetch()
+ * isn't. `crossOrigin` makes the request CORS: that route stores only
+ * complete responses, never the opaque ones a plain cross-origin <img> gets,
+ * and the card's own <img> is later served that stored copy. Resolves with
+ * whether it loaded, and never rejects.
+ */
+function loadImage(url: string, timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const finish = (loaded: boolean): void => {
+      clearTimeout(timer);
+      image.onload = null;
+      image.onerror = null;
+      resolve(loaded);
+    };
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    image.onload = () => finish(true);
+    image.onerror = () => finish(false);
+    image.crossOrigin = 'anonymous';
+    image.src = url;
+  });
+}
+
+/**
+ * Fetches the photos of a route being downloaded so the service worker keeps
+ * them for offline use. Best effort: a photo that fails or is slow is skipped
+ * and the download goes on. It waits for them at most `budgetMs` (the route
+ * works without photos); what is left keeps loading in the background.
+ * Resolves with how many had loaded by then, and never rejects. `load` is
+ * swappable for tests.
+ */
+export async function prefetchImages(
+  urls: readonly string[],
+  options: { load?: (url: string, timeoutMs: number) => Promise<boolean>; budgetMs?: number } = {},
+): Promise<number> {
+  const { load = loadImage, budgetMs = IMAGES_BUDGET_MS } = options;
+  const queue = [...new Set(urls)];
+  let loaded = 0;
+  const worker = async (): Promise<void> => {
+    for (let url = queue.shift(); url !== undefined; url = queue.shift()) {
+      try {
+        if (await load(url, IMAGE_TIMEOUT_MS)) loaded += 1;
+      } catch {
+        // A photo that can't be loaded never fails the download.
+      }
+    }
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, budgetMs);
+  });
+  const workers = Array.from({ length: Math.min(IMAGE_CONCURRENCY, queue.length) }, worker);
+  await Promise.race([Promise.all(workers), expired]);
+  clearTimeout(timer);
+  return loaded;
 }

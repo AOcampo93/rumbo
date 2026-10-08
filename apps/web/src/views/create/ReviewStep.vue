@@ -41,8 +41,9 @@ import { useSettingsStore } from '../../stores/settings.ts';
 import { useUiStore } from '../../stores/ui.ts';
 
 // C4 · Revisar (DESIGN C4; design ux-8): the route on the map, its facts and
-// a checklist (places, overlapping zones, addresses, a challenge's time limit
-// and anything that keeps the route from being built). "Probar ruta" walks it
+// a checklist (places, overlapping zones, how many places have an AI card,
+// addresses of the ones that don't, a challenge's time limit and anything
+// that keeps the route from being built). "Probar ruta" walks it
 // in simulation without saving anything; "Guardar ruta" stores it on this
 // device (the upload follows on its own) and moves on to C5.
 
@@ -52,8 +53,8 @@ interface Check {
   id: string;
   tone: CheckTone;
   text: string;
-  /** "Corregir": back to the places. */
-  fix?: boolean;
+  /** The step a button takes the user back to: the places ("Corregir") or the cards ("Ver fichas"). */
+  fix?: 'create-places' | 'create-content';
 }
 const MAP_PATIENCE_MS = 8000;
 /** The route is framed inside this padding (markers off the edges, above the credits). */
@@ -127,20 +128,56 @@ const checks = computed<Check[]>(() => {
           id: 'overlaps',
           tone: 'warning',
           text: t('create.places.overlap', { n: overlapping }),
-          fix: true,
+          fix: 'create-places',
         }
       : { id: 'overlaps', tone: 'ok', text: t('create.review.noOverlaps') },
   );
-  const withoutAddress = current.places.filter((place) => !place.address?.trim()).length;
-  list.push(
-    withoutAddress > 0
-      ? {
-          id: 'addresses',
-          tone: 'info',
-          text: t('create.review.noAddress', { n: withoutAddress }, withoutAddress),
-        }
-      : { id: 'addresses', tone: 'ok', text: t('create.review.addressesOk') },
-  );
+  // The cards: those that will ship, those that will use the basic sheet (chosen or failed) and
+  // those still on their way (which use it too if the route is saved now).
+  const stats = creator.cardStats;
+  const basicCount = stats.basic + stats.error;
+  const preparing = stats.pending + stats.generating;
+  if (stats.ready > 0) {
+    // "3 fichas con IA · 2 básicas".
+    list.push({
+      id: 'cards',
+      tone: basicCount === 0 && preparing === 0 ? 'ok' : 'info',
+      text: [
+        t('create.review.cardsAi', { n: stats.ready }, stats.ready),
+        ...(basicCount > 0 ? [t('create.review.cardsBasic', { n: basicCount }, basicCount)] : []),
+      ].join(' · '),
+      ...(basicCount > 0 ? { fix: 'create-content' as const } : {}),
+    });
+  } else if (preparing === 0) {
+    list.push({
+      id: 'cards',
+      tone: 'info',
+      text: t('create.review.cardsNone'),
+      fix: 'create-content',
+    });
+  }
+  if (preparing > 0) {
+    list.push({
+      id: 'preparing',
+      tone: 'warning',
+      text: t('create.review.cardsPreparing', { n: preparing }, preparing),
+      fix: 'create-content',
+    });
+  }
+  // The address is what the basic sheet shows; an AI card doesn't need it.
+  const withoutCard = (creator.routeDraft?.places ?? []).filter((place) => !place.contentRef);
+  const withoutAddress = withoutCard.filter((place) => !place.address?.trim()).length;
+  if (withoutCard.length > 0) {
+    list.push(
+      withoutAddress > 0
+        ? {
+            id: 'addresses',
+            tone: 'info',
+            text: t('create.review.noAddress', { n: withoutAddress }, withoutAddress),
+          }
+        : { id: 'addresses', tone: 'ok', text: t('create.review.addressesOk') },
+    );
+  }
   if (limit.value !== null && limit.value < estimate.value) {
     list.push({
       id: 'limit',
@@ -233,7 +270,7 @@ async function test(): Promise<void> {
     });
     if (!confirmed) return;
   }
-  if (await run.startTrial({ spec: result.normalized, contents: {} })) {
+  if (await run.startTrial({ spec: result.normalized, contents: result.contents })) {
     await router.push({ name: 'run' });
   }
 }
@@ -342,9 +379,13 @@ onBeforeUnmount(() => {
                 variant="secondary"
                 size="m"
                 class="check__fix"
-                @click="router.push({ name: 'create-places' })"
+                @click="router.push({ name: check.fix })"
               >
-                {{ t('create.review.fix') }}
+                {{
+                  check.fix === 'create-content'
+                    ? t('create.review.fixCards')
+                    : t('create.review.fix')
+                }}
               </AppButton>
             </li>
           </ul>

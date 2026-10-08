@@ -259,7 +259,12 @@
     "credit": "Foto: {credit}",
     "menu": "Mais opções",
     "pause": "Pausar percurso",
-    "end": "Terminar percurso"
+    "end": "Terminar percurso",
+    "trivia": {
+      "title": "Pergunta rápida",
+      "correct": "Certo! +{points} pts",
+      "wrong": "Não é essa. A certa: {answer}"
+    }
   },
   "quiz": {
     "label": "Pergunta rápida · +{points} pts",
@@ -406,6 +411,7 @@
       "label": "Passos",
       "details": "Dados",
       "places": "Lugares",
+      "content": "Fichas",
       "review": "Rever",
       "progress": "Passo {n} de {total} · {step}"
     },
@@ -434,7 +440,90 @@
       "mode": "Modo",
       "activity": "Atividade",
       "timeLimit": "Limite de tempo",
-      "noLimit": "Sem limite"
+      "noLimit": "Sem limite",
+      "interests": "Interesses",
+      "interestsHint": "Opcional. A IA adapta as sugestões e as fichas ao que gostas.",
+      "cardsLanguage": "As fichas serão geradas em {language}.",
+      "languageNames": {
+        "es": "espanhol",
+        "en": "inglês",
+        "pt": "português"
+      },
+      "myLocation": "Usar a minha localização",
+      "locating": "A procurar a tua localização…",
+      "locationName": "A tua localização",
+      "locationDenied": "Não conseguimos ver a tua localização. Ativa a permissão no navegador ou procura uma cidade.",
+      "locationFailed": "Não conseguimos obter a tua localização. Tenta de novo ou procura uma cidade."
+    },
+    "interests": {
+      "history": "História",
+      "art": "Arte",
+      "architecture": "Arquitetura",
+      "food": "Gastronomia",
+      "nature": "Natureza",
+      "religion": "Religião",
+      "curiosities": "Curiosidades"
+    },
+    "suggest": {
+      "open": "Sugerir lugares",
+      "needsArea": "Escolhe uma cidade ou zona no primeiro passo, ou espera que o mapa carregue, para receberes sugestões.",
+      "title": "Sugerir lugares",
+      "intro": "Diz-nos quanto tempo tens e do que gostas. A IA propõe lugares reais da zona que estás a ver.",
+      "time": "Quanto tempo tens?",
+      "interests": "Do que gostas?",
+      "submit": "Sugerir",
+      "searching": "A procurar ideias…",
+      "searchingHint": "Pode demorar alguns segundos.",
+      "ideaLabel": "Ideia de rota",
+      "useTitle": "Usar o título sugerido",
+      "titleApplied": "Título aplicado",
+      "titleAppliedHint": "Nome e descrição da rota atualizados.",
+      "list": "Lugares sugeridos",
+      "empty": "Não encontrámos lugares para sugerir aqui. Experimenta com mais tempo ou outra zona.",
+      "full": "A rota só admite mais {n} lugares.",
+      "change": "Alterar",
+      "add": "Adicionar {n} lugar | Adicionar {n} lugares",
+      "added": "{n} lugar adicionado | {n} lugares adicionados"
+    },
+    "content": {
+      "intro": "Preparamos uma ficha de cada lugar com informação da Wikipédia ou da web. Não a vais ver aqui: vais descobri-la ao chegar, e fica guardada para funcionar sem ligação.",
+      "aiNote": "As fichas são escritas por uma IA a partir de fontes reais, que aparecem em cada ficha.",
+      "list": "Fichas dos lugares",
+      "progress": "A preparar fichas {n} de {total}",
+      "done": "{n} de {total} fichas prontas",
+      "doneAnnounce": "Fichas preparadas: {n} de {total} com IA.",
+      "waiting": "Em espera",
+      "generating": "A preparar a ficha…",
+      "refreshing": "A atualizar a ficha…",
+      "ready": "Ficha pronta · {sources}",
+      "sources": "{n} fonte | {n} fontes",
+      "thin": "Ficha breve: não encontrámos informação fiável",
+      "basic": "Ficha básica: nome e morada",
+      "offline": "Vai ser preparada quando tiveres ligação.",
+      "failed": "Não conseguimos preparar esta ficha.",
+      "blocked": {
+        "unavailable": "A IA não está disponível agora. Podes usar fichas básicas e continuar.",
+        "budget": "Hoje atingimos o limite de utilização da IA. Usa fichas básicas ou volta amanhã.",
+        "deviceLimit": "Atingiste o limite de hoje: usa fichas básicas ou volta amanhã."
+      },
+      "useBasicAll": "Usar fichas básicas",
+      "basicSet": "{name}: ficha básica",
+      "basicAllSet": "{n} lugar com ficha básica | {n} lugares com ficha básica",
+      "view": "Ver ficha",
+      "viewNamed": "Ver a ficha de {name}",
+      "retryNamed": "Tentar de novo a ficha de {name}",
+      "useBasic": "Usar ficha básica",
+      "useBasicNamed": "Usar ficha básica em {name}",
+      "generate": "Gerar com IA",
+      "generateNamed": "Gerar com IA a ficha de {name}",
+      "regenerate": "Gerar de novo",
+      "menu": "Opções da ficha de {name}",
+      "spoilerTitle": "Ver a ficha?",
+      "spoilerBody": "Vai adiantar-te o que irias descobrir ao chegar.",
+      "spoilerConfirm": "Ver ficha",
+      "spoilerCancel": "Melhor não",
+      "nextHint": "Os lugares sem ficha pronta vão usar a ficha básica.",
+      "refreshFailed": "Não conseguimos gerar a ficha de novo. Mantivemos a anterior."
     },
     "mode": {
       "free": "Visita ao teu ritmo, pela ordem que quiseres",
@@ -507,7 +596,12 @@
       "testHint": "Percorres a rota em simulação; nada fica guardado.",
       "save": "Guardar rota",
       "saving": "A guardar…",
-      "saveError": "Não conseguimos guardar a rota neste dispositivo."
+      "saveError": "Não conseguimos guardar a rota neste dispositivo.",
+      "cardsNone": "Sem fichas com IA: cada lugar vai mostrar o nome e a morada.",
+      "cardsAi": "{n} ficha com IA | {n} fichas com IA",
+      "cardsBasic": "{n} básica | {n} básicas",
+      "cardsPreparing": "{n} ficha ainda em preparação: se guardares agora, vai usar a ficha básica. | {n} fichas ainda em preparação: se guardares agora, vão usar a ficha básica.",
+      "fixCards": "Ver fichas"
     },
     "trial": {
       "badge": "Teste",
@@ -529,7 +623,14 @@
   "errors": {
     "offline": "Sem ligação.",
     "rateLimited": "Demasiados pedidos. Espera um momento.",
-    "generic": "Algo correu mal. Tenta de novo."
+    "generic": "Algo correu mal. Tenta de novo.",
+    "ai": {
+      "offline": "Sem ligação: não conseguimos usar a IA agora.",
+      "unavailable": "A IA não está disponível agora.",
+      "budgetExceeded": "Hoje atingimos o limite de utilização da IA. Volta amanhã.",
+      "deviceLimit": "Atingiste o teu limite de hoje. Volta amanhã.",
+      "failed": "Não conseguimos obter resposta agora. Tenta de novo."
+    }
   },
   "settings": {
     "title": "Definições",

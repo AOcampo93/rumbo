@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ExternalLink, Languages, Lightbulb, Sparkles } from '@lucide/vue';
-import type { ViewOutcome } from '@rumbo/event-system';
+import { CircleCheck, CircleX, ExternalLink, Languages, Lightbulb, Sparkles } from '@lucide/vue';
+import { CARD_QUIZ_POINTS, type ViewOutcome } from '@rumbo/event-system';
 import {
   type Locale,
   type LocalizedContent,
@@ -8,8 +8,9 @@ import {
   type MediaRef,
   resolveContent,
 } from '@rumbo/route-spec';
-import { computed } from 'vue';
+import { computed, nextTick, ref, useId, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import AppButton from '../components/AppButton.vue';
 import { useTexts } from '../i18n/text.ts';
 import ArrivalKicker from './ArrivalKicker.vue';
 import SheetFooter from './SheetFooter.vue';
@@ -17,7 +18,10 @@ import VideoCard from './VideoCard.vue';
 
 // S06 · The place's card (info_sheet and ai_template). The card comes in every
 // language it has; the active one is picked here, so switching the language
-// with the card open updates it in place (ADR 0001).
+// with the card open updates it in place (ADR 0001). A card with a trivia
+// question asks it after the tip; closing reports the answer (the handler
+// scores it). `preview` is the creator's "Ver ficha": no arrival kicker, one
+// Close button, and nothing reported.
 const props = defineProps<{
   sourceLocale: Locale;
   name?: LocalizedText | null;
@@ -27,10 +31,12 @@ const props = defineProps<{
   body?: LocalizedText | null;
   image?: MediaRef | null;
   content?: LocalizedContent | null;
+  preview?: boolean;
 }>();
 const emit = defineEmits<{ close: [outcome?: ViewOutcome] }>();
 const { t, locale } = useI18n();
 const texts = useTexts();
+const questionId = useId();
 
 const card = computed(() =>
   props.content ? resolveContent(props.content, locale.value as Locale, props.sourceLocale) : null,
@@ -61,6 +67,43 @@ const paragraphs = computed(() => {
 const languageName = computed(() => (card.value ? t(`lang.names.${card.value.locale}`) : ''));
 const sources = computed(() => card.value?.content.sources ?? []);
 const generatedByAi = computed(() => card.value?.content.generated?.by === 'ai');
+
+// Trivia: one answer, then the options lock and the verdict shows. The answer
+// belongs to the question it was given for, so another card (the language
+// switched to one with its own question) starts unanswered.
+const quiz = computed(() => card.value?.content.quiz ?? null);
+const answer = ref<number | null>(null);
+const result = ref<HTMLElement | null>(null);
+watch(quiz, () => {
+  answer.value = null;
+});
+const correct = computed(() => quiz.value !== null && answer.value === quiz.value.correctIndex);
+const rightOption = computed(() => quiz.value?.options[quiz.value.correctIndex] ?? '');
+
+async function choose(index: number): Promise<void> {
+  if (answer.value !== null) return;
+  answer.value = index;
+  // The verdict grows the card below the fold: bring it into view.
+  await nextTick();
+  const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  result.value?.scrollIntoView?.({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
+}
+
+function optionState(index: number): 'idle' | 'right' | 'wrong' | 'dim' {
+  if (answer.value === null || !quiz.value) return 'idle';
+  if (index === quiz.value.correctIndex) return 'right';
+  return index === answer.value ? 'wrong' : 'dim';
+}
+
+/** The sheet's way out: the decision of the ⋯ menu, and the trivia answer with the language it was asked in. */
+function finish(decision?: 'pause' | 'cancel'): void {
+  const outcome: ViewOutcome = { status: 'done' };
+  if (decision) outcome.decision = decision;
+  if (answer.value !== null && card.value) {
+    outcome.data = { answerIndex: answer.value, locale: card.value.locale };
+  }
+  emit('close', outcome);
+}
 </script>
 
 <template>
@@ -71,7 +114,7 @@ const generatedByAi = computed(() => card.value?.content.generated?.by === 'ai')
         <figcaption v-if="credit">{{ t('arrival.credit', { credit }) }}</figcaption>
       </figure>
       <div class="sheet__body">
-        <ArrivalKicker :order="order ?? null" :total="total ?? 0" />
+        <ArrivalKicker v-if="!preview" :order="order ?? null" :total="total ?? 0" />
         <h1 class="t-h1" data-autofocus>{{ title }}</h1>
         <p v-if="card?.content.subtitle" class="t-body t-muted">{{ card.content.subtitle }}</p>
         <p v-if="card?.isFallback" class="sheet__fallback">
@@ -98,6 +141,41 @@ const generatedByAi = computed(() => card.value?.content.generated?.by === 'ai')
           </div>
         </aside>
 
+        <section v-if="quiz" class="trivia">
+          <div class="trivia__ask">
+            <h2 class="t-h2">{{ t('arrival.trivia.title') }}</h2>
+            <p :id="questionId" class="trivia__question">{{ quiz.question }}</p>
+            <div class="trivia__options" role="group" :aria-labelledby="questionId">
+              <button
+                v-for="(option, index) in quiz.options"
+                :key="index"
+                type="button"
+                class="trivia__option"
+                :class="`is-${optionState(index)}`"
+                :disabled="answer !== null"
+                @click="choose(index)"
+              >
+                <span>{{ option }}</span>
+                <CircleCheck v-if="optionState(index) === 'right'" :size="22" aria-hidden="true" />
+                <CircleX v-else-if="optionState(index) === 'wrong'" :size="22" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+          <!-- Always in the page, so the verdict that appears in it is announced. -->
+          <div ref="result" class="trivia__result" role="status" aria-live="polite">
+            <template v-if="answer !== null">
+              <p class="trivia__verdict" :class="correct ? 'is-right' : 'is-wrong'">
+                {{
+                  correct
+                    ? t('arrival.trivia.correct', { points: CARD_QUIZ_POINTS })
+                    : t('arrival.trivia.wrong', { answer: rightOption })
+                }}
+              </p>
+              <p v-if="quiz.explanation" class="t-body">{{ quiz.explanation }}</p>
+            </template>
+          </div>
+        </section>
+
         <section v-if="sources.length" class="sheet__sources">
           <h2 class="t-caption t-muted">{{ t('arrival.sources') }}</h2>
           <a
@@ -119,11 +197,10 @@ const generatedByAi = computed(() => card.value?.content.generated?.by === 'ai')
         </p>
       </div>
     </div>
-    <SheetFooter
-      @continue="emit('close', { status: 'done' })"
-      @pause="emit('close', { status: 'done', decision: 'pause' })"
-      @end="emit('close', { status: 'done', decision: 'cancel' })"
-    />
+    <footer v-if="preview" class="sheet__footer">
+      <AppButton block @click="emit('close')">{{ t('common.close') }}</AppButton>
+    </footer>
+    <SheetFooter v-else @continue="finish()" @pause="finish('pause')" @end="finish('cancel')" />
   </article>
 </template>
 
@@ -205,6 +282,84 @@ const generatedByAi = computed(() => card.value?.content.generated?.by === 'ai')
 .sheet__tip .t-caption {
   color: var(--color-accent);
 }
+.trivia {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.trivia__ask {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.trivia__question {
+  font: 600 17px/24px var(--font-ui);
+  overflow-wrap: anywhere;
+}
+.trivia__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trivia__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--control-m);
+  padding: 10px 14px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: 600 16px/22px var(--font-ui);
+  text-align: left;
+}
+.trivia__option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.trivia__option svg {
+  flex: none;
+}
+.trivia__option:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+.trivia__option.is-right {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+}
+.trivia__option.is-right svg {
+  color: var(--color-success);
+}
+.trivia__option.is-wrong {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+.trivia__option.is-wrong svg {
+  color: var(--color-danger);
+}
+.trivia__option.is-dim {
+  opacity: 0.6;
+}
+/* Empty until answered: its spacing comes from what it holds, not from a gap. */
+.trivia__result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.trivia__result > :first-child {
+  margin-top: 12px;
+}
+.trivia__verdict {
+  font: 700 16px/22px var(--font-ui);
+}
+.trivia__verdict.is-right {
+  color: var(--color-success);
+}
+.trivia__verdict.is-wrong {
+  color: var(--color-danger);
+}
 .sheet__sources {
   display: flex;
   flex-direction: column;
@@ -222,5 +377,11 @@ const generatedByAi = computed(() => card.value?.content.generated?.by === 'ai')
   gap: 6px;
   color: var(--color-text-muted);
   font: 500 13px/18px var(--font-ui);
+}
+.sheet__footer {
+  flex: none;
+  padding: 12px var(--gutter) calc(16px + var(--safe-bottom));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 </style>

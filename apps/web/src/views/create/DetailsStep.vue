@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { Activity as RunIcon, Bike, Footprints, MapPinned, X } from '@lucide/vue';
-import type { GeoSuggestion } from '@rumbo/api-contract';
+import {
+  Activity as RunIcon,
+  Bike,
+  CircleAlert,
+  Footprints,
+  Languages,
+  LocateFixed,
+  MapPinned,
+  X,
+} from '@lucide/vue';
+import type { GeoSuggestion, Interest } from '@rumbo/api-contract';
 import { DRAFT_LIMITS, TIME_LIMIT_PRESETS } from '@rumbo/route-builder';
 import type { Activity, RouteMode } from '@rumbo/route-spec';
 import { computed, nextTick, onMounted, ref } from 'vue';
@@ -8,6 +17,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import AppButton from '../../components/AppButton.vue';
 import ChipGroup from '../../components/ChipGroup.vue';
+import InterestChips from '../../components/InterestChips.vue';
 import ModeCards from '../../components/ModeCards.vue';
 import PlaceSearch from '../../components/PlaceSearch.vue';
 import SegmentedControl from '../../components/SegmentedControl.vue';
@@ -17,19 +27,26 @@ import { track } from '../../services/analytics.ts';
 import { useCreatorStore } from '../../stores/creator.ts';
 
 // C1 · Datos: the route's name, its city or area (it centres the map and the
-// place search of the next step), the mode, the activity and, for a
-// challenge, the time limit. The name is checked when it loses focus and on
-// "Siguiente". Phase 7 adds the interests and the AI language line.
+// place search of the next step; "Usar mi ubicación" takes it from the
+// device), the mode, the activity and, for a challenge, the time limit, plus
+// what the AI guide needs: the interests and the language its cards will be
+// written in (the route's own, never asked). The name is checked when it
+// loses focus and on "Siguiente".
 
 const { t } = useI18n();
 const router = useRouter();
 const creator = useCreatorStore();
 const format = useFormat();
 
+type LocateState = 'idle' | 'locating' | 'denied' | 'failed';
+
 const nameField = ref<InstanceType<typeof TextField> | null>(null);
 const areaChip = ref<HTMLElement | null>(null);
 const areaSearch = ref<InstanceType<typeof PlaceSearch> | null>(null);
 const touched = ref(false);
+const locateState = ref<LocateState>('idle');
+/** Without a geolocation API (or in a context that forbids it) the button isn't offered. */
+const canLocate = globalThis.navigator?.geolocation !== undefined;
 
 const draft = computed(() => creator.draft);
 
@@ -45,6 +62,16 @@ const activity = computed({
   get: (): Activity => draft.value?.activity ?? 'walk',
   set: (value: Activity) => void creator.update({ activity: value }),
 });
+const interests = computed({
+  get: (): Interest[] => draft.value?.interests ?? [],
+  set: (value: Interest[]) => void creator.update({ interests: value }),
+});
+/** The route's language, which is the one the cards are written in. */
+const cardsLanguage = computed(() =>
+  t('create.details.cardsLanguage', {
+    language: t(`create.details.languageNames.${draft.value?.locale ?? 'es'}`),
+  }),
+);
 const timeLimit = computed({
   get: () => {
     const minutes = draft.value?.timeLimitMinutes ?? null;
@@ -81,6 +108,32 @@ async function chooseArea(suggestion: GeoSuggestion): Promise<void> {
   await creator.update({ area: { name: suggestion.name, position: suggestion.position } });
   await nextTick();
   areaChip.value?.focus();
+}
+
+/** About 110 m: the area only has to centre the map and the search. */
+const round3 = (value: number): number => Math.round(value * 1000) / 1000 || 0;
+
+/** "Usar mi ubicación": the device's position, once, as the area. Nothing is asked until the tap. */
+function locateMe(): void {
+  if (locateState.value === 'locating') return;
+  locateState.value = 'locating';
+  navigator.geolocation.getCurrentPosition(
+    async ({ coords }) => {
+      locateState.value = 'idle';
+      await creator.update({
+        area: {
+          name: t('create.details.locationName'),
+          position: { lat: round3(coords.latitude), lng: round3(coords.longitude) },
+        },
+      });
+      await nextTick();
+      areaChip.value?.focus();
+    },
+    (error) => {
+      locateState.value = error.code === error.PERMISSION_DENIED ? 'denied' : 'failed';
+    },
+    { enableHighAccuracy: false, timeout: 15_000, maximumAge: 5 * 60_000 },
+  );
 }
 
 async function clearArea(): Promise<void> {
@@ -143,15 +196,44 @@ onMounted(() => {
           </div>
           <p class="details__hint">{{ t('create.details.areaHint') }}</p>
         </template>
-        <PlaceSearch
-          v-else
-          ref="areaSearch"
-          kind="area"
-          :label="t('create.details.area')"
-          :placeholder="t('create.details.areaPlaceholder')"
-          :hint="t('create.details.areaHint')"
-          @select="chooseArea"
-        />
+        <template v-else>
+          <PlaceSearch
+            ref="areaSearch"
+            kind="area"
+            :label="t('create.details.area')"
+            :placeholder="t('create.details.areaPlaceholder')"
+            :hint="t('create.details.areaHint')"
+            @select="chooseArea"
+          />
+          <template v-if="canLocate">
+            <AppButton
+              variant="secondary"
+              size="m"
+              class="details__locate"
+              :loading="locateState === 'locating'"
+              @click="locateMe"
+            >
+              <template #icon><LocateFixed :size="20" aria-hidden="true" /></template>
+              {{
+                locateState === 'locating'
+                  ? t('create.details.locating')
+                  : t('create.details.myLocation')
+              }}
+            </AppButton>
+            <p
+              v-if="locateState === 'denied' || locateState === 'failed'"
+              class="details__problem"
+              role="status"
+            >
+              <CircleAlert :size="16" aria-hidden="true" />
+              {{
+                locateState === 'denied'
+                  ? t('create.details.locationDenied')
+                  : t('create.details.locationFailed')
+              }}
+            </p>
+          </template>
+        </template>
       </div>
 
       <ModeCards v-model="mode" :label="t('create.details.mode')" />
@@ -172,6 +254,16 @@ onMounted(() => {
           :options="limitOptions"
           :label="t('create.details.timeLimit')"
         />
+      </div>
+
+      <div class="details__group">
+        <p class="details__label" aria-hidden="true">{{ t('create.details.interests') }}</p>
+        <InterestChips v-model="interests" :label="t('create.details.interests')" />
+        <p class="details__hint">{{ t('create.details.interestsHint') }}</p>
+        <p class="details__language">
+          <Languages :size="18" aria-hidden="true" />
+          <span>{{ cardsLanguage }}</span>
+        </p>
       </div>
     </div>
 
@@ -210,6 +302,31 @@ onMounted(() => {
 .details__hint {
   color: var(--color-text-muted);
   font: 400 14px/20px var(--font-ui);
+}
+.details__locate {
+  align-self: flex-start;
+}
+.details__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--color-warning);
+  font: 500 14px/20px var(--font-ui);
+}
+.details__problem svg {
+  flex: none;
+  margin-top: 2px;
+}
+.details__language {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font: 500 14px/20px var(--font-ui);
+}
+.details__language svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--color-primary);
 }
 .details__area {
   display: flex;

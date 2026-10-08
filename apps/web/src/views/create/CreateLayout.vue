@@ -12,7 +12,7 @@ import { useUiStore } from '../../stores/ui.ts';
 // the bottom navigation, the banners every step shares (a recovered draft,
 // storage that doesn't work) and the current step. On every step change it
 // moves focus to the step's heading, names the page and announces
-// "Paso n de 3 · …" (design ux-9). Toasts open below the stepper.
+// "Paso n de 4 · …" (design ux-9). Toasts open below the stepper.
 
 const { t } = useI18n();
 const route = useRoute();
@@ -57,7 +57,8 @@ const exitTo = (() => {
 })();
 const backTo = computed(() => {
   if (step.value === 'places') return router.resolve({ name: 'create-details' }).fullPath;
-  if (step.value === 'review') return router.resolve({ name: 'create-places' }).fullPath;
+  if (step.value === 'content') return router.resolve({ name: 'create-places' }).fullPath;
+  if (step.value === 'review') return router.resolve({ name: 'create-content' }).fullPath;
   if (step.value === 'done') return router.resolve({ name: 'my-routes' }).fullPath;
   return exitTo;
 });

@@ -259,7 +259,12 @@
     "credit": "Photo: {credit}",
     "menu": "More options",
     "pause": "Pause route",
-    "end": "End route"
+    "end": "End route",
+    "trivia": {
+      "title": "Quick question",
+      "correct": "Correct! +{points} pts",
+      "wrong": "Not quite. The right one: {answer}"
+    }
   },
   "quiz": {
     "label": "Quick question · +{points} pts",
@@ -406,6 +411,7 @@
       "label": "Steps",
       "details": "Details",
       "places": "Places",
+      "content": "Cards",
       "review": "Review",
       "progress": "Step {n} of {total} · {step}"
     },
@@ -434,7 +440,90 @@
       "mode": "Mode",
       "activity": "Activity",
       "timeLimit": "Time limit",
-      "noLimit": "No limit"
+      "noLimit": "No limit",
+      "interests": "Interests",
+      "interestsHint": "Optional. The AI tailors suggestions and cards to what you like.",
+      "cardsLanguage": "Cards will be written in {language}.",
+      "languageNames": {
+        "es": "Spanish",
+        "en": "English",
+        "pt": "Portuguese"
+      },
+      "myLocation": "Use my location",
+      "locating": "Finding your location…",
+      "locationName": "Your location",
+      "locationDenied": "We can't see your location. Allow it in your browser or search for a city.",
+      "locationFailed": "We couldn't get your location. Try again or search for a city."
+    },
+    "interests": {
+      "history": "History",
+      "art": "Art",
+      "architecture": "Architecture",
+      "food": "Food",
+      "nature": "Nature",
+      "religion": "Religion",
+      "curiosities": "Curiosities"
+    },
+    "suggest": {
+      "open": "Suggest places",
+      "needsArea": "Pick a city or area in the first step, or wait for the map to load, to get suggestions.",
+      "title": "Suggest places",
+      "intro": "Tell us how long you have and what you like. The AI suggests real places in the area you're looking at.",
+      "time": "How much time do you have?",
+      "interests": "What are you into?",
+      "submit": "Suggest",
+      "searching": "Looking for ideas…",
+      "searchingHint": "This can take a few seconds.",
+      "ideaLabel": "Route idea",
+      "useTitle": "Use the suggested title",
+      "titleApplied": "Title applied",
+      "titleAppliedHint": "Route name and description updated.",
+      "list": "Suggested places",
+      "empty": "We couldn't find places to suggest here. Try more time or another area.",
+      "full": "The route has room for {n} more places.",
+      "change": "Change",
+      "add": "Add {n} place | Add {n} places",
+      "added": "{n} place added | {n} places added"
+    },
+    "content": {
+      "intro": "We prepare a card for each place using Wikipedia or the web. You won't see it here: you'll discover it on arrival, and it's saved so it works offline.",
+      "aiNote": "The cards are written by an AI from real sources, which every card lists.",
+      "list": "Place cards",
+      "progress": "Preparing cards {n} of {total}",
+      "done": "{n} of {total} cards ready",
+      "doneAnnounce": "Cards prepared: {n} of {total} with AI.",
+      "waiting": "Waiting",
+      "generating": "Preparing the card…",
+      "refreshing": "Updating the card…",
+      "ready": "Card ready · {sources}",
+      "sources": "{n} source | {n} sources",
+      "thin": "Short card: we found no reliable information",
+      "basic": "Basic card: name and address",
+      "offline": "It will be prepared when you're back online.",
+      "failed": "We couldn't prepare this card.",
+      "blocked": {
+        "unavailable": "The AI isn't available right now. You can use basic cards and carry on.",
+        "budget": "We've reached today's AI limit. Use basic cards or come back tomorrow.",
+        "deviceLimit": "You've reached today's limit: use basic cards or come back tomorrow."
+      },
+      "useBasicAll": "Use basic cards",
+      "basicSet": "{name}: basic card",
+      "basicAllSet": "{n} place with a basic card | {n} places with a basic card",
+      "view": "View card",
+      "viewNamed": "View the card of {name}",
+      "retryNamed": "Retry the card of {name}",
+      "useBasic": "Use basic card",
+      "useBasicNamed": "Use a basic card for {name}",
+      "generate": "Generate with AI",
+      "generateNamed": "Generate the card of {name} with AI",
+      "regenerate": "Regenerate",
+      "menu": "Options for the card of {name}",
+      "spoilerTitle": "View the card?",
+      "spoilerBody": "It will give away what you'd discover when you arrive.",
+      "spoilerConfirm": "View card",
+      "spoilerCancel": "Better not",
+      "nextHint": "Places without a ready card will use the basic card.",
+      "refreshFailed": "We couldn't regenerate the card. We kept the previous one."
     },
     "mode": {
       "free": "Visit at your own pace, in any order",
@@ -507,7 +596,12 @@
       "testHint": "You walk it in simulation; nothing is saved.",
       "save": "Save route",
       "saving": "Saving…",
-      "saveError": "We couldn't save the route on this device."
+      "saveError": "We couldn't save the route on this device.",
+      "cardsNone": "No AI cards: each place will show its name and address.",
+      "cardsAi": "{n} card with AI | {n} cards with AI",
+      "cardsBasic": "{n} basic | {n} basic",
+      "cardsPreparing": "{n} card still being prepared: if you save now, it will use the basic card. | {n} cards still being prepared: if you save now, they will use the basic card.",
+      "fixCards": "See cards"
     },
     "trial": {
       "badge": "Test",
@@ -529,7 +623,14 @@
   "errors": {
     "offline": "You're offline.",
     "rateLimited": "Too many requests. Please wait a moment.",
-    "generic": "Something went wrong. Please try again."
+    "generic": "Something went wrong. Please try again.",
+    "ai": {
+      "offline": "You're offline: we can't use the AI right now.",
+      "unavailable": "The AI isn't available right now.",
+      "budgetExceeded": "We've reached today's AI limit. Come back tomorrow.",
+      "deviceLimit": "You've reached your limit for today. Come back tomorrow.",
+      "failed": "We couldn't get an answer right now. Please try again."
+    }
   },
   "settings": {
     "title": "Settings",

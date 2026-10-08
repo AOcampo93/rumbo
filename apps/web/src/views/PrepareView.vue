@@ -18,6 +18,7 @@ import PermissionRow from '../components/PermissionRow.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import { useTexts } from '../i18n/text.ts';
 import { track } from '../services/analytics.ts';
+import { prefetchImages, routeImageUrls } from '../services/catalog.ts';
 import {
   type NotificationStatus,
   notificationStatus,
@@ -107,7 +108,13 @@ onMounted(async () => {
   } catch {
     // Permissions API missing (older Safari): the button asks directly.
   }
-  if (route.value) download.value = (await catalog.download(route.value.id)) ? 'done' : 'failed';
+  const current = route.value;
+  if (current) {
+    const saved = await catalog.download(current.id);
+    // The photos complete the cards offline, but the route runs without them.
+    if (saved) await prefetchImages(routeImageUrls(current.bundle));
+    download.value = saved ? 'done' : 'failed';
+  }
 });
 
 onBeforeUnmount(() => {

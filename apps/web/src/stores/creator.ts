@@ -1,4 +1,13 @@
 import {
+  CONTENT_GROUNDINGS,
+  type ContentGenerateBody,
+  type ContentGrounding,
+  type GeneratedCard,
+  GeneratedCardSchema,
+  INTERESTS,
+  type Interest,
+} from '@rumbo/api-contract';
+import {
   buildRouteSpec,
   DRAFT_LIMITS,
   type DraftIssue,
@@ -24,6 +33,8 @@ import {
   LocaleSchema,
   type NormalizedRouteSpec,
   PointCategorySchema,
+  type PointContent,
+  type RouteBundle,
   type RouteMode,
   RouteModeSchema,
   type RouteSettingsInput,
@@ -35,16 +46,21 @@ import { defineStore } from 'pinia';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { z } from 'zod';
 import { currentLocale } from '../i18n/index.ts';
+import { AiError, type AiErrorCode, BLOCKING_AI_ERRORS } from '../services/ai.ts';
 import { track } from '../services/analytics.ts';
+import { generateCard } from '../services/content.ts';
 import { getMyRoute, MyRoutesError, saveMyRoute } from '../services/myRoutes.ts';
 import { db, KEYS } from '../services/storage.ts';
 import { useCatalogStore } from './catalog.ts';
 import { useUiStore } from './ui.ts';
 
-// The route creator's state (C1-C5, phase 6): one draft, kept in IndexedDB as
-// the user goes (a reload or a closed tab never loses it), validated step by
-// step with route-builder, built into a RouteSpec and saved as one of the
-// user's routes (services/myRoutes.ts).
+// The route creator's state (C1-C5, phases 6 and 7): one draft, kept in
+// IndexedDB as the user goes (a reload or a closed tab never loses it),
+// validated step by step with route-builder, built into a RouteSpec and saved
+// as one of the user's routes (services/myRoutes.ts). Phase 7 adds the AI
+// guide: the draft keeps the card of each place (generated while the user
+// moves through the steps, two at a time) and ships the ready ones with the
+// route; a place without one gets the basic sheet.
 
 /** What the creator keeps between sessions (`create:draft`). */
 export interface CreatorDraft {
@@ -68,20 +84,46 @@ export interface CreatorDraft {
   area: { name: string; position: LatLng } | null;
   /** In route order; tempId is a random UUID, pointId is kept when editing. */
   places: DraftPlace[];
-  /** Kept from the edited route (phase 7 asks for them). */
-  interests?: string[];
+  /** What the AI adapts suggestions and cards to, in INTERESTS order. */
+  interests?: Interest[];
+  /** A line about the route (the AI suggests one with its places); at most 280 characters. */
+  summary?: string;
+  /**
+   * The card of each place by tempId (step 3). A place without an entry has
+   * not been looked at yet; a `ready` one ships with the route.
+   */
+  cards: Record<string, CardState>;
   /** Kept from the edited route. */
   settingsOverrides?: RouteSettingsInput;
   updatedAt: string;
 }
 
-export type CreatorStep = 'details' | 'places' | 'review';
-export const CREATOR_STEPS: readonly CreatorStep[] = ['details', 'places', 'review'];
+export type CardStatus = 'pending' | 'generating' | 'ready' | 'error' | 'basic';
+
+/** A place's card while the user prepares the route. */
+export interface CardState {
+  status: CardStatus;
+  /** The card exactly as the API made it, without an id (`ready`). */
+  content?: GeneratedCard;
+  grounding?: ContentGrounding;
+  /** Why it failed (`error`). */
+  error?: AiErrorCode;
+}
+
+export type CreatorStep = 'details' | 'places' | 'content' | 'review';
+export const CREATOR_STEPS: readonly CreatorStep[] = ['details', 'places', 'content', 'review'];
 
 export type DraftPatch = Partial<
   Pick<
     CreatorDraft,
-    'name' | 'mode' | 'activity' | 'timeLimitMinutes' | 'area' | 'interests' | 'settingsOverrides'
+    | 'name'
+    | 'summary'
+    | 'mode'
+    | 'activity'
+    | 'timeLimitMinutes'
+    | 'area'
+    | 'interests'
+    | 'settingsOverrides'
   >
 >;
 /** A place to add; `tempId` is made when missing (pass one to refer to the place right away). */
@@ -90,11 +132,36 @@ export type PlacePatch = Partial<Omit<DraftPlace, 'tempId' | 'pointId'>>;
 
 /** build(): the route ready to save and run, or what keeps it from being one. */
 export type BuildResult =
-  | { ok: true; spec: RouteSpec; normalized: NormalizedRouteSpec; warnings: Issue[] }
+  | {
+      ok: true;
+      spec: RouteSpec;
+      normalized: NormalizedRouteSpec;
+      warnings: Issue[];
+      /** The ready cards by contentRef, in the route's language. */
+      contents: RouteBundle['contents'];
+    }
   /** `issues`: the draft's (validateDraft); `errors`: the built route's (rare: a broken place). */
   | { ok: false; issues: DraftIssue[]; errors: Issue[] };
 
+/** How the cards of the places are going, for the screens of step 3 and 4. */
+export interface CardStats {
+  total: number;
+  /** Ready to ship with the route. */
+  ready: number;
+  basic: number;
+  /** Waiting for a free slot. */
+  pending: number;
+  generating: number;
+  error: number;
+}
+
 const AUTOSAVE_MS = 300;
+/** A route's summary, in code points (the route schema's limit). */
+const SUMMARY_MAX = 280;
+/** Cards asked for at once. */
+const CARD_CONCURRENCY = 2;
+/** The API's pattern for a Wikidata id; other ids (a geocoder's) are researched like custom points. */
+const QID = /^Q\d{1,12}$/;
 
 /** A random UUID, also where crypto.randomUUID is missing (older browsers). */
 function randomId(): string {
@@ -116,6 +183,84 @@ const PlaceSchema = z.object({
   required: z.boolean().optional(),
   contentRef: z.string().optional(),
 });
+
+const AiErrorCodeSchema = z.enum([
+  'offline',
+  'ai_unavailable',
+  'ai_budget_exceeded',
+  'ai_device_limit',
+  'failed',
+]);
+
+/** Stored cards, loosely: cleanCards decides what each one is worth. */
+const StoredCardSchema = z.object({
+  status: z.enum(['pending', 'generating', 'ready', 'error', 'basic']),
+  content: GeneratedCardSchema.optional(),
+  grounding: z.enum(CONTENT_GROUNDINGS).optional(),
+  error: AiErrorCodeSchema.optional(),
+});
+
+/** The interests in INTERESTS order, once each; whatever else a stored route had is dropped. */
+const knownInterests = (values: readonly string[]): Interest[] =>
+  INTERESTS.filter((interest) => values.includes(interest));
+
+/** Where a card's text came from, as far as its sources tell (cards read back from a saved route). */
+function groundingOf(card: GeneratedCard): ContentGrounding {
+  if (card.sources.length === 0) return 'none';
+  return card.sources.some((source) => /(^|\.)wikipedia\.org$/.test(new URL(source.url).hostname))
+    ? 'wikipedia'
+    : 'web';
+}
+
+/** A saved card without the id its contentRef gave it: the form the API produced and recognises. */
+function withoutId(card: PointContent): GeneratedCard {
+  const copy: Record<string, unknown> = { ...card };
+  delete copy['id'];
+  return copy as GeneratedCard;
+}
+
+/**
+ * What stored cards are worth after a reload: a request that was under way
+ * died with the page and an error is not worth remembering, so both are
+ * pending again; a ready card needs its content and its place's contentRef;
+ * a card of a place that is gone is dropped. `broken` says when something
+ * could not be made sense of.
+ */
+function cleanCards(
+  raw: unknown,
+  places: readonly DraftPlace[],
+  broken: () => void,
+): Record<string, CardState> {
+  const cards: Record<string, CardState> = {};
+  if (raw === undefined || raw === null) return cards;
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    broken();
+    return cards;
+  }
+  for (const place of places) {
+    if (!Object.hasOwn(raw, place.tempId)) continue;
+    const parsed = StoredCardSchema.safeParse((raw as Record<string, unknown>)[place.tempId]);
+    if (!parsed.success) {
+      broken();
+      continue;
+    }
+    const { status, content, grounding } = parsed.data;
+    if (status === 'basic') cards[place.tempId] = { status };
+    else if (status === 'ready') {
+      if (content && place.contentRef) {
+        cards[place.tempId] = {
+          status,
+          content,
+          grounding: grounding ?? groundingOf(content),
+        };
+      } else {
+        broken();
+        cards[place.tempId] = { status: 'pending' };
+      }
+    } else cards[place.tempId] = { status: 'pending' };
+  }
+  return cards;
+}
 
 /**
  * A stored draft, field by field: a broken field gets its default and the
@@ -188,12 +333,27 @@ function parseDraft(
     interests: z
       .array(z.string())
       .optional()
+      .catch(fallback(() => undefined))
+      .transform((list) => (list === undefined ? undefined : knownInterests(list))),
+    summary: z
+      .string()
+      .optional()
       .catch(fallback(() => undefined)),
+    cards: z.unknown().optional(),
     settingsOverrides: RouteSettingsInputSchema.optional().catch(fallback(() => undefined)),
     updatedAt: z.string().catch(fallback(() => new Date().toISOString())),
   });
   const result = schema.safeParse(raw);
-  return result.success ? { draft: result.data, repaired } : null;
+  if (!result.success) return null;
+  const { cards, ...rest } = result.data;
+  // A draft from before phase 7 has no cards: nothing to repair.
+  const draft: CreatorDraft = {
+    ...rest,
+    cards: cleanCards(cards, rest.places, () => {
+      repaired = true;
+    }),
+  };
+  return { draft, repaired };
 }
 
 /** Everything but the version bookkeeping: what autosave compares and stores. */
@@ -208,6 +368,59 @@ const hasContentIn = (draft: CreatorDraft | null): boolean =>
 const plainPlace = (place: DraftPlace): DraftPlace =>
   JSON.parse(JSON.stringify(place)) as DraftPlace;
 
+/** The card that ships with the route for this place, if it has one. */
+const shippedCard = (place: DraftPlace, card: CardState | undefined): GeneratedCard | null =>
+  card?.status === 'ready' && card.content && place.contentRef ? card.content : null;
+
+/** A place as route-builder sees it: it points to its card only when there is one to ship. */
+function placeForRoute(place: DraftPlace, card: CardState | undefined): DraftPlace {
+  const copy = plainPlace(place);
+  if (!shippedCard(place, card)) delete copy.contentRef;
+  return copy;
+}
+
+/** A card step 3 still has to ask for: never looked at, waiting, or waiting for a connection. */
+const needsCard = (card: CardState | undefined): boolean =>
+  !card || card.status === 'pending' || (card.status === 'error' && card.error === 'offline');
+
+/**
+ * The cards of a saved route's places, read back from its bundle for editing.
+ * A place whose bundle has no card for it used the basic sheet and stays so
+ * until the user asks for a card (this never spends the AI budget by itself).
+ * Mutates `places`: a place without a card loses its contentRef.
+ */
+function cardsFromBundle(
+  places: DraftPlace[],
+  contents: RouteBundle['contents'],
+  locale: Locale,
+): Record<string, CardState> {
+  const cards: Record<string, CardState> = {};
+  for (const place of places) {
+    const ref = place.contentRef;
+    const saved = ref && Object.hasOwn(contents, ref) ? contents[ref]?.[locale] : undefined;
+    if (!saved) {
+      delete place.contentRef;
+      cards[place.tempId] = { status: 'basic' };
+      continue;
+    }
+    const content = withoutId(saved);
+    cards[place.tempId] = { status: 'ready', content, grounding: groundingOf(content) };
+  }
+  return cards;
+}
+
+/** The cards to ship, by contentRef, in the draft's language (the form the bundle stores). */
+function contentsFor(draft: CreatorDraft): RouteBundle['contents'] {
+  const contents: RouteBundle['contents'] = {};
+  for (const place of draft.places) {
+    const card = shippedCard(place, draft.cards[place.tempId]);
+    if (!card || !place.contentRef) continue;
+    const content = JSON.parse(JSON.stringify({ ...card, id: place.contentRef })) as PointContent;
+    contents[place.contentRef] = { [draft.locale]: content };
+  }
+  return contents;
+}
+
 /** Cuts a name to the limit without trimming it (the user may be typing a space). */
 const capName = (name: string): string =>
   [...name].length > DRAFT_LIMITS.nameMax
@@ -218,6 +431,22 @@ const isDraftFor = (stored: unknown, id: string): boolean =>
   typeof stored === 'object' &&
   stored !== null &&
   (stored as { editingId?: unknown }).editingId === id;
+
+/** What the API needs to write a place's card (POST /content/generate). */
+function requestFor(place: DraftPlace, draft: CreatorDraft): ContentGenerateBody {
+  const externalId = place.externalId && QID.test(place.externalId) ? place.externalId : undefined;
+  return {
+    name: truncateText(place.name, DRAFT_LIMITS.nameMax),
+    position: { lat: place.position.lat, lng: place.position.lng },
+    // The route's language, not whatever the app speaks now: the card must match the bundle.
+    locale: draft.locale,
+    ...(place.category ? { category: place.category } : {}),
+    ...(externalId ? { externalId } : {}),
+    interests: [...(draft.interests ?? [])],
+    // No Wikidata item: the API looks for one by name, and the web if Wikipedia has nothing.
+    custom: externalId === undefined,
+  };
+}
 
 export const useCreatorStore = defineStore('creator', () => {
   const catalog = useCatalogStore();
@@ -261,13 +490,15 @@ export const useCreatorStore = defineStore('creator', () => {
   const routeDraft = computed<RouteDraft | null>(() => {
     const current = draft.value;
     if (!current) return null;
+    const summaryText = truncateText(current.summary ?? '', SUMMARY_MAX);
     return {
       name: current.name,
+      ...(summaryText ? { summary: summaryText } : {}),
       locale: current.locale,
       mode: current.mode,
       activity: current.activity,
       timeLimit: current.timeLimitMinutes === null ? null : current.timeLimitMinutes * 60,
-      places: current.places.map(plainPlace),
+      places: current.places.map((place) => placeForRoute(place, current.cards[place.tempId])),
       ...(current.interests ? { interests: [...current.interests] } : {}),
       ...(current.settingsOverrides
         ? {
@@ -299,7 +530,10 @@ export const useCreatorStore = defineStore('creator', () => {
     routeDraft.value ? validateDraft(routeDraft.value) : [],
   );
 
-  /** What blocks a step: details (name, time limit), places (the list), review (everything). */
+  /**
+   * What blocks a step: details (name, time limit), places (the list), review
+   * (everything). The cards never block: a place without one gets the basic sheet.
+   */
   function stepIssues(step: CreatorStep): DraftIssue[] {
     if (step === 'details')
       return issues.value.filter((issue) => issue.field === 'name' || issue.field === 'timeLimit');
@@ -307,13 +541,38 @@ export const useCreatorStore = defineStore('creator', () => {
       return issues.value.filter(
         (issue) => issue.field === 'places' || issue.field.startsWith('places.'),
       );
+    if (step === 'content') return [];
     return issues.value;
   }
+
+  /** How the cards are going: ready ones ship, the rest of the places use the basic sheet. */
+  const cardStats = computed<CardStats>(() => {
+    const stats: CardStats = { total: 0, ready: 0, basic: 0, pending: 0, generating: 0, error: 0 };
+    const current = draft.value;
+    if (!current) return stats;
+    for (const place of current.places) {
+      stats.total += 1;
+      const card = current.cards[place.tempId];
+      const status = card?.status;
+      if (shippedCard(place, card)) stats.ready += 1;
+      // A ready card with nothing to ship (never stored that way) is asked for again.
+      else if (status === undefined || status === 'ready') stats.pending += 1;
+      else stats[status] += 1;
+    }
+    return stats;
+  });
+
+  /** Places whose card step 3 still has to prepare (never looked at, waiting, or waiting for a connection). */
+  const cardsToPrepare = computed(() => {
+    const current = draft.value;
+    return current ? current.places.filter((place) => needsCard(current.cards[place.tempId])) : [];
+  });
 
   /** Where a resumed draft opens: the first step with something missing. */
   const resumeStep = computed<CreatorStep>(() => {
     if (stepIssues('details').length > 0) return 'details';
     if (stepIssues('places').length > 0) return 'places';
+    if (cardsToPrepare.value.length > 0) return 'content';
     return 'review';
   });
 
@@ -332,6 +591,7 @@ export const useCreatorStore = defineStore('creator', () => {
           ...(current.editingId ? { id: current.editingId } : {}),
           idFactory: () => current.idSuffix,
         }),
+        contents: contentsFor(current),
       };
     } catch (error) {
       if (error instanceof RouteBuildError) return { ok: false, issues: [], errors: error.issues };
@@ -403,6 +663,7 @@ export const useCreatorStore = defineStore('creator', () => {
     const current = draft.value;
     if (current && parsed.draft.rev <= current.rev) return;
     cancelAutosave();
+    stopCards();
     draft.value = parsed.draft;
     lastStoredJson = contentJson(parsed.draft);
     recovered.value = hasContentIn(parsed.draft);
@@ -417,13 +678,19 @@ export const useCreatorStore = defineStore('creator', () => {
   globalThis.addEventListener?.('pagehide', onPageHide);
   onScopeDispose(() => {
     cancelAutosave();
+    stopCards();
     globalThis.document?.removeEventListener('visibilitychange', onVisibility);
     globalThis.removeEventListener?.('pagehide', onPageHide);
   });
 
-  /** No more autosaving (until a new draft starts), e.g. before "Delete my local data". */
+  /**
+   * No more autosaving (until a new draft starts), e.g. before "Delete my local
+   * data". Cards on their way are given up too: nothing may spend the AI budget
+   * for a draft that is going away.
+   */
   function stopAutosave(): void {
     cancelAutosave();
+    stopCards();
     autosaveOn = false;
   }
 
@@ -443,6 +710,7 @@ export const useCreatorStore = defineStore('creator', () => {
       timeLimitMinutes: null,
       area: null,
       places: [],
+      cards: {},
       updatedAt: new Date().toISOString(),
     };
   }
@@ -451,6 +719,7 @@ export const useCreatorStore = defineStore('creator', () => {
   async function startNew(): Promise<void> {
     await ready;
     cancelAutosave();
+    stopCards();
     draft.value = freshDraft();
     savedId.value = null;
     recovered.value = false;
@@ -475,11 +744,15 @@ export const useCreatorStore = defineStore('creator', () => {
       return true;
     }
     let spec: RouteSpec | null = null;
+    let contents: RouteBundle['contents'] = {};
     let found = false;
     try {
       const record = await getMyRoute(id);
       found = record !== undefined;
-      if (record && validateRouteBundle(record.bundle).ok) spec = record.bundle.spec;
+      if (record && validateRouteBundle(record.bundle).ok) {
+        spec = record.bundle.spec;
+        contents = record.bundle.contents;
+      }
     } catch (error) {
       console.warn('creator: the route could not be read', error);
     }
@@ -490,6 +763,8 @@ export const useCreatorStore = defineStore('creator', () => {
     }
     const base = draftFromSpec(spec);
     cancelAutosave();
+    stopCards();
+    const places = base.places.map((place) => ({ ...place, tempId: randomId() }));
     draft.value = {
       ...freshDraft(),
       editingId: id,
@@ -498,8 +773,10 @@ export const useCreatorStore = defineStore('creator', () => {
       mode: base.mode,
       activity: base.activity,
       timeLimitMinutes: base.timeLimit ? Math.max(1, Math.round(base.timeLimit / 60)) : null,
-      places: base.places.map((place) => ({ ...place, tempId: randomId() })),
-      ...(base.interests ? { interests: base.interests } : {}),
+      places,
+      cards: cardsFromBundle(places, contents, base.locale),
+      ...(base.summary ? { summary: base.summary } : {}),
+      ...(base.interests ? { interests: knownInterests(base.interests) } : {}),
       ...(base.settingsOverrides ? { settingsOverrides: base.settingsOverrides } : {}),
     };
     savedId.value = null;
@@ -510,7 +787,14 @@ export const useCreatorStore = defineStore('creator', () => {
 
   async function update(patch: DraftPatch): Promise<void> {
     await ready;
-    if (draft.value) Object.assign(draft.value, patch);
+    if (!draft.value) return;
+    // The summary is a line the AI wrote: cleaned and cut to what a route may have.
+    Object.assign(
+      draft.value,
+      patch.summary === undefined
+        ? patch
+        : { ...patch, summary: truncateText(patch.summary, SUMMARY_MAX) },
+    );
   }
 
   /** Adds a place at the end. False when the list is full or the same place (externalId) is there. */
@@ -537,28 +821,53 @@ export const useCreatorStore = defineStore('creator', () => {
     await ready;
     const place = draft.value?.places.find((item) => item.tempId === tempId);
     if (!place) return false;
+    const renamed = patch.name !== undefined && patch.name.trim() !== place.name.trim();
     Object.assign(
       place,
       patch.name === undefined ? patch : { ...patch, name: capName(patch.name) },
     );
+    // A point of the user's own is researched by its name: a new name needs a new card.
+    if (renamed && !place.externalId) dropCard(tempId);
     return true;
   }
 
-  /** Removes a place; returns it and where it was, for "Deshacer". */
-  async function removePlace(tempId: string): Promise<{ place: DraftPlace; index: number } | null> {
+  /**
+   * Removes a place (and its card, which comes back with it); returns them and
+   * where it was, for "Deshacer".
+   */
+  async function removePlace(
+    tempId: string,
+  ): Promise<{ place: DraftPlace; index: number; card?: CardState } | null> {
     await ready;
-    const places = draft.value?.places;
+    const current = draft.value;
+    const places = current?.places;
     const index = places?.findIndex((place) => place.tempId === tempId) ?? -1;
-    if (!places || index < 0) return null;
+    if (!current || !places || index < 0) return null;
     const [removed] = places.splice(index, 1);
-    return removed ? { place: plainPlace(removed), index } : null;
+    if (!removed) return null;
+    const card = current.cards[tempId];
+    // Kept as it was (with its contentRef): "Deshacer" brings the card back to it.
+    const place = plainPlace(removed);
+    dropCard(tempId, removed);
+    return {
+      place,
+      index,
+      ...(card?.status === 'ready' || card?.status === 'basic'
+        ? { card: JSON.parse(JSON.stringify(card)) as CardState }
+        : {}),
+    };
   }
 
-  /** Puts a removed place back where it was ("Deshacer"); false if it can't go back. */
-  async function restorePlace(place: DraftPlace, index: number): Promise<boolean> {
+  /** Puts a removed place (and its card) back where it was ("Deshacer"); false if it can't go back. */
+  async function restorePlace(
+    place: DraftPlace,
+    index: number,
+    card?: CardState,
+  ): Promise<boolean> {
     await ready;
-    const places = draft.value?.places;
-    if (!places || places.length >= DRAFT_LIMITS.maxPlaces) return false;
+    const current = draft.value;
+    const places = current?.places;
+    if (!current || !places || places.length >= DRAFT_LIMITS.maxPlaces) return false;
     if (
       places.some(
         (item) =>
@@ -568,6 +877,7 @@ export const useCreatorStore = defineStore('creator', () => {
     )
       return false;
     places.splice(Math.max(0, Math.min(index, places.length)), 0, plainPlace(place));
+    if (card) current.cards[place.tempId] = JSON.parse(JSON.stringify(card)) as CardState;
     return true;
   }
 
@@ -580,6 +890,203 @@ export const useCreatorStore = defineStore('creator', () => {
     const [moved] = places.splice(from, 1);
     if (moved) places.splice(to, 0, moved);
     return true;
+  }
+
+  // ------------------------------------------------------------ the cards (step 3)
+
+  // Cards are asked for two at a time, in list order. Nothing here is stored
+  // (the draft keeps the results): a reload forgets the queue, and step 3
+  // asks again for the cards still missing.
+
+  /** Places waiting for a free slot. */
+  let cardQueue: string[] = [];
+  /** Requests under way, by place. */
+  const cardJobs = new Map<string, AbortController>();
+  /** Ready cards being asked for again: the old one ships until the new one arrives. */
+  const refreshing = ref<Record<string, true>>({});
+  let idleWaiters: Array<() => void> = [];
+
+  const isRefreshing = (tempId: string): boolean => refreshing.value[tempId] === true;
+
+  /** The place's card; a place nobody has looked at yet is `pending`. */
+  function cardOf(tempId: string): CardState {
+    return draft.value?.cards[tempId] ?? { status: 'pending' };
+  }
+
+  /** Resolves when no card is being asked for or waiting its turn. */
+  function cardsIdle(): Promise<void> {
+    if (cardJobs.size === 0 && cardQueue.length === 0) return Promise.resolve();
+    return new Promise((resolve) => idleWaiters.push(resolve));
+  }
+
+  function wakeIdleWaiters(): void {
+    if (cardJobs.size > 0 || cardQueue.length > 0) return;
+    const waiters = idleWaiters;
+    idleWaiters = [];
+    for (const wake of waiters) wake();
+  }
+
+  /** Forgets a place's request, queued or under way. */
+  function cancelCard(tempId: string): void {
+    cardJobs.get(tempId)?.abort();
+    cardJobs.delete(tempId);
+    cardQueue = cardQueue.filter((id) => id !== tempId);
+    delete refreshing.value[tempId];
+  }
+
+  /** Forgets the card of a place (it is being removed, or its name changed). */
+  function dropCard(tempId: string, place?: DraftPlace): void {
+    cancelCard(tempId);
+    const current = draft.value;
+    if (!current) return;
+    delete current.cards[tempId];
+    const target = place ?? current.places.find((item) => item.tempId === tempId);
+    if (target) delete target.contentRef;
+    wakeIdleWaiters();
+  }
+
+  /** Cancels every request (the draft is being replaced or closed). */
+  function stopCards(): void {
+    for (const controller of cardJobs.values()) controller.abort();
+    cardJobs.clear();
+    cardQueue = [];
+    refreshing.value = {};
+    wakeIdleWaiters();
+  }
+
+  function pumpCards(): void {
+    const current = draft.value;
+    while (current && cardJobs.size < CARD_CONCURRENCY) {
+      const tempId = cardQueue.shift();
+      if (tempId === undefined) break;
+      // Removed while it waited.
+      if (current.places.some((place) => place.tempId === tempId)) void runCard(current, tempId);
+    }
+    wakeIdleWaiters();
+  }
+
+  /** The queued places can't be tried either: they fail the same way, without a request. */
+  function failQueued(current: CreatorDraft, code: AiErrorCode): void {
+    const waiting = cardQueue;
+    cardQueue = [];
+    for (const tempId of waiting) {
+      if (isRefreshing(tempId)) delete refreshing.value[tempId];
+      else current.cards[tempId] = { status: 'error', error: code };
+    }
+  }
+
+  async function runCard(current: CreatorDraft, tempId: string): Promise<void> {
+    const place = current.places.find((item) => item.tempId === tempId);
+    if (!place) return;
+    // Registered before the first await, so the pump counts it.
+    const controller = new AbortController();
+    cardJobs.set(tempId, controller);
+    const refresh = isRefreshing(tempId);
+    if (!refresh) current.cards[tempId] = { status: 'generating' };
+    const started = Date.now();
+    const stale = () => cardJobs.get(tempId) !== controller || draft.value !== current;
+    try {
+      // "Regenerar" on a ready card asks for a new one; a retry may come from the cache.
+      const body = { ...requestFor(place, current), ...(refresh ? { fresh: true } : {}) };
+      const result = await generateCard(body, controller.signal);
+      if (stale()) return;
+      const target = current.places.find((item) => item.tempId === tempId);
+      if (!target) return;
+      target.contentRef ??= `card-${newIdSuffix()}`;
+      current.cards[tempId] = {
+        status: 'ready',
+        content: JSON.parse(JSON.stringify(result.content)) as GeneratedCard,
+        grounding: result.grounding,
+      };
+      track('content_generated', { ok: true, ms: Date.now() - started });
+    } catch (error) {
+      if (controller.signal.aborted || stale()) return;
+      const code: AiErrorCode = error instanceof AiError ? error.code : 'failed';
+      if (!(error instanceof AiError)) console.warn('creator: a card failed unexpectedly', error);
+      track('content_generated', { ok: false, ms: Date.now() - started });
+      if (refresh) ui.toast({ key: 'create.content.refreshFailed' }, { tone: 'warning' });
+      else current.cards[tempId] = { status: 'error', error: code };
+      if (code === 'offline' || BLOCKING_AI_ERRORS.has(code)) failQueued(current, code);
+    } finally {
+      if (cardJobs.get(tempId) === controller) {
+        cardJobs.delete(tempId);
+        delete refreshing.value[tempId];
+      }
+      pumpCards();
+    }
+  }
+
+  /**
+   * Prepares the cards step 3 still lacks (places nobody looked at, waiting
+   * ones and those that waited for a connection), two at a time. Offline it
+   * just says so. Resolves when nothing is being prepared any more.
+   */
+  async function generateMissing(): Promise<void> {
+    await ready;
+    const current = draft.value;
+    if (!current) return;
+    const offline = globalThis.navigator?.onLine === false;
+    for (const place of current.places) {
+      const id = place.tempId;
+      if (!needsCard(current.cards[id]) || cardJobs.has(id) || cardQueue.includes(id)) continue;
+      if (offline) current.cards[id] = { status: 'error', error: 'offline' };
+      else {
+        current.cards[id] = { status: 'pending' };
+        cardQueue.push(id);
+      }
+    }
+    pumpCards();
+    await cardsIdle();
+  }
+
+  /**
+   * Asks for a place's card again: a retry after an error, "Generar con IA"
+   * on a basic one, or "Regenerar" (a ready card: the API writes a new one,
+   * `fresh`). A ready card keeps shipping until the new one arrives, and
+   * stays if the new one fails.
+   */
+  async function regenerateCard(tempId: string): Promise<void> {
+    await ready;
+    const current = draft.value;
+    const place = current?.places.find((item) => item.tempId === tempId);
+    if (!current || !place) return;
+    cancelCard(tempId);
+    const shipping = shippedCard(place, current.cards[tempId]) !== null;
+    if (globalThis.navigator?.onLine === false) {
+      if (shipping) ui.toast({ key: 'errors.ai.offline' }, { tone: 'warning' });
+      else current.cards[tempId] = { status: 'error', error: 'offline' };
+      return;
+    }
+    if (shipping) refreshing.value[tempId] = true;
+    else current.cards[tempId] = { status: 'pending' };
+    cardQueue.push(tempId);
+    pumpCards();
+  }
+
+  /** "Usar ficha básica": the place keeps its name and address sheet and drops any AI card. */
+  async function setBasicCard(tempId: string): Promise<void> {
+    await ready;
+    const current = draft.value;
+    const place = current?.places.find((item) => item.tempId === tempId);
+    if (!current || !place) return;
+    cancelCard(tempId);
+    current.cards[tempId] = { status: 'basic' };
+    delete place.contentRef;
+    pumpCards();
+  }
+
+  /** The basic sheet for every place whose card failed (no AI today, limits…). Returns how many. */
+  async function setBasicForFailed(): Promise<number> {
+    await ready;
+    const current = draft.value;
+    if (!current) return 0;
+    let changed = 0;
+    for (const place of current.places) {
+      if (current.cards[place.tempId]?.status !== 'error') continue;
+      await setBasicCard(place.tempId);
+      changed += 1;
+    }
+    return changed;
   }
 
   /**
@@ -599,14 +1106,14 @@ export const useCreatorStore = defineStore('creator', () => {
       if (!built.ok) throw new Error('creator: the draft is not a valid route yet');
       let record;
       try {
-        record = await saveMyRoute(built.spec, {}, { editing });
+        record = await saveMyRoute(built.spec, built.contents, { editing });
       } catch (error) {
         if (editing || !(error instanceof MyRoutesError) || error.code !== 'id_taken') throw error;
         // A new route whose id is taken (practically never): a new suffix, once.
         current.idSuffix = newIdSuffix();
         built = build();
         if (!built.ok) throw error;
-        record = await saveMyRoute(built.spec, {}, { editing });
+        record = await saveMyRoute(built.spec, built.contents, { editing });
       }
       // PROJECT_PLAN §13 (only with consent; never a position).
       if (!editing) {
@@ -632,6 +1139,7 @@ export const useCreatorStore = defineStore('creator', () => {
   async function discard(): Promise<void> {
     await ready;
     cancelAutosave();
+    stopCards();
     draft.value = null;
     recovered.value = false;
     lastStoredJson = null;
@@ -669,6 +1177,15 @@ export const useCreatorStore = defineStore('creator', () => {
     issues,
     resumeStep,
     stepIssues,
+    cardStats,
+    cardsToPrepare,
+    cardOf,
+    isRefreshing,
+    cardsIdle,
+    generateMissing,
+    regenerateCard,
+    setBasicCard,
+    setBasicForFailed,
     build,
     flush,
     stopAutosave,

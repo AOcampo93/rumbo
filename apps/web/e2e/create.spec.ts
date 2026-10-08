@@ -4,8 +4,11 @@ import { openSimulation, setup, until, visible, walkAndVisit, withoutMap } from 
 
 // PROJECT_PLAN §16 phase 6 (DoD: create a route, simulate it and walk it from
 // start to finish), plus saving offline, editing and deleting from Mis rutas,
-// the autosaved draft and a trial that forces simulation. The API is mocked:
-// place search, route writes, runs and analytics.
+// the autosaved draft and a trial that forces simulation; and phase 7 (DoD: a
+// route with suggested places and AI cards that stay hidden until the arrival,
+// where the card shows its trivia). The API is mocked: place search, the AI
+// guide, route writes, runs and analytics. Unless a test says otherwise the AI
+// is off (503 ai_unavailable), so the places keep their basic sheet.
 
 interface Place {
   qid: string;
@@ -81,6 +84,81 @@ async function mockGeo(page: Page) {
   });
 }
 
+/** What POST /suggest/places answers: the PLACES, in walking order, each with why to go. */
+const SUGGESTION = {
+  title: 'Leiria en una mañana',
+  summary: 'Del castillo al río, pasando por la catedral.',
+  places: PLACES.map((place, index) => ({
+    key: `wikidata:${place.qid}`,
+    name: place.name,
+    description: place.description,
+    position: place.position,
+    category: place.category,
+    externalId: place.qid,
+    distanceMeters: 300 + index * 250,
+    storable: true,
+    teaser: `Motivo para ir a ${place.name}.`,
+  })),
+};
+
+/** The card POST /content/generate would write: everything in it is a spoiler. */
+const cardFor = (name: string) => ({
+  locale: 'es',
+  title: `Ficha secreta de ${name}`,
+  subtitle: `Subtítulo oculto de ${name}`,
+  summary: `Dato secreto sobre ${name}: se fundó mucho antes de lo que parece.`,
+  facts: [`Hecho oculto de ${name}`],
+  images: [],
+  tip: `Consejo oculto de ${name}`,
+  quiz: {
+    question: `¿Pregunta sobre ${name}?`,
+    options: ['La respuesta buena', 'Una falsa', 'Otra falsa'],
+    correctIndex: 0,
+    explanation: 'Porque sí.',
+  },
+  sources: [
+    { title: 'Leiria en Wikipedia', url: 'https://es.wikipedia.org/wiki/Leiria' },
+    { title: 'Visite Leiria', url: 'https://www.visiteleiria.pt/' },
+  ],
+  generated: {
+    by: 'ai',
+    model: 'claude-sonnet-5-5',
+    promptVersion: 'card-1',
+    at: '2026-10-08T10:00:00.000Z',
+  },
+  status: 'approved',
+});
+
+interface AiAsked {
+  suggests: Array<Record<string, unknown>>;
+  cards: Array<Record<string, unknown>>;
+}
+
+/**
+ * The AI guide. `off` is a server without an AI key (503 ai_unavailable, so
+ * every place keeps its basic sheet); otherwise it suggests the PLACES and
+ * writes a card for each place it is asked about. Returns what it was asked.
+ */
+async function mockAi(page: Page, options: { off?: boolean } = {}): Promise<AiAsked> {
+  const asked: AiAsked = { suggests: [], cards: [] };
+  await page.route(/\/api\/v1\/suggest\/places$/, (route) => {
+    asked.suggests.push(route.request().postDataJSON() as Record<string, unknown>);
+    return options.off
+      ? route.fulfill({ status: 503, json: { code: 'ai_unavailable' } })
+      : route.fulfill({ json: SUGGESTION });
+  });
+  await page.route(/\/api\/v1\/content\/generate$/, (route) => {
+    const body = route.request().postDataJSON() as { name: string };
+    asked.cards.push(body);
+    return options.off
+      ? route.fulfill({ status: 503, json: { code: 'ai_unavailable' } })
+      : route.fulfill({
+          json: { content: cardFor(body.name), grounding: 'wikipedia', cached: false },
+        });
+  });
+  return asked;
+}
+
 type WriteHandler = (request: Request) => { status: number; json?: unknown } | 'abort';
 
 /**
@@ -148,6 +226,18 @@ async function addPlace(page: Page, place: Place) {
   await expect(placeList(page).nth(before)).toContainText(place.name);
 }
 
+/**
+ * C2 → C3 → C4 with the AI off: step 3 can't prepare any card, and the user
+ * either takes the basic cards for all ("Usar fichas básicas") or just goes on.
+ */
+async function continueToReview(page: Page, { basic = true } = {}) {
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(page).toHaveURL(/\/create\/content$/);
+  if (basic) await page.getByRole('button', { name: 'Usar fichas básicas', exact: true }).click();
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(page).toHaveURL(/\/create\/review$/);
+}
+
 async function placeNames(page: Page) {
   return Promise.all(
     PLACES.map(async (_, i) => (await placeList(page).nth(i).textContent()) ?? ''),
@@ -206,6 +296,7 @@ async function seedMyRoutes(page: Page, records: Record<string, unknown>) {
 test.beforeEach(async ({ page }) => {
   await withoutMap(page);
   await mockGeo(page);
+  await mockAi(page, { off: true });
 });
 
 test('creates a route, tests it in simulation, saves it and walks it to the summary', async ({
@@ -230,11 +321,21 @@ test('creates a route, tests it in simulation, saves it and walks it to the summ
   await page.getByRole('slider', { name: 'Radio de llegada' }).fill('60');
   await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   await expect(placeList(page).nth(2)).toContainText('60 m');
+
+  // C3: the AI is off, so the user takes the basic cards and goes on to C4.
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(page).toHaveURL(/\/create\/content$/);
+  await expect(page.getByText('La IA no está disponible ahora.').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Usar fichas básicas', exact: true }).click();
+  await expect(page.getByText('Ficha básica: nombre y dirección')).toHaveCount(3);
   await page.getByRole('button', { name: 'Siguiente' }).click();
 
   // C4 → "Probar ruta": the unsaved route in simulation, back to C4 at the end,
   // without a single call to /runs or /analytics.
   await expect(page).toHaveURL(/\/create\/review$/);
+  await expect(
+    page.getByText('Sin fichas con IA: cada lugar mostrará su nombre y dirección.'),
+  ).toBeVisible();
   await expect(page.getByText('Las zonas no se solapan')).toBeVisible();
   await page.getByRole('button', { name: 'Probar ruta' }).click();
   await expect(page).toHaveURL(/\/run$/);
@@ -291,7 +392,7 @@ test('without a connection the route is saved on the device and waits in Mis rut
   await fillDetails(page, 'Ruta sin conexión');
   await addPlace(page, PLACES[0] as Place);
   await addPlace(page, PLACES[1] as Place);
-  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await continueToReview(page);
   await page.getByRole('button', { name: 'Guardar ruta' }).click();
   await expect(page).toHaveURL(/\/create\/done$/);
   await expect(
@@ -307,6 +408,7 @@ test('without a connection the route is saved on the device and waits in Mis rut
 test('a route from Mis rutas can be edited (PUT) and deleted (DELETE)', async ({ page }) => {
   await setup(page);
   await recordRunCalls(page);
+  const ai = await mockAi(page, { off: true });
   const writes = await mockRouteApi(page, (request) =>
     request.method() === 'DELETE' ? { status: 204 } : savedAnswer(request),
   );
@@ -341,7 +443,9 @@ test('a route from Mis rutas can be edited (PUT) and deleted (DELETE)', async ({
   await name.fill('Paseo por el centro, versión 2');
   await page.getByRole('button', { name: 'Siguiente' }).click();
   await expect(placeList(page)).toHaveCount(2);
-  await page.getByRole('button', { name: 'Siguiente' }).click();
+  // Its places keep the basic sheets they were saved with: editing asks the AI for nothing.
+  await continueToReview(page, { basic: false });
+  expect(ai.cards).toEqual([]);
   await page.getByRole('button', { name: 'Guardar ruta' }).click();
   await expect(page).toHaveURL(/\/create\/done$/);
   await until(page, async () => writes.length > 0, 10);
@@ -391,7 +495,8 @@ test('"Probar ruta" always simulates, even with simulation mode off', async ({ p
   await fillDetails(page, 'Prueba en simulación');
   await addPlace(page, PLACES[1] as Place);
   await addPlace(page, PLACES[2] as Place);
-  await page.getByRole('button', { name: 'Siguiente' }).click();
+  // Step 3 never blocks: cards that failed just mean basic sheets.
+  await continueToReview(page, { basic: false });
   await page.getByRole('button', { name: 'Probar ruta' }).click();
   await expect(page).toHaveURL(/\/run$/);
   await expect(page.getByText('Modo simulación: tu ubicación es simulada')).toBeVisible();
@@ -399,4 +504,181 @@ test('"Probar ruta" always simulates, even with simulation mode off', async ({ p
   await until(page, async () => page.url().endsWith('/create/review'), 10);
   await expect(page.getByText('Prueba terminada')).toBeVisible();
   expect(runCalls).toEqual([]);
+});
+
+test('the AI guide: suggested places get cards that stay hidden until the arrival, where they ask their trivia', async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(480_000);
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 39.7436, longitude: -8.8071 });
+  await setup(page);
+  await recordRunCalls(page);
+  const writes = await mockRouteApi(page, savedAnswer);
+  const ai = await mockAi(page);
+
+  // C1: a name, two interests, the language the cards will be in and the
+  // device's position as the area (the suggestions look around it).
+  await page.goto('/create');
+  await expect(page).toHaveURL(/\/create\/details$/);
+  await page.getByRole('textbox', { name: 'Nombre de la ruta' }).fill('Mi paseo');
+  await page.getByRole('button', { name: 'Historia' }).click();
+  await page.getByRole('button', { name: 'Gastronomía' }).click();
+  await expect(page.getByRole('button', { name: 'Historia' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.getByRole('button', { name: 'Arte' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByText('Las fichas se generarán en español.')).toBeVisible();
+  await page.getByRole('button', { name: 'Usar mi ubicación' }).click();
+  await expect(page.getByText('Tu ubicación')).toBeVisible();
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(page).toHaveURL(/\/create\/places$/);
+
+  // C2: "Sugerir lugares" with 3 h, keep two of the three, and take the
+  // suggested title.
+  await page.getByRole('button', { name: 'Sugerir lugares', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Sugerir lugares' });
+  await expect(sheet.getByRole('radio', { name: '2 h' })).toBeChecked();
+  await expect(sheet.getByRole('button', { name: 'Historia' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await sheet.getByRole('radio', { name: '3 h' }).click();
+  await sheet.getByRole('button', { name: 'Sugerir', exact: true }).click();
+  await expect(sheet.getByText('Motivo para ir a Castelo de Leiria.')).toBeVisible();
+  expect(ai.suggests).toEqual([
+    {
+      near: { lat: 39.744, lng: -8.807 },
+      locale: 'es',
+      interests: ['history', 'food'],
+      minutes: 180,
+      activity: 'walk',
+      exclude: [],
+    },
+  ]);
+  await expect(sheet.getByRole('checkbox')).toHaveCount(3);
+  await sheet.getByRole('button', { name: 'Usar el título sugerido' }).click();
+  await expect(sheet.getByRole('button', { name: 'Título aplicado' })).toBeDisabled();
+  await sheet.getByRole('checkbox', { name: 'Museu de Leiria' }).uncheck();
+  await sheet.getByRole('button', { name: 'Añadir 2 lugares' }).click();
+  await expect(sheet).toBeHidden();
+  await expect(placeList(page)).toHaveCount(2);
+  await expect(placeList(page).nth(0)).toContainText('Castelo de Leiria');
+  await expect(placeList(page).nth(1)).toContainText('Sé de Leiria');
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+
+  // C3: the cards are prepared two at a time and only their state shows.
+  await expect(page).toHaveURL(/\/create\/content$/);
+  await expect(page.getByText('2 de 2 fichas listas')).toBeVisible();
+  const rows = page.getByRole('list', { name: 'Fichas de los lugares' }).getByRole('listitem');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('Castelo de Leiria');
+  await expect(rows.nth(0)).toContainText('Ficha lista · 2 fuentes');
+  await expect(rows.nth(1)).toContainText('Ficha lista · 2 fuentes');
+  expect(ai.cards).toEqual([
+    {
+      name: 'Castelo de Leiria',
+      position: PLACES[0]?.position,
+      locale: 'es',
+      category: 'monument',
+      externalId: 'Q2969701',
+      interests: ['history', 'food'],
+      custom: false,
+    },
+    expect.objectContaining({ name: 'Sé de Leiria', externalId: 'Q1638383' }),
+  ]);
+  for (const spoiler of [
+    /secreto/,
+    /oculto/,
+    /Leiria en Wikipedia/,
+    /Visite Leiria/,
+    /respuesta buena/,
+  ]) {
+    await expect(page.getByText(spoiler)).toHaveCount(0);
+  }
+
+  // "Ver ficha" asks first; only after agreeing does the card show.
+  await page.getByRole('button', { name: 'Ver la ficha de Castelo de Leiria' }).click();
+  const confirm = page.getByRole('alertdialog', { name: '¿Ver la ficha?' });
+  await expect(confirm).toContainText('Te adelantará lo que descubrirás al llegar.');
+  await expect(page.getByText(/secreto/)).toHaveCount(0);
+  await confirm.getByRole('button', { name: 'Mejor no' }).click();
+  await expect(confirm).toBeHidden();
+  await expect(page.getByText(/secreto/)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Ver la ficha de Sé de Leiria' }).click();
+  await page
+    .getByRole('alertdialog', { name: '¿Ver la ficha?' })
+    .getByRole('button', { name: 'Ver ficha', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Ficha secreta de Sé de Leiria' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pregunta rápida' })).toBeVisible();
+  await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(page.getByText(/secreto/)).toHaveCount(0);
+
+  // C4 counts the cards; the route is saved with them.
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(page).toHaveURL(/\/create\/review$/);
+  await expect(page.getByText('2 fichas con IA', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Leiria en una mañana' })).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar ruta' }).click();
+  await expect(page).toHaveURL(/\/create\/done$/);
+  await until(page, async () => writes.length > 0, 10);
+  const post = writes[0] as Request;
+  expect(post.method()).toBe('POST');
+  const body = post.postDataJSON() as {
+    spec: {
+      id: string;
+      name: string;
+      summary: string;
+      locale: string;
+      meta: { interests: string[] };
+      points: { name: string; contentRef: string }[];
+      actions: Record<string, { type: string; params?: { contentRef?: string } }>;
+    };
+    contents: Record<string, { es: { id: string; title: string; generated: { by: string } } }>;
+  };
+  expect(body.spec).toMatchObject({
+    name: 'Leiria en una mañana',
+    summary: 'Del castillo al río, pasando por la catedral.',
+    locale: 'es',
+    meta: { interests: ['history', 'food'] },
+  });
+  expect(body.spec.points.map((point) => point.name)).toEqual([
+    'Castelo de Leiria',
+    'Sé de Leiria',
+  ]);
+  const refs = body.spec.points.map((point) => point.contentRef);
+  expect(refs.every((ref) => /^card-[a-z0-9]{10}$/.test(ref))).toBe(true);
+  expect(Object.keys(body.contents).sort()).toEqual([...refs].sort());
+  expect(Object.values(body.spec.actions).filter((a) => a.type === 'ai_template')).toHaveLength(2);
+  expect(body.contents[refs[0] as string]?.es).toMatchObject({
+    id: refs[0],
+    title: 'Ficha secreta de Castelo de Leiria',
+    generated: { by: 'ai' },
+  });
+
+  // Walk it: at the first arrival the card shows, with its trivia.
+  await page.getByRole('button', { name: 'Iniciar ahora' }).click();
+  await expect(page).toHaveURL(new RegExp(`/routes/${body.spec.id}/prepare$`));
+  await page.getByRole('button', { name: 'Empezar', exact: true }).click();
+  await expect(page).toHaveURL(/\/run$/);
+  await openSimulation(page, '20×');
+  await page.getByRole('button', { name: 'Caminar al siguiente punto' }).click();
+  const trivia = page.getByRole('heading', { name: 'Pregunta rápida' });
+  await until(page, visible(trivia), 600, 2);
+  await expect(
+    page.getByRole('heading', { name: 'Ficha secreta de Castelo de Leiria' }),
+  ).toBeVisible();
+  await expect(page.getByText('¿Pregunta sobre Castelo de Leiria?')).toBeVisible();
+  await page.getByRole('button', { name: 'La respuesta buena' }).click();
+  await expect(page.getByText('¡Correcto! +10 pts')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuar ruta' }).click();
+  await expect(trivia).toBeHidden();
+
+  // The second place, then the summary.
+  await walkAndVisit(page);
+  await until(page, async () => page.url().endsWith('/run/summary'), 30);
+  await expect(page.getByRole('heading', { name: '¡Ruta completada!' })).toBeVisible();
 });

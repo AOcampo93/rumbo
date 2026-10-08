@@ -51,13 +51,15 @@ describe('the creator routes', () => {
   it('send each step back to the first one with something missing', async () => {
     const creator = useCreatorStore(pinia);
     expect(await go({ name: 'create-places' })).toBe('create-details');
+    expect(await go({ name: 'create-content' })).toBe('create-details');
     await creator.update({ name: 'Leiria numa manhã' });
     expect(await go({ name: 'create-places' })).toBe('create-places');
+    expect(await go({ name: 'create-content' })).toBe('create-places');
     expect(await go({ name: 'create-review' })).toBe('create-places');
     await creator.addPlace(castle);
     await creator.addPlace(cathedral);
     expect(await go({ name: 'create-review' })).toBe('create-review');
-    expect(await go('/create/content')).toBe('create-review');
+    expect(await go('/create/content')).toBe('create-content');
     expect(await go({ name: 'create-done' })).toBe('create-review');
   });
 
@@ -67,6 +69,19 @@ describe('the creator routes', () => {
     await creator.update({ name: 'Leiria numa manhã' });
     await creator.addPlace(castle);
     expect(await go('/create')).toBe('create-places');
+  });
+
+  it('resume at the cards while any place still needs one, then at the review', async () => {
+    const creator = useCreatorStore(pinia);
+    await creator.ensureDraft();
+    await creator.update({ name: 'Leiria numa manhã' });
+    await creator.addPlace({ ...castle, tempId: 'castle' });
+    await creator.addPlace({ ...cathedral, tempId: 'cathedral' });
+    expect(await go('/create')).toBe('create-content');
+    await creator.setBasicCard('castle');
+    expect(await go('/create')).toBe('create-content');
+    await creator.setBasicCard('cathedral');
+    expect(await go('/create')).toBe('create-review');
   });
 
   it('after saving: "done" opens, Back into the steps goes to My routes, "Create" starts anew', async () => {
