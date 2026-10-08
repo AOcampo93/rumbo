@@ -11,12 +11,51 @@ import {
 } from './helpers.ts';
 
 // PROJECT_PLAN §14.2, the run: the curated route end to end, a challenge out
-// of order, deviation → pause → resume, cancelling and a reload mid-run.
-// These flows don't need the map (it has its own test), so it isn't loaded.
+// of order, deviation → pause → resume, cancelling, a reload mid-run and an
+// arrival card nobody closes. These flows don't need the map (it has its own
+// test), so it isn't loaded.
 
 test.beforeEach(async ({ page }) => {
   await withoutMap(page);
 });
+
+/**
+ * A free route whose second point lies straight beyond the first one, seen from
+ * where the simulation starts (150 m before the first point, bearing 225°):
+ * heading for Punto B means crossing Punto A's zone. B is 300 m from A at 45°.
+ */
+const THROUGH_A = {
+  spec: {
+    specVersion: 1,
+    id: 'e2e-paso-por-punto',
+    name: { es: 'Paso por un punto', en: 'Through a point', pt: 'Passagem por um ponto' },
+    summary: { es: 'Ruta de prueba', en: 'Test route', pt: 'Rota de teste' },
+    locale: 'es',
+    mode: 'free',
+    activity: 'walk',
+    source: 'curated',
+    points: [
+      {
+        id: 'punto-a',
+        name: 'Punto A',
+        position: { lat: 39.745, lng: -8.807 },
+        order: 1,
+        category: 'checkpoint',
+        triggers: { onEnter: 'card' },
+      },
+      {
+        id: 'punto-b',
+        name: 'Punto B',
+        position: { lat: 39.746908, lng: -8.804519 },
+        order: 2,
+        category: 'checkpoint',
+        triggers: { onEnter: 'card' },
+      },
+    ],
+    actions: { card: { type: 'info_sheet' } },
+  },
+  contents: {},
+};
 
 test('walks "Leiria histórica" in simulation, card by card, to the summary', async ({ page }) => {
   test.setTimeout(480_000);
@@ -136,4 +175,38 @@ test('after a reload mid-run, "Continue" brings the run back, paused', async ({ 
     .click();
   await expect(page.getByText('1 de 12', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'En pausa' })).toBeHidden();
+});
+
+test('an arrival card nobody closes goes away when the user leaves the zone, and the point counts', async ({
+  page,
+}) => {
+  await setup(page, {}, [THROUGH_A]);
+  await startRoute(page, THROUGH_A.spec.id);
+  await openSimulation(page, '5×');
+
+  // The sheet covers the map and the simulation panel, so the walk has to be
+  // under way before the card opens: pick Punto B, which lies beyond Punto A.
+  await page.getByRole('button', { name: 'Elegir otro punto' }).click();
+  await page.getByRole('button', { name: /Punto B/ }).click();
+  await page.getByRole('button', { name: 'Caminar al siguiente punto' }).click();
+
+  const proceed = page.getByRole('button', { name: 'Continuar ruta' });
+  const arrival = page.getByText('Llegaste · Punto 1 de 2');
+  await until(page, visible(proceed), 120);
+  await expect(arrival).toBeVisible();
+  await expect(page.getByText('0 de 2', { exact: true })).toBeVisible();
+
+  // Nobody touches the card. A few seconds on, the walk leaves the zone (its
+  // 40 m radius plus 10 m of hysteresis) and the card closes by itself.
+  await until(page, async () => !(await proceed.isVisible()), 60);
+  await expect(arrival).toBeHidden();
+  await expect(page.getByText('1 de 2', { exact: true })).toBeVisible();
+
+  // The route goes on: Punto B's card, closed by hand, ends it.
+  await until(page, visible(proceed), 120);
+  await expect(page.getByText('Llegaste · Punto 2 de 2')).toBeVisible();
+  await proceed.click();
+  await until(page, async () => page.url().endsWith('/run/summary'), 30);
+  await expect(page.getByRole('heading', { name: '¡Ruta completada!' })).toBeVisible();
+  await expect(page.getByText('2/2', { exact: true })).toBeVisible();
 });

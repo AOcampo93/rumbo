@@ -8,6 +8,8 @@ import {
 } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst } from 'workbox-strategies';
+// No `.ts` here, unlike the page's imports: tsconfig.sw.json doesn't allow it.
+import { openNotificationTarget, showPush } from './services/pushEvents';
 
 // Service worker (PROJECT_PLAN §10.6): the app shell and the three language
 // catalogs are precached; the map SDK, photos and route data are cached as
@@ -89,21 +91,14 @@ self.addEventListener('message', (event) => {
   );
 });
 
-// Tapping an arrival notification brings the app forward on that point's
-// card (§10.2): the page routes itself, so the run in memory is kept.
+// A push from the server (reminders, announcements) always becomes a visible
+// notification, the app open or not; the logic lives in services/pushEvents.ts.
+self.addEventListener('push', (event) => showPush(event, self.registration));
+
+// Tapping a notification, an arrival alert or a push, brings the app forward
+// on its URL (§10.2): the page routes itself, so the run in memory is kept.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = String((event.notification.data as { url?: string } | null)?.url ?? '/run');
-  event.waitUntil(
-    (async () => {
-      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const client = windows[0];
-      if (client) {
-        await client.focus();
-        client.postMessage({ type: 'navigate', url: target });
-        return;
-      }
-      await self.clients.openWindow(target);
-    })(),
-  );
+  event.waitUntil(openNotificationTarget(target, self.clients));
 });

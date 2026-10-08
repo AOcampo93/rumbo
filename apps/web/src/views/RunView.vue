@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { ArrowLeft, FlaskConical, LocateFixed, MapPinCheck, Pause, Play } from '@lucide/vue';
+import {
+  ArrowLeft,
+  FlaskConical,
+  LocateFixed,
+  MapPinCheck,
+  Pause,
+  Pencil,
+  Play,
+} from '@lucide/vue';
 import type { PointState } from '@rumbo/geo-engine';
 import type { LatLng } from '@rumbo/geo-utils';
 import {
@@ -26,7 +34,8 @@ import { useFormat } from '../i18n/useFormat.ts';
 import { useTexts } from '../i18n/text.ts';
 import type { MapMarker, MarkerState } from '../map/types.ts';
 import { resolvedTheme as theme } from '../services/theme.ts';
-import { useRunStore } from '../stores/run.ts';
+import { useCreatorStore } from '../stores/creator.ts';
+import { pointCard, useRunStore } from '../stores/run.ts';
 import { useSettingsStore } from '../stores/settings.ts';
 import { useUiStore } from '../stores/ui.ts';
 
@@ -35,11 +44,15 @@ import { useUiStore } from '../stores/ui.ts';
 // interruptions arrive on the overlay stack from the event system. A trial of
 // the creator ("Probar ruta") is always simulated: its purple banner carries
 // the "Prueba" chip and "Volver al editor", and its simulation panel starts open.
+// The list of stops (the panel, opened) lets the user edit the route of one of
+// their own routes without ending the run, and look at the card of a visited
+// stop (so does the popup of its marker).
 const RouteMap = defineAsyncComponent(() => import('../map/RouteMap.vue'));
 
 const { t } = useI18n();
 const router = useRouter();
 const run = useRunStore();
+const creator = useCreatorStore();
 const ui = useUiStore();
 const settings = useSettingsStore();
 const texts = useTexts();
@@ -49,6 +62,9 @@ const follow = ref(true);
 const panelOpen = ref(false);
 // A trial is there to be walked in simulation: its controls start open.
 const simOpen = ref(run.trial);
+/** "Editar ruta" is opening the creator. */
+const editing = ref(false);
+let leavingToEdit = false;
 
 const spec = computed(() => run.spec);
 const state = computed(() => run.state);
@@ -58,6 +74,23 @@ const name = (text: Parameters<typeof texts.text>[0]) =>
   spec.value ? texts.text(text, spec.value.locale) : '';
 
 // ---------------------------------------------------------------- map
+
+/** The stops with a card or an info sheet to look at again once visited. */
+const withCard = computed(() => {
+  const bundle = run.bundle;
+  return new Set(
+    bundle ? bundle.spec.points.filter((p) => pointCard(bundle, p.id)).map((p) => p.id) : [],
+  );
+});
+
+/** What a marker's popup offers (DESIGN §6.3): where to go next, or the card of a visited stop. */
+function popupActions(pointId: string, pointState: PointState, isTarget: boolean) {
+  if (isFree.value && pointState === 'active' && !isTarget)
+    return [{ id: 'goHere', label: t('popup.goHere'), primary: true }];
+  if (pointState === 'completed' && withCard.value.has(pointId))
+    return [{ id: 'viewCard', label: t('popup.viewCard'), primary: true }];
+  return [];
+}
 
 const markers = computed<MapMarker[]>(() => {
   const route = spec.value;
@@ -70,10 +103,7 @@ const markers = computed<MapMarker[]>(() => {
     const isTarget = point.id === targetId;
     const look: MarkerState = isTarget && pointState === 'active' ? 'next' : pointState;
     const pointName = name(point.name);
-    const actions =
-      isFree.value && pointState === 'active' && !isTarget
-        ? [{ id: 'goHere', label: t('popup.goHere'), primary: true }]
-        : [];
+    const actions = popupActions(point.id, pointState, isTarget);
     return {
       id: point.id,
       position: point.position,
@@ -122,6 +152,7 @@ const fit = computed(() => spec.value?.points.map((p) => p.position) ?? null);
 
 function onMarkerAction({ markerId, action }: { markerId: string; action: string }): void {
   if (action === 'goHere') run.setTarget(markerId);
+  else if (action === 'viewCard') viewCard(markerId);
 }
 
 function onMapClick(position: LatLng): void {
@@ -202,13 +233,57 @@ const listItems = computed(() => {
       sub = t('run.visitedAt', { time: format.clock(runtime.completedAt) });
     else if (runtime?.distance !== null && runtime?.distance !== undefined)
       sub = `${sub} · ${format.distance(runtime.distance)}`;
-    return { point, state: shown, sub, selectable: isFree.value && pointState === 'active' };
+    return {
+      point,
+      state: shown,
+      sub,
+      selectable: isFree.value && pointState === 'active',
+      card: pointState === 'completed' && withCard.value.has(point.id),
+    };
   });
 });
 
 function choose(pointId: string): void {
   run.setTarget(pointId);
   panelOpen.value = false;
+}
+
+/** "Ver ficha" on a visited stop: its card again, as a preview (nothing is scored). */
+function viewCard(pointId: string): void {
+  run.previewCard(pointId);
+}
+
+/**
+ * "Editar ruta": the creator opens on the places of the route, and the run
+ * stays active underneath: saving there updates it (the run store follows the
+ * route), and "Volver al recorrido" brings the user back.
+ */
+async function editRoute(): Promise<void> {
+  const id = run.routeId;
+  if (!id || editing.value || !run.editable) return;
+  editing.value = true;
+  try {
+    await creator.ready;
+    // Another route's draft (or a new one) would be replaced: ask first.
+    if (creator.hasContent && creator.draft?.editingId !== id) {
+      const replace = await ui.confirm({
+        title: { key: 'create.draft.replaceTitle' },
+        body: { key: 'create.draft.replaceBody' },
+        confirmLabel: { key: 'create.draft.replace' },
+        cancelLabel: { key: 'common.cancel' },
+        destructive: true,
+      });
+      if (!replace) return;
+    }
+    // Unknown or unreadable: loadForEdit says so with a toast.
+    if (!(await creator.loadForEdit(id))) return;
+    // The run stays active under the creator: leaving for it is not "leaving the map".
+    leavingToEdit = true;
+    await router.push({ name: 'create-places' });
+  } finally {
+    leavingToEdit = false;
+    editing.value = false;
+  }
 }
 
 // "I'm here" (free mode, weak GPS, close to the target): DESIGN S05.
@@ -306,6 +381,8 @@ function backToEditor(): void {
 }
 
 onBeforeRouteLeave(async (to) => {
+  // "Editar ruta" leaves for the creator on purpose, with the run still active.
+  if (leavingToEdit) return true;
   // The back gesture closes the top sheet first (DESIGN §8.2).
   if (ui.dismissTop()) return false;
   // Leaving ends a trial, without asking (finishTrial ignores repeated calls).
@@ -463,7 +540,20 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div v-if="panelOpen" class="run__list">
-          <h2 class="t-caption t-muted">{{ t('route.pointsTitle') }}</h2>
+          <div class="run__listhead">
+            <h2 class="t-caption t-muted">{{ t('route.pointsTitle') }}</h2>
+            <AppButton
+              v-if="run.editable"
+              variant="secondary"
+              size="s"
+              class="run__edit"
+              :disabled="editing"
+              @click="editRoute"
+            >
+              <template #icon><Pencil :size="18" aria-hidden="true" /></template>
+              {{ t('run.editRoute') }}
+            </AppButton>
+          </div>
           <PointListItem
             v-for="item in listItems"
             :key="item.point.id"
@@ -473,7 +563,18 @@ onBeforeUnmount(() => {
             :state="item.state"
             :interactive="item.selectable"
             @select="choose(item.point.id)"
-          />
+          >
+            <AppButton
+              v-if="item.card"
+              variant="secondary"
+              size="s"
+              class="run__viewcard"
+              :aria-label="t('run.viewCardNamed', { name: name(item.point.name) })"
+              @click="viewCard(item.point.id)"
+            >
+              {{ t('run.viewCard') }}
+            </AppButton>
+          </PointListItem>
         </div>
       </section>
 
@@ -719,6 +820,24 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow-y: auto;
   padding: 0 var(--gutter) calc(24px + var(--safe-bottom));
+}
+/* The title and "Editar ruta" share a row; the button wraps under the title when text is large. */
+.run__listhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-bottom: 8px;
+}
+.run__edit,
+.run__viewcard {
+  flex: none;
+}
+/* 44 px to tap, in a row that stays as tall as its thumbnail. */
+.run__list .run__viewcard {
+  min-height: 44px;
+  padding: 0 14px;
 }
 .run__pausecard {
   position: absolute;

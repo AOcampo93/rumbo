@@ -137,7 +137,9 @@
     "createdByYou": "Created by you",
     "fullscreen": "Expand the map",
     "exitFullscreen": "Shrink the map",
-    "noCover": "No photo"
+    "noCover": "No photo",
+    "edit": "Edit route",
+    "delete": "Delete route"
   },
   "popup": {
     "distance": "{distance} away",
@@ -247,7 +249,11 @@
     "noRun": "There's no route in progress.",
     "openRun": "Back to the route",
     "distanceTo": "{distance} to {name}",
-    "arrivedAt": "You've arrived at {name}"
+    "arrivedAt": "You've arrived at {name}",
+    "editRoute": "Edit route",
+    "routeUpdated": "Route updated: what you've already visited stays",
+    "viewCard": "View card",
+    "viewCardNamed": "View the card of {name}"
   },
   "arrival": {
     "label": "You've arrived · Stop {n} of {total}",
@@ -395,7 +401,7 @@
     "deleted": "Route deleted",
     "unreadable": "We can't open this route.",
     "loadError": "We can't read your routes on this device.",
-    "activeRunEdit": "You have this route in progress: it will keep the previous version.",
+    "activeRunEdit": "You have this route in progress: it will update with your changes and keep what you already visited.",
     "activeRunDelete": "You have this route in progress. Deleting it will end it.",
     "sync": {
       "pending": "Only on this device · uploads when you're online",
@@ -582,6 +588,87 @@
       "add": "Add",
       "save": "Save"
     },
+    "arrival": {
+      "title": "On arrival",
+      "types": {
+        "card": {
+          "title": "Place card",
+          "help": "The AI card when it's ready; otherwise the name and address."
+        },
+        "basic": {
+          "title": "Name and address",
+          "help": "A simple sheet, no AI."
+        },
+        "quiz": {
+          "title": "Your own question",
+          "help": "A question with answers and points, written by you."
+        },
+        "video": {
+          "title": "A YouTube video",
+          "help": "Plays in the arrival sheet."
+        },
+        "link": {
+          "title": "A web link",
+          "help": "Opens in the browser, always after confirming."
+        },
+        "check": {
+          "title": "Just a notice",
+          "help": "A brief “You've arrived at…” and the route moves on, no sheet."
+        }
+      },
+      "quiz": {
+        "points": "A right answer scores {points} points.",
+        "question": "Question",
+        "questionPlaceholder": "E.g. Who conquered the castle?",
+        "questionRequired": "Write the question.",
+        "options": "Answers",
+        "optionsHint": "From 2 to 4. Tap the circle of the right one.",
+        "option": "Answer {n}",
+        "optionRequired": "Write the answer or remove this option.",
+        "markCorrect": "Mark answer {n} as the right one",
+        "removeOption": "Remove answer {n}",
+        "addOption": "Add answer",
+        "explanation": "Explanation (optional)",
+        "explanationHint": "Shown after answering."
+      },
+      "video": {
+        "link": "YouTube link or ID",
+        "linkPlaceholder": "youtu.be/…",
+        "linkHint": "Paste the video's link or its 11-character ID.",
+        "detected": "Video found: {id}",
+        "required": "Paste the YouTube video's link.",
+        "invalid": "We don't recognise that YouTube link.",
+        "title": "Title (optional)"
+      },
+      "link": {
+        "url": "Web address",
+        "urlHint": "Starts with https://. We always ask before opening it.",
+        "urlRequired": "Write the link's address.",
+        "urlInvalid": "Write a full address starting with https://, with no spaces.",
+        "label": "Link text",
+        "labelPlaceholder": "E.g. Leiria cultural agenda",
+        "labelRequired": "Tell whoever arrives where the link goes."
+      },
+      "tooLong": "That's too long.",
+      "invalid": "Check the “On arrival” details.",
+      "contentNote": "Places with another “On arrival” option don't get an AI card.",
+      "noCards": "No place uses an AI card, so there's nothing to prepare.",
+      "row": {
+        "basic": "Name and address, no AI",
+        "quiz": "Your question: “{question}”",
+        "video": "YouTube video",
+        "videoTitled": "YouTube video: “{title}”",
+        "link": "Link: {label} · {host}",
+        "check": "Just a notice on arrival"
+      },
+      "mix": {
+        "basic": "{n} with name and address | {n} with name and address",
+        "quiz": "{n} own question | {n} own questions",
+        "video": "{n} video | {n} videos",
+        "link": "{n} link | {n} links",
+        "check": "{n} notice | {n} notices"
+      }
+    },
     "review": {
       "checklist": "Checks",
       "placesFree": "{n} places, in any order",
@@ -601,7 +688,8 @@
       "cardsAi": "{n} card with AI | {n} cards with AI",
       "cardsBasic": "{n} basic | {n} basic",
       "cardsPreparing": "{n} card still being prepared: if you save now, it will use the basic card. | {n} cards still being prepared: if you save now, they will use the basic card.",
-      "fixCards": "See cards"
+      "fixCards": "See cards",
+      "arrivalMix": "On arrival: {mix}"
     },
     "trial": {
       "badge": "Test",
@@ -617,7 +705,9 @@
       "synced": "Saved. You can walk it whenever you like.",
       "local": "Saved on this device. We'll upload it when you're back online.",
       "start": "Start now",
-      "myRoutes": "See my routes"
+      "myRoutes": "See my routes",
+      "backToRun": "Back to the route",
+      "runUpdated": "Your route in progress already uses these changes. What you visited stays."
     }
   },
   "errors": {
@@ -650,6 +740,15 @@
       "granted": "On",
       "denied": "Blocked in the browser",
       "unsupported": "Not available"
+    },
+    "push": {
+      "label": "Push notifications",
+      "off": "Reminders and news from Rumbo, even when the app is closed.",
+      "on": "On for this device.",
+      "needsInstall": "On iPhone and iPad, first add Rumbo to your home screen: tap Share, then “Add to Home Screen”.",
+      "denied": "Blocked. Turn them on in your browser or device settings.",
+      "unavailable": "Not available right now.",
+      "unsupported": "This browser doesn't support push notifications."
     },
     "theme": {
       "label": "Theme",

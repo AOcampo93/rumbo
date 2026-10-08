@@ -8,25 +8,23 @@ import AppButton from '../components/AppButton.vue';
 import EmptyState from '../components/EmptyState.vue';
 import OverflowMenu, { type OverflowMenuItem } from '../components/OverflowMenu.vue';
 import RouteCard from '../components/RouteCard.vue';
+import { useMyRouteActions } from '../composables/useMyRouteActions.ts';
 import { useTexts } from '../i18n/text.ts';
 import type { CatalogRoute } from '../services/catalog.ts';
-import { deleteMyRoute, type MyRouteRecord, retryMyRoute } from '../services/myRoutes.ts';
+import type { MyRouteRecord } from '../services/myRoutes.ts';
 import { useCatalogStore } from '../stores/catalog.ts';
-import { useCreatorStore } from '../stores/creator.ts';
-import { useRunStore } from '../stores/run.ts';
-import { useUiStore } from '../stores/ui.ts';
 
 // S02 · My routes: the routes made with the creator on this device, newest
 // first. Each one is its RouteCard plus, outside the card's link, a ⋯ menu
-// (Edit, Delete) and a line for its upload state. A record whose route no
-// longer validates can only be deleted.
+// (Edit, Delete), a line for its upload state and a visible "Editar" button
+// (the upload's own action takes its place when that failed). A record whose
+// route no longer validates can only be deleted. What the actions do is shared
+// with the route detail (composables/useMyRouteActions.ts).
 const { t } = useI18n();
 const router = useRouter();
 const catalog = useCatalogStore();
-const creator = useCreatorStore();
-const run = useRunStore();
-const ui = useUiStore();
 const texts = useTexts();
+const { busy, edit, remove, retry } = useMyRouteActions();
 
 /** Server answers that editing the route can fix; anything else is worth retrying. */
 const EDIT_CODES = new Set(['invalid_route', 'validation_failed', 'payload_too_large']);
@@ -47,8 +45,6 @@ interface Row {
 }
 
 const heading = ref<HTMLElement | null>(null);
-/** The route an action is running for: one at a time, so a double tap does nothing. */
-const busy = ref<string | null>(null);
 
 /** Best effort: the name of a record whose spec doesn't validate any more. */
 function storedName(record: MyRouteRecord): { text: LocalizedText; locale: Locale } | null {
@@ -99,92 +95,21 @@ const menuItems = computed<OverflowMenuItem[]>(() => [
   { id: 'delete', label: t('myRoutes.delete'), icon: Trash2, danger: true },
 ]);
 
-const isActiveRun = (id: string) => run.active && !run.trial && run.routeId === id;
-
-/** Several catalog texts as one dialog body, in every language (the dialog shows the active one). */
-function paragraphs(keys: readonly string[]): LocalizedText {
-  const text: Partial<Record<Locale, string>> = {};
-  for (const lang of LOCALES)
-    text[lang] = keys.map((key) => t(key, {}, { locale: lang })).join('\n\n');
-  return text as LocalizedText;
-}
-
-async function edit(row: Row): Promise<void> {
-  if (busy.value) return;
-  busy.value = row.record.id;
-  try {
-    await creator.ready;
-    // Another route's draft (or a new one) would be replaced: ask first.
-    if (creator.hasContent && creator.draft?.editingId !== row.record.id) {
-      const replace = await ui.confirm({
-        title: { key: 'create.draft.replaceTitle' },
-        body: { key: 'create.draft.replaceBody' },
-        confirmLabel: { key: 'create.draft.replace' },
-        cancelLabel: { key: 'common.cancel' },
-        destructive: true,
-      });
-      if (!replace) return;
-    }
-    // Unknown or unreadable: loadForEdit says so with a toast.
-    if (!(await creator.loadForEdit(row.record.id))) return;
-    if (isActiveRun(row.record.id))
-      ui.toast({ key: 'myRoutes.activeRunEdit' }, { tone: 'warning' });
-    await router.push({ name: 'create-details' });
-  } finally {
-    busy.value = null;
-  }
-}
-
-async function remove(row: Row): Promise<void> {
-  if (busy.value) return;
-  const { id } = row.record;
-  const confirmed = await ui.confirm({
-    title: row.nameText
-      ? { key: 'myRoutes.deleteTitle', params: { name: row.nameText } }
-      : { key: 'myRoutes.deleteThisTitle' },
-    body: isActiveRun(id)
-      ? paragraphs(['myRoutes.activeRunDelete', 'myRoutes.deleteBody'])
-      : { key: 'myRoutes.deleteBody' },
-    confirmLabel: { key: 'myRoutes.delete' },
-    cancelLabel: { key: 'common.cancel' },
-    destructive: true,
+async function removeRow(row: Row): Promise<void> {
+  const deleted = await remove({
+    id: row.record.id,
+    name: row.nameText,
     sourceLocale: row.sourceLocale,
   });
-  if (!confirmed || busy.value) return;
-  busy.value = id;
-  try {
-    // A route's run can't outlive it: it ends here, without a summary.
-    if (isActiveRun(id)) run.reset();
-    await deleteMyRoute(id);
-    await creator.discardIfEditing(id);
-    ui.toast({ key: 'myRoutes.deleted' }, { tone: 'success' });
-    // Its row (and the menu that had focus) is gone: focus goes back to the title.
-    await nextTick();
-    heading.value?.focus();
-  } catch (error) {
-    console.warn('my routes: the route could not be deleted', error);
-    ui.toast({ key: 'errors.generic' }, { tone: 'warning' });
-  } finally {
-    busy.value = null;
-  }
-}
-
-async function retry(row: Row): Promise<void> {
-  if (busy.value) return;
-  busy.value = row.record.id;
-  try {
-    await retryMyRoute(row.record.id);
-  } catch (error) {
-    console.warn('my routes: the upload could not be retried', error);
-    ui.toast({ key: 'errors.generic' }, { tone: 'warning' });
-  } finally {
-    busy.value = null;
-  }
+  if (!deleted) return;
+  // Its row (and the menu that had focus) is gone: focus goes back to the title.
+  await nextTick();
+  heading.value?.focus();
 }
 
 function onMenu(row: Row, action: string): void {
-  if (action === 'edit') void edit(row);
-  else if (action === 'delete') void remove(row);
+  if (action === 'edit') void edit(row.record.id);
+  else if (action === 'delete') void removeRow(row);
 }
 
 onMounted(() => void catalog.loadMine());
@@ -257,7 +182,7 @@ onMounted(() => void catalog.loadMine());
               size="m"
               :disabled="busy !== null"
               class="item__brokendelete"
-              @click="remove(row)"
+              @click="removeRow(row)"
             >
               <template #icon><Trash2 :size="20" aria-hidden="true" /></template>
               {{ t('myRoutes.delete') }}
@@ -285,7 +210,7 @@ onMounted(() => void catalog.loadMine());
                   : `${t('common.retry')}: ${row.name}`
               "
               class="item__statusaction"
-              @click="row.status.action === 'edit' ? edit(row) : retry(row)"
+              @click="row.status.action === 'edit' ? edit(row.record.id) : retry(row.record.id)"
             >
               <template #icon>
                 <component
@@ -297,6 +222,20 @@ onMounted(() => void catalog.loadMine());
               {{ row.status.action === 'edit' ? t('myRoutes.edit') : t('common.retry') }}
             </AppButton>
           </div>
+
+          <!-- The way to edit, in plain sight: a failed upload has its own button above. -->
+          <AppButton
+            v-if="row.route && row.status?.tone !== 'error'"
+            variant="secondary"
+            size="m"
+            :disabled="busy !== null"
+            :aria-label="`${t('myRoutes.edit')}: ${row.name}`"
+            class="item__edit"
+            @click="edit(row.record.id)"
+          >
+            <template #icon><Pencil :size="20" aria-hidden="true" /></template>
+            {{ t('myRoutes.edit') }}
+          </AppButton>
         </li>
       </ul>
     </section>
@@ -419,6 +358,9 @@ onMounted(() => void catalog.loadMine());
 }
 .item__statusaction {
   margin-left: auto;
+}
+.item__edit {
+  align-self: flex-start;
 }
 .skeleton {
   overflow: hidden;

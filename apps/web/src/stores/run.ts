@@ -13,6 +13,7 @@ import {
   type EngineSnapshot,
   type EngineState,
   type GeoEngine,
+  migrateSnapshot,
   type PointState,
   type PositionSource,
   restoreGeoEngine,
@@ -21,12 +22,13 @@ import {
 import { destination, type LatLng, simplify } from '@rumbo/geo-utils';
 import {
   hashRouteSpec,
+  InfoSheetParamsSchema,
   type NormalizedRouteSpec,
   type RouteBundle,
   type RouteMode,
 } from '@rumbo/route-spec';
 import { defineStore } from 'pinia';
-import { computed, markRaw, ref, shallowRef } from 'vue';
+import { computed, markRaw, ref, shallowRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { currentLocale, i18n } from '../i18n/index.ts';
 import { uiTextIn } from '../i18n/text.ts';
@@ -47,6 +49,8 @@ import { useUiStore } from './ui.ts';
 // summary when it ends. A trial ("Probar ruta" in the creator) runs a route
 // that may not be saved yet, always simulated and in isolation: no snapshot,
 // no summary, no API and no analytics; it ends back in the creator.
+// A run of one of the device's own routes follows the route when it is edited
+// (applyRouteUpdate): the places visited stay visited, new ones start pending.
 
 /** What survives a reload (IndexedDB), PROJECT_PLAN §8.7. */
 interface ActiveRunRecord {
@@ -89,6 +93,64 @@ export interface TrialResult {
   total: number;
 }
 
+/** A point's card or info sheet, ready for the overlay stack (handlers/registry.ts names the view). */
+export interface PointCard {
+  view: 'info_sheet' | 'ai_template';
+  props: Record<string, unknown>;
+}
+
+/** A card of the bundle, or null when it has none in any language. */
+function cardContent(contents: RouteBundle['contents'], ref: string) {
+  // Own keys only: "toString" is not a card.
+  const entry = Object.hasOwn(contents, ref) ? contents[ref] : undefined;
+  return entry && Object.keys(entry).length > 0 ? entry : null;
+}
+
+/**
+ * What a point showed when the user arrived, to show it again from the list of
+ * stops: its card (`ai_template`) or its info sheet. Built the way the
+ * handlers build their views; null when the point has nothing worth opening
+ * (another kind of action, a card the bundle lacks, an info sheet that is only
+ * its name). The caller opens it in the preview, which scores nothing.
+ */
+export function pointCard(bundle: RouteBundle, pointId: string): PointCard | null {
+  const { spec, contents } = bundle;
+  const point = spec.points.find((candidate) => candidate.id === pointId);
+  const trigger = point?.triggers.onEnter;
+  const action =
+    trigger && Object.hasOwn(spec.actions, trigger) ? spec.actions[trigger] : undefined;
+  if (!point || !action) return null;
+  const base = { name: point.name, order: point.order, total: spec.points.length };
+
+  if (action.type === 'ai_template') {
+    const ref = action.params?.['contentRef'];
+    const content = typeof ref === 'string' ? cardContent(contents, ref) : null;
+    return content ? { view: 'ai_template', props: { ...base, content } } : null;
+  }
+  if (action.type === 'info_sheet') {
+    const parsed = InfoSheetParamsSchema.safeParse(action.params ?? {});
+    if (!parsed.success) return null;
+    const { title, body, image, contentRef } = parsed.data;
+    const content = contentRef ? cardContent(contents, contentRef) : null;
+    if (!content && !body && !image) return null;
+    return {
+      view: 'info_sheet',
+      props: {
+        ...base,
+        title: title ?? point.name,
+        body: body ?? null,
+        image: image ?? null,
+        content,
+      },
+    };
+  }
+  return null;
+}
+
+/** Two bundles with the same route and cards (a save that changed nothing, a retry). */
+const sameBundle = (a: RouteBundle, b: RouteBundle): boolean =>
+  a === b || JSON.stringify(a) === JSON.stringify(b);
+
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 const SAVE_EVERY_MS = 2000;
 /** How long a trial waits for the navigation away from /run before tidying up anyway. */
@@ -115,12 +177,18 @@ export const useRunStore = defineStore('run', () => {
   /** The run is a trial of the creator. Set by every way a run starts, cleared by reset(). */
   const trial = ref(false);
   const trialResult = shallowRef<TrialResult | null>(null);
+  /** The last route update left the run nothing to visit, so it finished (its summary is next). */
+  const endedByEdit = ref(false);
 
   let engine: GeoEngine | null = null;
   /** The run's id on the server, for its end and for analytics. */
   let runId: string | null = null;
   let events: EventSystem | null = null;
+  /** Where the engine's positions come from; a route update hands it to the new engine. */
+  let positionSource: PositionSource | null = null;
   let sim: SimulatedSource | null = null;
+  /** A route update resumes the engine it restored: that is not the user resuming, so no analytics. */
+  let updating = false;
   let cleanups: Array<() => void> = [];
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
   /** Bumped whenever a run starts: async steps of an older run stop there. */
@@ -137,6 +205,13 @@ export const useRunStore = defineStore('run', () => {
     const id = state.value?.target?.pointId;
     return id ? (spec.value?.points.find((p) => p.id === id) ?? null) : null;
   });
+  /** The run is of one of the device's own routes, which the creator can edit (never a trial). */
+  const editable = computed(
+    () =>
+      !trial.value &&
+      routeId.value !== null &&
+      catalog.mine.some((route) => route.id === routeId.value),
+  );
 
   // ------------------------------------------------------------ adapters
 
@@ -184,13 +259,17 @@ export const useRunStore = defineStore('run', () => {
     simulate: boolean,
     from?: LatLng | null,
   ): PositionSource {
-    if (!simulate) return createGeolocationSource();
+    if (!simulate) {
+      positionSource = createGeolocationSource();
+      return positionSource;
+    }
     // The demo starts a short walk before the first point, outside its zone.
     const first = route.points[0]?.position;
     const start = from ?? (first ? destination(first, 225, 150) : null);
     sim = markRaw(createSimulatedSource(start ? { start } : {}));
     sim.setTimeScale(simSpeed.value);
     sim.setWeakGps(weakGps.value);
+    positionSource = sim;
     return sim;
   }
 
@@ -236,7 +315,10 @@ export const useRunStore = defineStore('run', () => {
       // Analytics of a run carry its server id (never a position); a trial sends none.
       analytics: isTrial
         ? () => {}
-        : (name, props) => track(name, { ...props, ...(runId ? { runId } : {}) }),
+        : (name, props) => {
+            if (updating && name === 'run_resumed') return;
+            track(name, { ...props, ...(runId ? { runId } : {}) });
+          },
       logger: { warn: (message, data) => console.warn(message, data) },
     });
     events.start();
@@ -256,6 +338,7 @@ export const useRunStore = defineStore('run', () => {
     detach();
     engine?.destroy();
     engine = null;
+    positionSource = null;
     sim = null;
     ui.clear();
   }
@@ -339,6 +422,7 @@ export const useRunStore = defineStore('run', () => {
     teardown();
     generation += 1;
     trialEnding = false;
+    endedByEdit.value = false;
     trial.value = options.trial;
     if (options.trial) trialResult.value = null;
     routeId.value = next.spec.id;
@@ -358,6 +442,7 @@ export const useRunStore = defineStore('run', () => {
     void save();
     // Best effort: the run goes on whether or not the API answers.
     const startedAt = new Date().toISOString();
+    const thisRun = generation;
     void registerRunStart({
       routeId: next.spec.id,
       specHash: created.getState().specHash,
@@ -366,7 +451,8 @@ export const useRunStore = defineStore('run', () => {
       locale: currentLocale(),
       startedAt,
     }).then((serverId) => {
-      if (engine !== created) return;
+      // The same run, even if a route update gave it a new engine meanwhile.
+      if (generation !== thisRun || !engine) return;
       runId = serverId;
       void save();
     });
@@ -495,6 +581,7 @@ export const useRunStore = defineStore('run', () => {
     teardown();
     generation += 1;
     trialEnding = false;
+    endedByEdit.value = false;
     trial.value = false;
     routeId.value = recovered.record.routeId;
     bundle.value = recovered.bundle;
@@ -508,6 +595,59 @@ export const useRunStore = defineStore('run', () => {
     runId = recovered.record.runId ?? null;
     wire(next);
     recoverable.value = null;
+    return true;
+  }
+
+  /**
+   * The run's route was edited and saved: the run goes on over the new
+   * version. What was visited stays visited, the new places start pending, and
+   * the time, the pause and the position source (a simulation keeps its
+   * position) carry over. Only a real run in progress is touched, never a
+   * trial, a finished run or another route's. True when the run was updated.
+   * A paused run stays paused; if the edit left it nothing to visit, it
+   * finishes when the user resumes.
+   */
+  function applyRouteUpdate(next: RouteBundle): boolean {
+    const current = engine;
+    const source = positionSource;
+    if (!current || !source || trial.value || next.spec.id !== routeId.value) return false;
+    // A save that changed nothing (or a retry of the upload) leaves the run alone.
+    if (bundle.value && sameBundle(bundle.value, next)) return false;
+    const before = current.getState().status;
+    if (before !== 'running' && before !== 'paused') return false;
+
+    // Everything that can fail comes first: the run is only swapped once the new engine exists.
+    let restored: GeoEngine;
+    try {
+      restored = markRaw(
+        restoreGeoEngine(next.spec, migrateSnapshot(current.serialize(), next.spec), {
+          source,
+          logger: { warn: (message, data) => console.warn(message, data) },
+        }),
+      );
+    } catch (error) {
+      console.warn('run: the route update could not be applied', error);
+      return false;
+    }
+
+    updating = true;
+    try {
+      // Stops the old event system (its open sheets close, a reached place gets its card again) and the old engine.
+      detach();
+      current.destroy();
+      bundle.value = next;
+      wire(restored);
+      // A restored engine comes back paused with its source stopped, which is how a paused run
+      // stays (nothing is measured until the user resumes). A running one goes on.
+      if (before === 'running') restored.resume('route-updated');
+      state.value = restored.getState();
+      // Nothing left to visit: resuming finished the run (its summary follows).
+      endedByEdit.value = state.value.status === 'finished';
+    } finally {
+      updating = false;
+    }
+    void save();
+    ui.toast({ key: 'run.routeUpdated' }, { tone: 'success' });
     return true;
   }
 
@@ -531,6 +671,33 @@ export const useRunStore = defineStore('run', () => {
   const setTarget = (pointId: string | null) => engine?.setTarget(pointId) ?? false;
   const canManualCheckIn = (pointId: string) => engine?.canManualCheckIn(pointId) ?? false;
   const manualCheckIn = (pointId: string) => engine?.manualCheckIn(pointId) ?? false;
+
+  /** Shows a visited point's card or info sheet again, in the preview: it scores and changes nothing. */
+  function previewCard(pointId: string): boolean {
+    const current = bundle.value;
+    const card = current ? pointCard(current, pointId) : null;
+    if (!current || !card) return false;
+    void ui.present(
+      card.view,
+      { ...card.props, preview: true },
+      { sourceLocale: current.spec.locale },
+    );
+    return true;
+  }
+
+  // The route of the run was saved again, wherever the edit started (the run's own
+  // "Editar ruta", My routes, the route page): the run follows it. A route that was
+  // deleted has no bundle any more, and its run goes on as it was.
+  watch(
+    () => {
+      const id = routeId.value;
+      if (!id || trial.value) return null;
+      return catalog.mine.find((route) => route.id === id)?.bundle ?? null;
+    },
+    (next) => {
+      if (next) applyRouteUpdate(next);
+    },
+  );
 
   /** End the run: destructive, so always confirmed first (S09). */
   async function end(): Promise<boolean> {
@@ -571,6 +738,7 @@ export const useRunStore = defineStore('run', () => {
   function reset(): void {
     teardown();
     trialEnding = false;
+    endedByEdit.value = false;
     trial.value = false;
     state.value = null;
     bundle.value = null;
@@ -589,7 +757,9 @@ export const useRunStore = defineStore('run', () => {
     recoverable,
     trial,
     trialResult,
+    endedByEdit,
     active,
+    editable,
     targetPoint,
     start,
     startTrial,
@@ -597,11 +767,13 @@ export const useRunStore = defineStore('run', () => {
     endTrial,
     checkRecoverable,
     continueRecovered,
+    applyRouteUpdate,
     discardRecovered,
     loadLastSummary,
     pause,
     resume,
     end,
+    previewCard,
     setTarget,
     canManualCheckIn,
     manualCheckIn,
@@ -622,6 +794,8 @@ function abandonedEnd(record: ActiveRunRecord): RunEndBody {
     elapsedMs: Math.min(Math.max(0, Math.round(snapshot.elapsedMs)), MAX_RUN_MS),
     completedPoints: snapshot.points.filter((point) => point.state === 'completed').length,
     totalPoints: snapshot.points.length,
-    score: Math.round(snapshot.points.reduce((sum, point) => sum + point.score, 0)),
+    score: Math.round(
+      snapshot.points.reduce((sum, point) => sum + point.score, snapshot.carriedScore ?? 0),
+    ),
   };
 }

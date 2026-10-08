@@ -8,6 +8,7 @@ import RecoverSheet from './components/RecoverSheet.vue';
 import { applyLocale } from './i18n/index.ts';
 import { clearAnalytics, initAnalytics, track } from './services/analytics.ts';
 import { startRouteSync } from './services/myRoutes.ts';
+import { startPushSync } from './services/push.ts';
 import { flushRunOutbox } from './services/runs.ts';
 import { useThemeEffect } from './services/theme.ts';
 import { useRunStore } from './stores/run.ts';
@@ -46,6 +47,8 @@ onMounted(async () => {
   void flushRunOutbox();
   // Routes made with the creator that the API doesn't have yet (or must delete).
   startRouteSync();
+  // Push: the server's record of this device (and its language) stays current.
+  startPushSync();
   // A run left half done (reload, closed tab): offer to continue (S11).
   if (settings.onboarded) await run.checkRecoverable();
 });

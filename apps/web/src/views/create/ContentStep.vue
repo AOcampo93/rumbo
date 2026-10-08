@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import {
+  BellRing,
   Check,
   CircleAlert,
+  CircleQuestionMark,
   Clock,
+  ExternalLink,
   FileText,
   LoaderCircle,
   RefreshCw,
   Sparkles,
+  Video,
   WifiOff,
 } from '@lucide/vue';
 import type { DraftPlace } from '@rumbo/route-builder';
@@ -30,9 +34,11 @@ import { useUiStore } from '../../stores/ui.ts';
 // has, because the card is what the user discovers on arrival. "Ver ficha"
 // asks first ("te adelantará lo que descubrirás al llegar") and then shows it
 // the way the arrival does. The step never blocks: whatever isn't ready when
-// the route is saved uses the basic sheet.
+// the route is saved uses the basic sheet. A place that picked something else
+// to show on arrival (its own question, a video, a link, a notice, the plain
+// sheet) needs no card: its row says what it shows instead of a card state.
 
-type RowTone = 'ok' | 'warning' | 'danger' | 'muted' | 'busy';
+type RowTone = 'ok' | 'warning' | 'danger' | 'muted' | 'busy' | 'choice';
 interface Row {
   place: DraftPlace;
   index: number;
@@ -65,8 +71,68 @@ const stats = computed(() => creator.cardStats);
 const busy = computed(() => stats.value.pending + stats.value.generating > 0);
 const finished = computed(() => stats.value.ready + stats.value.basic + stats.value.error);
 
+/** Places that show something else than the card, for the note under the intro. */
+const otherCount = computed(() => Object.values(stats.value.arrivals).reduce((a, b) => a + b, 0));
+/** The places that use the AI card: the only ones with a card to prepare. */
+const cardPlaces = computed(() =>
+  (draft.value?.places ?? []).filter((place) => (place.arrival?.type ?? 'card') === 'card'),
+);
+
+/** "visitleiria.pt" of "https://visitleiria.pt/agenda". */
+const hostOf = (url: string): string => /^https?:\/\/([^/?#]+)/i.exec(url.trim())?.[1] ?? url;
+
+/** The row of a place that doesn't use the card: what it shows on arrival. */
+function choiceRow(place: DraftPlace, index: number): Row | null {
+  const { arrival } = place;
+  if (!arrival || arrival.type === 'card') return null;
+  const row = {
+    place,
+    index,
+    tone: 'choice' as const,
+    spinning: false,
+    viewable: false,
+    menu: false,
+    retry: false,
+    basic: false,
+    generate: false,
+  };
+  switch (arrival.type) {
+    case 'quiz':
+      return {
+        ...row,
+        icon: CircleQuestionMark,
+        text: t('create.arrival.row.quiz', { question: arrival.question.trim() }),
+      };
+    case 'video': {
+      const title = arrival.title?.trim();
+      return {
+        ...row,
+        icon: Video,
+        text: title
+          ? t('create.arrival.row.videoTitled', { title })
+          : t('create.arrival.row.video'),
+      };
+    }
+    case 'link':
+      return {
+        ...row,
+        icon: ExternalLink,
+        text: t('create.arrival.row.link', {
+          label: arrival.label.trim(),
+          host: hostOf(arrival.url),
+        }),
+      };
+    case 'check':
+      return { ...row, icon: BellRing, text: t('create.arrival.row.check') };
+    default:
+      return { ...row, icon: FileText, text: t('create.arrival.row.basic') };
+  }
+}
+
 const rows = computed<Row[]>(() =>
   (draft.value?.places ?? []).map((place, index): Row => {
+    const choice = choiceRow(place, index);
+    if (choice) return choice;
     const card = creator.cardOf(place.tempId);
     const base = {
       place,
@@ -179,7 +245,7 @@ const progressText = computed(() =>
       }),
 );
 const segments = computed(() =>
-  (draft.value?.places ?? []).map((place) => {
+  cardPlaces.value.map((place) => {
     const status = creator.cardOf(place.tempId).status;
     if (status === 'ready' || status === 'basic') return 'completed' as const;
     return status === 'generating' ? ('next' as const) : ('locked' as const);
@@ -287,7 +353,12 @@ onMounted(() => {
       <h1 class="t-h1">{{ t('create.steps.content') }}</h1>
       <p class="content__intro">{{ t('create.content.intro') }}</p>
 
-      <div class="content__status">
+      <p v-if="stats.total > 0 && otherCount > 0" class="content__intro">
+        {{ t('create.arrival.contentNote') }}
+      </p>
+
+      <p v-if="stats.total === 0" class="content__intro">{{ t('create.arrival.noCards') }}</p>
+      <div v-else class="content__status">
         <p class="content__progress tabular">{{ progressText }}</p>
         <ProgressBar :segments="segments" :percent="percent" :label="progressText" />
         <p class="content__ai">
@@ -521,6 +592,12 @@ onMounted(() => {
   color: var(--color-danger);
 }
 .row__status.is-busy {
+  color: var(--color-primary);
+}
+.row__status.is-choice {
+  color: var(--color-text);
+}
+.row__status.is-choice svg {
   color: var(--color-primary);
 }
 .row__spin {

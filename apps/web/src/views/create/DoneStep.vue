@@ -1,27 +1,44 @@
 <script setup lang="ts">
 import { CloudCheck, CloudUpload, Navigation, PartyPopper } from '@lucide/vue';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import AppButton from '../../components/AppButton.vue';
 import RouteCard from '../../components/RouteCard.vue';
 import { useCatalogStore } from '../../stores/catalog.ts';
 import { useCreatorStore } from '../../stores/creator.ts';
+import { useRunStore } from '../../stores/run.ts';
 
 // C5 · Lista (DESIGN C5): the saved route's card, whether it is already on
 // the server (it updates by itself when the upload finishes), "Iniciar ahora"
-// (to its preparation) and "Ver mis rutas".
+// (to its preparation) and "Ver mis rutas". When the route saved is the one a
+// run is walking (the user edited it from the run), that run has already taken
+// the changes: the main button takes the user back to it instead of starting another.
 
 const { t } = useI18n();
 const router = useRouter();
 const catalog = useCatalogStore();
 const creator = useCreatorStore();
+const run = useRunStore();
 
 const route = computed(() => (creator.savedId ? catalog.byId(creator.savedId) : undefined));
 const synced = computed(() => route.value?.mine?.sync === 'synced');
+/** The run in progress is of this very route (a trial belongs to the draft, not to the route). */
+const inRun = computed(
+  () => creator.savedId !== null && run.active && !run.trial && run.routeId === creator.savedId,
+);
+
+// Saving left that run nothing to visit, so it finished: its summary is the next thing to see.
+onMounted(() => {
+  if (run.endedByEdit && run.routeId === creator.savedId) void router.replace({ name: 'summary' });
+});
 
 function start(): void {
   if (creator.savedId) void router.push({ name: 'prepare', params: { routeId: creator.savedId } });
+}
+
+function backToRun(): void {
+  void router.push({ name: 'run' });
 }
 </script>
 
@@ -35,6 +52,10 @@ function start(): void {
           <component :is="synced ? CloudCheck : CloudUpload" :size="18" aria-hidden="true" />
           <span>{{ synced ? t('create.done.synced') : t('create.done.local') }}</span>
         </p>
+        <p v-if="inRun" class="done__status">
+          <Navigation :size="18" aria-hidden="true" />
+          <span>{{ t('create.done.runUpdated') }}</span>
+        </p>
       </div>
       <RouteCard
         v-if="route"
@@ -46,7 +67,11 @@ function start(): void {
 
     <footer class="done__footer">
       <div class="done__actions">
-        <AppButton :disabled="!creator.savedId" @click="start">
+        <AppButton v-if="inRun" @click="backToRun">
+          <template #icon><Navigation :size="20" aria-hidden="true" /></template>
+          {{ t('create.done.backToRun') }}
+        </AppButton>
+        <AppButton v-else :disabled="!creator.savedId" @click="start">
           <template #icon><Navigation :size="20" aria-hidden="true" /></template>
           {{ t('create.done.start') }}
         </AppButton>

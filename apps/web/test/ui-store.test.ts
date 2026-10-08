@@ -29,6 +29,30 @@ describe('the overlay stack', () => {
     expect(await ui.present('x', {}, { signal: controller.signal })).toBe(undefined);
   });
 
+  it('closes a confirmation, answering "no", when its signal aborts', async () => {
+    const ui = useUiStore();
+    const controller = new AbortController();
+    const dialog = { title: 'Open?', confirmLabel: 'Yes', cancelLabel: 'No' };
+    const answer = ui.confirm({ ...dialog, signal: controller.signal });
+    expect(ui.confirms).toHaveLength(1);
+    // The signal is not part of what the dialog shows.
+    expect(ui.confirms[0]).not.toHaveProperty('signal');
+
+    controller.abort();
+    expect(await answer).toBe(false);
+    expect(ui.confirms).toEqual([]);
+    // Already aborted: nothing opens at all.
+    expect(await ui.confirm({ ...dialog, signal: controller.signal })).toBe(false);
+    expect(ui.confirms).toEqual([]);
+
+    // Answered first, the abort that comes later finds nothing to close.
+    const second = new AbortController();
+    const asked = ui.confirm({ ...dialog, signal: second.signal });
+    ui.confirms[0]?.answer(true);
+    second.abort();
+    expect(await asked).toBe(true);
+  });
+
   it('answers confirmations and keeps at most three toasts', async () => {
     vi.useFakeTimers();
     const ui = useUiStore();

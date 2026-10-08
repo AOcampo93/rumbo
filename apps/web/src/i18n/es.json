@@ -137,7 +137,9 @@
     "createdByYou": "Creada por ti",
     "fullscreen": "Ampliar el mapa",
     "exitFullscreen": "Reducir el mapa",
-    "noCover": "Sin foto"
+    "noCover": "Sin foto",
+    "edit": "Editar ruta",
+    "delete": "Eliminar ruta"
   },
   "popup": {
     "distance": "a {distance} de ti",
@@ -247,7 +249,11 @@
     "noRun": "No hay ningún recorrido en curso.",
     "openRun": "Volver al recorrido",
     "distanceTo": "{distance} hasta {name}",
-    "arrivedAt": "Llegaste a {name}"
+    "arrivedAt": "Llegaste a {name}",
+    "editRoute": "Editar ruta",
+    "routeUpdated": "Ruta actualizada: lo que ya visitaste se mantiene",
+    "viewCard": "Ver ficha",
+    "viewCardNamed": "Ver la ficha de {name}"
   },
   "arrival": {
     "label": "Llegaste · Punto {n} de {total}",
@@ -395,7 +401,7 @@
     "deleted": "Ruta eliminada",
     "unreadable": "No podemos abrir esta ruta.",
     "loadError": "No podemos leer tus rutas en este dispositivo.",
-    "activeRunEdit": "Tienes un recorrido en curso de esta ruta: seguirá con la versión anterior.",
+    "activeRunEdit": "Tienes un recorrido en curso de esta ruta: se actualizará con tus cambios y conservará lo que ya visitaste.",
     "activeRunDelete": "Tienes un recorrido en curso de esta ruta. Al eliminarla, terminará.",
     "sync": {
       "pending": "Solo en este dispositivo · se subirá al conectar",
@@ -582,6 +588,87 @@
       "add": "Añadir",
       "save": "Guardar"
     },
+    "arrival": {
+      "title": "Al llegar",
+      "types": {
+        "card": {
+          "title": "Ficha del lugar",
+          "help": "La ficha con IA si está lista; si no, el nombre y la dirección."
+        },
+        "basic": {
+          "title": "Nombre y dirección",
+          "help": "Una hoja sencilla, sin IA."
+        },
+        "quiz": {
+          "title": "Tu propia pregunta",
+          "help": "Una pregunta con respuestas y puntos, escrita por ti."
+        },
+        "video": {
+          "title": "Un video de YouTube",
+          "help": "Se reproduce en la hoja de llegada."
+        },
+        "link": {
+          "title": "Un enlace web",
+          "help": "Se abre en el navegador, siempre tras confirmar."
+        },
+        "check": {
+          "title": "Solo un aviso",
+          "help": "Un breve «Llegaste a…» y la ruta sigue, sin ficha."
+        }
+      },
+      "quiz": {
+        "points": "Una respuesta correcta suma {points} puntos.",
+        "question": "Pregunta",
+        "questionPlaceholder": "Ej.: ¿Quién conquistó el castillo?",
+        "questionRequired": "Escribe la pregunta.",
+        "options": "Respuestas",
+        "optionsHint": "De 2 a 4. Toca el círculo de la correcta.",
+        "option": "Respuesta {n}",
+        "optionRequired": "Escribe la respuesta o quita esta opción.",
+        "markCorrect": "Marcar la respuesta {n} como correcta",
+        "removeOption": "Quitar la respuesta {n}",
+        "addOption": "Añadir respuesta",
+        "explanation": "Explicación (opcional)",
+        "explanationHint": "Se muestra después de responder."
+      },
+      "video": {
+        "link": "Enlace o ID de YouTube",
+        "linkPlaceholder": "youtu.be/…",
+        "linkHint": "Pega el enlace del video o su ID de 11 caracteres.",
+        "detected": "Video encontrado: {id}",
+        "required": "Pega el enlace del video de YouTube.",
+        "invalid": "No reconocemos ese enlace de YouTube.",
+        "title": "Título (opcional)"
+      },
+      "link": {
+        "url": "Dirección web",
+        "urlHint": "Empieza por https://. Siempre pedimos confirmación antes de abrirla.",
+        "urlRequired": "Escribe la dirección del enlace.",
+        "urlInvalid": "Escribe una dirección completa que empiece por https://, sin espacios.",
+        "label": "Texto del enlace",
+        "labelPlaceholder": "Ej.: Agenda cultural de Leiria",
+        "labelRequired": "Dile a quien llegue adónde lleva el enlace."
+      },
+      "tooLong": "Es demasiado largo.",
+      "invalid": "Revisa los datos de «Al llegar».",
+      "contentNote": "Los lugares con otra opción en «Al llegar» no llevan ficha con IA.",
+      "noCards": "Ningún lugar usa ficha con IA, así que no hay nada que preparar.",
+      "row": {
+        "basic": "Nombre y dirección, sin IA",
+        "quiz": "Tu pregunta: «{question}»",
+        "video": "Video de YouTube",
+        "videoTitled": "Video de YouTube: «{title}»",
+        "link": "Enlace: {label} · {host}",
+        "check": "Solo un aviso al llegar"
+      },
+      "mix": {
+        "basic": "{n} con nombre y dirección | {n} con nombre y dirección",
+        "quiz": "{n} pregunta propia | {n} preguntas propias",
+        "video": "{n} video | {n} videos",
+        "link": "{n} enlace | {n} enlaces",
+        "check": "{n} aviso | {n} avisos"
+      }
+    },
     "review": {
       "checklist": "Comprobaciones",
       "placesFree": "{n} lugares, en el orden que quieras",
@@ -601,7 +688,8 @@
       "cardsAi": "{n} ficha con IA | {n} fichas con IA",
       "cardsBasic": "{n} básica | {n} básicas",
       "cardsPreparing": "{n} ficha aún en preparación: si guardas ahora, usará la ficha básica. | {n} fichas aún en preparación: si guardas ahora, usarán la ficha básica.",
-      "fixCards": "Ver fichas"
+      "fixCards": "Ver fichas",
+      "arrivalMix": "Al llegar: {mix}"
     },
     "trial": {
       "badge": "Prueba",
@@ -617,7 +705,9 @@
       "synced": "Guardada. Puedes recorrerla cuando quieras.",
       "local": "Guardada en este dispositivo. La subiremos cuando vuelva la conexión.",
       "start": "Iniciar ahora",
-      "myRoutes": "Ver mis rutas"
+      "myRoutes": "Ver mis rutas",
+      "backToRun": "Volver al recorrido",
+      "runUpdated": "Tu recorrido en curso ya usa estos cambios. Lo que visitaste se mantiene."
     }
   },
   "errors": {
@@ -650,6 +740,15 @@
       "granted": "Activadas",
       "denied": "Bloqueadas en el navegador",
       "unsupported": "No disponibles"
+    },
+    "push": {
+      "label": "Notificaciones push",
+      "off": "Recordatorios y novedades de Rumbo, incluso con la app cerrada.",
+      "on": "Activadas en este dispositivo.",
+      "needsInstall": "En iPhone y iPad, primero añade Rumbo a la pantalla de inicio: toca Compartir y después «Añadir a pantalla de inicio».",
+      "denied": "Bloqueadas. Actívalas en los ajustes del navegador o del dispositivo.",
+      "unavailable": "No disponibles ahora mismo.",
+      "unsupported": "Este navegador no admite notificaciones push."
     },
     "theme": {
       "label": "Tema",

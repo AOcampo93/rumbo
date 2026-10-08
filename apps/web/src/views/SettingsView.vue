@@ -12,7 +12,7 @@ import {
   Trash2,
 } from '@lucide/vue';
 import { LOCALES, type Locale, type LocalizedText } from '@rumbo/route-spec';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppButton from '../components/AppButton.vue';
 import LanguageOptions from '../components/LanguageOptions.vue';
@@ -24,6 +24,7 @@ import {
   type NotificationStatus,
 } from '../services/notifications.ts';
 import { supports } from '../services/platform.ts';
+import { disablePush, enablePush, pushState, type PushState } from '../services/push.ts';
 import { forgetDeviceId } from '../services/device.ts';
 import { deleteAllMyRoutesRemote, listMyRoutes, stopRouteSync } from '../services/myRoutes.ts';
 import { db, local } from '../services/storage.ts';
@@ -63,6 +64,63 @@ onMounted(() => {
 async function enableNotifications(): Promise<void> {
   notifications.value = await requestNotifications();
 }
+
+// Push notifications (reminders and news from the server): the switch follows
+// what the browser and the server allow. Null while it is being read.
+const push = ref<PushState | null>(null);
+const pushBusy = ref(false);
+/** Counts the reads and the taps: an answer that arrives after a newer one is dropped. */
+let pushEpoch = 0;
+
+async function readPush(): Promise<void> {
+  if (pushBusy.value) return;
+  const epoch = ++pushEpoch;
+  const state = await pushState();
+  if (epoch === pushEpoch) push.value = state;
+}
+
+/** Straight from the tap: enabling asks for the permission before awaiting anything. */
+async function setPush(on: boolean): Promise<void> {
+  if (pushBusy.value) return;
+  pushBusy.value = true;
+  pushEpoch += 1;
+  try {
+    push.value = on ? await enablePush() : await disablePush();
+  } finally {
+    pushBusy.value = false;
+  }
+}
+
+/** Only these two are a choice; the others say why there isn't one. */
+const pushLocked = computed(() => pushBusy.value || (push.value !== 'on' && push.value !== 'off'));
+const pushHint = computed(() => {
+  switch (push.value) {
+    case 'on':
+      return t('settings.push.on');
+    case 'off':
+      return t('settings.push.off');
+    case 'needs-install':
+      return t('settings.push.needsInstall');
+    case 'denied':
+      return t('settings.push.denied');
+    case 'unavailable':
+      return t('settings.push.unavailable');
+    case 'unsupported':
+      return t('settings.push.unsupported');
+    default:
+      return '';
+  }
+});
+
+// Back from the browser's settings (or the home screen): read it again.
+function readPushWhenVisible(): void {
+  if (document.visibilityState === 'visible') void readPush();
+}
+onMounted(() => {
+  void readPush();
+  document.addEventListener('visibilitychange', readPushWhenVisible);
+});
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', readPushWhenVisible));
 
 const version = __APP_VERSION__;
 const commit = ref<string | null>(null);
@@ -115,8 +173,10 @@ async function clearData(): Promise<void> {
   stopRouteSync();
   creator.stopAutosave();
   try {
-    // Best effort, a few seconds at most: the routes the server has go first.
+    // Best effort, a few seconds at most: the routes the server has go first,
+    // and this device's push subscription (its id is about to be forgotten).
     await deleteAllMyRoutesRemote().catch(() => undefined);
+    await disablePush().catch(() => undefined);
     await db.clear();
   } catch (error) {
     console.warn('settings: the local data could not be cleared', error);
@@ -177,6 +237,20 @@ async function clearData(): Promise<void> {
           >
             {{ t('settings.notifications.enable') }}
           </AppButton>
+        </div>
+        <div class="row">
+          <span class="row__icon" aria-hidden="true" />
+          <span class="row__label">
+            {{ t('settings.push.label') }}
+            <small id="s-push-hint" class="t-small t-muted">{{ pushHint }}</small>
+          </span>
+          <ToggleSwitch
+            :model-value="push === 'on'"
+            :label="t('settings.push.label')"
+            :disabled="pushLocked"
+            aria-describedby="s-push-hint"
+            @update:model-value="setPush"
+          />
         </div>
       </div>
     </section>

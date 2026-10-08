@@ -14,7 +14,7 @@ import {
   TriangleAlert,
 } from '@lucide/vue';
 import { validateActionParams } from '@rumbo/event-system';
-import { DRAFT_LIMITS } from '@rumbo/route-builder';
+import { ARRIVAL_TYPES, arrivalTypeOf, DRAFT_LIMITS } from '@rumbo/route-builder';
 import type { LatLng } from '@rumbo/geo-utils';
 import {
   computed,
@@ -35,17 +35,18 @@ import { useFormat } from '../../i18n/useFormat.ts';
 import type { MapMarker, MapPadding, MapZoneItem } from '../../map/types.ts';
 import { unlockAudio } from '../../services/sound.ts';
 import { resolvedTheme as theme } from '../../services/theme.ts';
-import { useCreatorStore } from '../../stores/creator.ts';
+import { type OtherArrival, useCreatorStore } from '../../stores/creator.ts';
 import { useRunStore } from '../../stores/run.ts';
 import { useSettingsStore } from '../../stores/settings.ts';
 import { useUiStore } from '../../stores/ui.ts';
 
 // C4 · Revisar (DESIGN C4; design ux-8): the route on the map, its facts and
 // a checklist (places, overlapping zones, how many places have an AI card,
-// addresses of the ones that don't, a challenge's time limit and anything
-// that keeps the route from being built). "Probar ruta" walks it
-// in simulation without saving anything; "Guardar ruta" stores it on this
-// device (the upload follows on its own) and moves on to C5.
+// what the others show on arrival, addresses of the places with the basic
+// sheet, a challenge's time limit and anything that keeps the route from
+// being built). "Probar ruta" walks it in simulation without saving anything;
+// "Guardar ruta" stores it on this device (the upload follows on its own) and
+// moves on to C5.
 
 type MapState = 'loading' | 'ready' | 'failed';
 type CheckTone = 'ok' | 'warning' | 'info' | 'error';
@@ -56,6 +57,8 @@ interface Check {
   /** The step a button takes the user back to: the places ("Corregir") or the cards ("Ver fichas"). */
   fix?: 'create-places' | 'create-content';
 }
+/** The ways to greet someone on arrival other than the AI card, in the editor's order. */
+const OTHER_ARRIVALS = ARRIVAL_TYPES.filter((type): type is OtherArrival => type !== 'card');
 const MAP_PATIENCE_MS = 8000;
 /** The route is framed inside this padding (markers off the edges, above the credits). */
 const MAP_PADDING: MapPadding = { top: 28, right: 28, bottom: 48, left: 28 };
@@ -148,7 +151,7 @@ const checks = computed<Check[]>(() => {
       ].join(' · '),
       ...(basicCount > 0 ? { fix: 'create-content' as const } : {}),
     });
-  } else if (preparing === 0) {
+  } else if (preparing === 0 && stats.total > 0) {
     list.push({
       id: 'cards',
       tone: 'info',
@@ -164,8 +167,21 @@ const checks = computed<Check[]>(() => {
       fix: 'create-content',
     });
   }
-  // The address is what the basic sheet shows; an AI card doesn't need it.
-  const withoutCard = (creator.routeDraft?.places ?? []).filter((place) => !place.contentRef);
+  // What the places that don't use the card show: "1 pregunta propia · 2 videos".
+  const others = OTHER_ARRIVALS.filter((type) => stats.arrivals[type] > 0).map((type) =>
+    t(`create.arrival.mix.${type}`, { n: stats.arrivals[type] }, stats.arrivals[type]),
+  );
+  if (others.length > 0) {
+    list.push({
+      id: 'arrivals',
+      tone: 'info',
+      text: t('create.review.arrivalMix', { mix: others.join(' · ') }),
+    });
+  }
+  // The address is what the basic sheet shows; an AI card, a quiz or a video doesn't need it.
+  const withoutCard = (creator.routeDraft?.places ?? []).filter(
+    (place) => !place.contentRef && ['card', 'basic'].includes(arrivalTypeOf(place)),
+  );
   const withoutAddress = withoutCard.filter((place) => !place.address?.trim()).length;
   if (withoutCard.length > 0) {
     list.push(

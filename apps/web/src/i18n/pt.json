@@ -137,7 +137,9 @@
     "createdByYou": "Criada por ti",
     "fullscreen": "Ampliar o mapa",
     "exitFullscreen": "Reduzir o mapa",
-    "noCover": "Sem foto"
+    "noCover": "Sem foto",
+    "edit": "Editar rota",
+    "delete": "Eliminar rota"
   },
   "popup": {
     "distance": "a {distance} de ti",
@@ -247,7 +249,11 @@
     "noRun": "Não há nenhum percurso em curso.",
     "openRun": "Voltar ao percurso",
     "distanceTo": "{distance} até {name}",
-    "arrivedAt": "Chegaste a {name}"
+    "arrivedAt": "Chegaste a {name}",
+    "editRoute": "Editar rota",
+    "routeUpdated": "Rota atualizada: o que já visitaste mantém-se",
+    "viewCard": "Ver ficha",
+    "viewCardNamed": "Ver a ficha de {name}"
   },
   "arrival": {
     "label": "Chegaste · Ponto {n} de {total}",
@@ -395,7 +401,7 @@
     "deleted": "Rota eliminada",
     "unreadable": "Não conseguimos abrir esta rota.",
     "loadError": "Não conseguimos ler as tuas rotas neste dispositivo.",
-    "activeRunEdit": "Tens um percurso desta rota em curso: vai continuar com a versão anterior.",
+    "activeRunEdit": "Tens um percurso desta rota em curso: vai atualizar-se com as tuas alterações e manter o que já visitaste.",
     "activeRunDelete": "Tens um percurso desta rota em curso. Ao eliminá-la, vai terminar.",
     "sync": {
       "pending": "Só neste dispositivo · será enviada quando houver ligação",
@@ -582,6 +588,87 @@
       "add": "Adicionar",
       "save": "Guardar"
     },
+    "arrival": {
+      "title": "Ao chegar",
+      "types": {
+        "card": {
+          "title": "Ficha do lugar",
+          "help": "A ficha com IA, se estiver pronta; senão, o nome e a morada."
+        },
+        "basic": {
+          "title": "Nome e morada",
+          "help": "Uma folha simples, sem IA."
+        },
+        "quiz": {
+          "title": "A tua própria pergunta",
+          "help": "Uma pergunta com respostas e pontos, escrita por ti."
+        },
+        "video": {
+          "title": "Um vídeo do YouTube",
+          "help": "Reproduz-se na folha de chegada."
+        },
+        "link": {
+          "title": "Um link da web",
+          "help": "Abre no navegador, sempre depois de confirmares."
+        },
+        "check": {
+          "title": "Só um aviso",
+          "help": "Um breve «Chegaste a…» e a rota segue, sem ficha."
+        }
+      },
+      "quiz": {
+        "points": "Uma resposta certa vale {points} pontos.",
+        "question": "Pergunta",
+        "questionPlaceholder": "Ex.: Quem conquistou o castelo?",
+        "questionRequired": "Escreve a pergunta.",
+        "options": "Respostas",
+        "optionsHint": "De 2 a 4. Toca no círculo da certa.",
+        "option": "Resposta {n}",
+        "optionRequired": "Escreve a resposta ou remove esta opção.",
+        "markCorrect": "Marcar a resposta {n} como certa",
+        "removeOption": "Remover a resposta {n}",
+        "addOption": "Adicionar resposta",
+        "explanation": "Explicação (opcional)",
+        "explanationHint": "Aparece depois de responder."
+      },
+      "video": {
+        "link": "Link ou ID do YouTube",
+        "linkPlaceholder": "youtu.be/…",
+        "linkHint": "Cola o link do vídeo ou o seu ID de 11 caracteres.",
+        "detected": "Vídeo encontrado: {id}",
+        "required": "Cola o link do vídeo do YouTube.",
+        "invalid": "Não reconhecemos esse link do YouTube.",
+        "title": "Título (opcional)"
+      },
+      "link": {
+        "url": "Endereço web",
+        "urlHint": "Começa por https://. Pedimos sempre confirmação antes de o abrir.",
+        "urlRequired": "Escreve o endereço do link.",
+        "urlInvalid": "Escreve um endereço completo que comece por https://, sem espaços.",
+        "label": "Texto do link",
+        "labelPlaceholder": "Ex.: Agenda cultural de Leiria",
+        "labelRequired": "Diz a quem chegar para onde vai o link."
+      },
+      "tooLong": "É demasiado longo.",
+      "invalid": "Revê os dados de «Ao chegar».",
+      "contentNote": "Os lugares com outra opção em «Ao chegar» não levam ficha com IA.",
+      "noCards": "Nenhum lugar usa ficha com IA, por isso não há nada a preparar.",
+      "row": {
+        "basic": "Nome e morada, sem IA",
+        "quiz": "A tua pergunta: «{question}»",
+        "video": "Vídeo do YouTube",
+        "videoTitled": "Vídeo do YouTube: «{title}»",
+        "link": "Link: {label} · {host}",
+        "check": "Só um aviso ao chegar"
+      },
+      "mix": {
+        "basic": "{n} com nome e morada | {n} com nome e morada",
+        "quiz": "{n} pergunta própria | {n} perguntas próprias",
+        "video": "{n} vídeo | {n} vídeos",
+        "link": "{n} link | {n} links",
+        "check": "{n} aviso | {n} avisos"
+      }
+    },
     "review": {
       "checklist": "Verificações",
       "placesFree": "{n} lugares, pela ordem que quiseres",
@@ -601,7 +688,8 @@
       "cardsAi": "{n} ficha com IA | {n} fichas com IA",
       "cardsBasic": "{n} básica | {n} básicas",
       "cardsPreparing": "{n} ficha ainda em preparação: se guardares agora, vai usar a ficha básica. | {n} fichas ainda em preparação: se guardares agora, vão usar a ficha básica.",
-      "fixCards": "Ver fichas"
+      "fixCards": "Ver fichas",
+      "arrivalMix": "Ao chegar: {mix}"
     },
     "trial": {
       "badge": "Teste",
@@ -617,7 +705,9 @@
       "synced": "Guardada. Podes percorrê-la quando quiseres.",
       "local": "Guardada neste dispositivo. Vamos enviá-la quando voltares a ter ligação.",
       "start": "Iniciar agora",
-      "myRoutes": "Ver as minhas rotas"
+      "myRoutes": "Ver as minhas rotas",
+      "backToRun": "Voltar ao percurso",
+      "runUpdated": "O teu percurso em curso já usa estas alterações. O que visitaste mantém-se."
     }
   },
   "errors": {
@@ -650,6 +740,15 @@
       "granted": "Ativadas",
       "denied": "Bloqueadas no navegador",
       "unsupported": "Indisponíveis"
+    },
+    "push": {
+      "label": "Notificações push",
+      "off": "Lembretes e novidades do Rumbo, mesmo com a app fechada.",
+      "on": "Ativadas neste dispositivo.",
+      "needsInstall": "No iPhone e no iPad, adiciona primeiro o Rumbo ao ecrã principal: toca em Partilhar e depois em «Adicionar ao ecrã principal».",
+      "denied": "Bloqueadas. Ativa-as nas definições do navegador ou do dispositivo.",
+      "unavailable": "Indisponíveis neste momento.",
+      "unsupported": "Este navegador não suporta notificações push."
     },
     "theme": {
       "label": "Tema",

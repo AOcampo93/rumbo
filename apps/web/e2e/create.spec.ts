@@ -682,3 +682,115 @@ test('the AI guide: suggested places get cards that stay hidden until the arriva
   await until(page, async () => page.url().endsWith('/run/summary'), 30);
   await expect(page.getByRole('heading', { name: '¡Ruta completada!' })).toBeVisible();
 });
+
+test('a place with its own question: it travels with the route, shows on arrival and scores', async ({
+  page,
+}) => {
+  test.setTimeout(480_000);
+  await setup(page);
+  await recordRunCalls(page);
+  const writes = await mockRouteApi(page, savedAnswer);
+
+  // C2: the cathedral only greets the user with a notice; the castle asks a
+  // question of its own (it is the user who writes it, so the editor shows it).
+  await fillDetails(page, 'Ruta con pregunta propia');
+  await addPlace(page, PLACES[1] as Place);
+  await addPlace(page, PLACES[0] as Place);
+  await page.getByRole('button', { name: 'Opciones de Sé de Leiria' }).click();
+  await page.getByRole('menuitem', { name: 'Editar' }).click();
+  const editor = page.getByRole('dialog', { name: 'Editar lugar' });
+  await expect(editor.getByRole('group', { name: 'Al llegar' })).toBeVisible();
+  await expect(editor.getByRole('radio', { name: 'Ficha del lugar' })).toBeChecked();
+  await editor.getByRole('radio', { name: 'Solo un aviso' }).check();
+  await editor.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(editor).toBeHidden();
+
+  await page.getByRole('button', { name: 'Opciones de Castelo de Leiria' }).click();
+  await page.getByRole('menuitem', { name: 'Editar' }).click();
+  await editor.getByRole('radio', { name: 'Tu propia pregunta' }).check();
+  // An unfinished question doesn't save.
+  await editor.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(editor.getByText('Escribe la pregunta.')).toBeVisible();
+  await expect(editor).toBeVisible();
+  await editor
+    .getByRole('textbox', { name: 'Pregunta', exact: true })
+    .fill('¿Quién conquistó el castillo?');
+  await editor.getByRole('textbox', { name: 'Respuesta 1' }).fill('Afonso Henriques');
+  await editor.getByRole('textbox', { name: 'Respuesta 2' }).fill('Dinis I');
+  await editor.getByRole('textbox', { name: 'Explicación (opcional)' }).fill('Lo tomó en 1135.');
+  await editor.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(editor).toBeHidden();
+
+  // C3 has no card to prepare: both places say what they show. C4 counts them.
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(page).toHaveURL(/\/create\/content$/);
+  await expect(
+    page.getByText('Ningún lugar usa ficha con IA, así que no hay nada que preparar.'),
+  ).toBeVisible();
+  const rows = page.getByRole('list', { name: 'Fichas de los lugares' }).getByRole('listitem');
+  await expect(rows.nth(0)).toContainText('Solo un aviso al llegar');
+  await expect(rows.nth(1)).toContainText('Tu pregunta: «¿Quién conquistó el castillo?»');
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(page).toHaveURL(/\/create\/review$/);
+  await expect(page.getByText('Al llegar: 1 pregunta propia · 1 aviso')).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar ruta' }).click();
+  await expect(page).toHaveURL(/\/create\/done$/);
+
+  // The route is sent with the notice and the question as its own actions.
+  await until(page, async () => writes.length > 0, 10);
+  const post = writes[0] as Request;
+  const body = post.postDataJSON() as {
+    spec: {
+      id: string;
+      points: { name: string; contentRef?: string; triggers: { onEnter: string } }[];
+      actions: Record<string, { type: string; params?: Record<string, unknown> }>;
+    };
+    contents: object;
+  };
+  const onEnter = body.spec.points.map((point) => body.spec.actions[point.triggers.onEnter]);
+  expect(body.spec.points.map((point) => point.name)).toEqual([
+    'Sé de Leiria',
+    'Castelo de Leiria',
+  ]);
+  expect(onEnter).toEqual([
+    { type: 'toast', params: { messageKey: 'run.arrivedAt' } },
+    {
+      type: 'quiz',
+      params: {
+        question: '¿Quién conquistó el castillo?',
+        options: ['Afonso Henriques', 'Dinis I'],
+        correctIndex: 0,
+        points: 10,
+        explanation: 'Lo tomó en 1135.',
+      },
+    },
+  ]);
+  expect(body.spec.points.some((point) => 'contentRef' in point)).toBe(false);
+  expect(body.contents).toEqual({});
+
+  // Walk it. The first arrival is only a notice: no sheet, and the route goes on.
+  await page.getByRole('button', { name: 'Iniciar ahora' }).click();
+  await expect(page).toHaveURL(new RegExp(`/routes/${body.spec.id}/prepare$`));
+  await page.getByRole('button', { name: 'Empezar', exact: true }).click();
+  await expect(page).toHaveURL(/\/run$/);
+  await openSimulation(page, '20×');
+  await page.getByRole('button', { name: 'Caminar al siguiente punto' }).click();
+  await until(page, visible(page.getByText('Llegaste a Sé de Leiria')), 600, 2);
+  await expect(page.getByRole('button', { name: 'Continuar ruta' })).toHaveCount(0);
+
+  // The second arrival asks the user's question; a right answer scores 10.
+  await page.getByRole('button', { name: 'Caminar al siguiente punto' }).click();
+  const answer = page.getByRole('radio', { name: 'Afonso Henriques' });
+  await until(page, visible(answer), 600, 2);
+  await expect(page.getByText('Pregunta rápida · +10 pts')).toBeVisible();
+  await expect(page.getByText('¿Quién conquistó el castillo?')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continuar ruta' })).toBeDisabled();
+  await answer.click();
+  await expect(page.getByText('¡Correcto!')).toBeVisible();
+  await expect(page.getByText('Lo tomó en 1135.')).toBeVisible();
+  await page.getByRole('button', { name: 'Continuar ruta' }).click();
+
+  await until(page, async () => page.url().endsWith('/run/summary'), 30);
+  await expect(page.getByRole('heading', { name: '¡Ruta completada!' })).toBeVisible();
+  await expect(page.getByText('10 pts', { exact: true })).toBeVisible();
+});

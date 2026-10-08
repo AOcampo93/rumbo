@@ -42,9 +42,11 @@ export interface ConfirmOptions {
   cancelLabel: UiText;
   destructive?: boolean;
   sourceLocale?: Locale;
+  /** Aborting it answers "no", as a presented view closes with its signal. */
+  signal?: AbortSignalLike;
 }
 
-export interface ConfirmEntry extends ConfirmOptions {
+export interface ConfirmEntry extends Omit<ConfirmOptions, 'signal'> {
   id: number;
   answer(ok: boolean): void;
 }
@@ -141,16 +143,24 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function confirm(options: ConfirmOptions): Promise<boolean> {
+    const { signal, ...shown } = options;
     return new Promise((resolve) => {
+      if (signal?.aborted) {
+        resolve(false);
+        return;
+      }
       const id = nextId++;
+      const onAbort = () => entry.answer(false);
       const entry: ConfirmEntry = {
-        ...options,
+        ...shown,
         id,
         answer(ok) {
+          signal?.removeEventListener('abort', onAbort);
           confirms.value = confirms.value.filter((c) => c.id !== id);
           resolve(ok);
         },
       };
+      signal?.addEventListener('abort', onAbort);
       confirms.value = [...confirms.value, entry];
     });
   }

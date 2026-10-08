@@ -9,7 +9,13 @@ import {
 } from '@lucide/vue';
 import type { GeoSuggestion, Interest, ResolvedPlace, SuggestedPlace } from '@rumbo/api-contract';
 import type { LatLng } from '@rumbo/geo-utils';
-import { DRAFT_LIMITS, type DraftPlace, findOverlaps, truncateText } from '@rumbo/route-builder';
+import {
+  type ArrivalChoice,
+  DRAFT_LIMITS,
+  type DraftPlace,
+  findOverlaps,
+  truncateText,
+} from '@rumbo/route-builder';
 import type { PointCategory } from '@rumbo/route-spec';
 import { VueDraggable } from 'vue-draggable-plus';
 import {
@@ -401,6 +407,10 @@ function editPlace(tempId: string): void {
       category: place.category ?? 'other',
       radius: place.radius ?? defaultRadius.value,
       required: place.required !== false,
+      // A copy: the editor changes it field by field and Cancelar leaves the place as it was.
+      arrival: place.arrival
+        ? (JSON.parse(JSON.stringify(place.arrival)) as ArrivalChoice)
+        : { type: 'card' },
     },
     before: {
       ...(place.radius !== undefined ? { radius: place.radius } : {}),
@@ -441,6 +451,7 @@ function addPoint(position: LatLng): void {
       category: 'other',
       radius: defaultRadius.value,
       required: true,
+      arrival: { type: 'card' },
     },
     before: {},
   };
@@ -484,6 +495,8 @@ async function saveEditor(): Promise<void> {
       category: fields.category,
       ...(fields.radius !== defaultRadius.value ? { radius: fields.radius } : {}),
       ...(fields.required ? {} : { required: false }),
+      // The card is the default: only another choice is kept.
+      ...(fields.arrival.type === 'card' ? {} : { arrival: fields.arrival }),
     });
     closeEditor();
     say(
@@ -502,6 +515,8 @@ async function saveEditor(): Promise<void> {
   if (current.before.required !== undefined || !fields.required) {
     patch.required = fields.required;
   }
+  // Always sent: the store keeps the card as no choice and drops a card the place stops using.
+  patch.arrival = fields.arrival;
   await creator.updatePlace(current.tempId, patch);
   closeEditor();
 }

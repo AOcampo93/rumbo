@@ -8,6 +8,9 @@ import {
   type Interest,
 } from '@rumbo/api-contract';
 import {
+  type ArrivalChoice,
+  type ArrivalType,
+  arrivalTypeOf,
   buildRouteSpec,
   DRAFT_LIMITS,
   type DraftIssue,
@@ -60,7 +63,8 @@ import { useUiStore } from './ui.ts';
 // as one of the user's routes (services/myRoutes.ts). Phase 7 adds the AI
 // guide: the draft keeps the card of each place (generated while the user
 // moves through the steps, two at a time) and ships the ready ones with the
-// route; a place without one gets the basic sheet.
+// route; a place without one gets the basic sheet. Each place also picks what
+// it shows on arrival (`arrival`): only the ones that use the AI card get one.
 
 /** What the creator keeps between sessions (`create:draft`). */
 export interface CreatorDraft {
@@ -143,8 +147,12 @@ export type BuildResult =
   /** `issues`: the draft's (validateDraft); `errors`: the built route's (rare: a broken place). */
   | { ok: false; issues: DraftIssue[]; errors: Issue[] };
 
+/** What a place that doesn't use the AI card shows on arrival. */
+export type OtherArrival = Exclude<ArrivalType, 'card'>;
+
 /** How the cards of the places are going, for the screens of step 3 and 4. */
 export interface CardStats {
+  /** The places that use the AI card; the numbers below split them. */
   total: number;
   /** Ready to ship with the route. */
   ready: number;
@@ -153,6 +161,8 @@ export interface CardStats {
   pending: number;
   generating: number;
   error: number;
+  /** The other places, by what they show on arrival. */
+  arrivals: Record<OtherArrival, number>;
 }
 
 const AUTOSAVE_MS = 300;
@@ -181,8 +191,41 @@ const PlaceSchema = z.object({
   category: PointCategorySchema.optional(),
   radius: z.number().optional(),
   required: z.boolean().optional(),
+  /** Read apart (cleanArrival): a broken choice must not cost the place. */
+  arrival: z.unknown().optional(),
   contentRef: z.string().optional(),
 });
+
+/** A stored choice, loosely: validateDraft decides what an incomplete one is worth. */
+const StoredArrivalSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('card') }),
+  z.object({ type: z.literal('basic') }),
+  z.object({
+    type: z.literal('quiz'),
+    question: z.string(),
+    options: z.array(z.string()),
+    correctIndex: z.number(),
+    explanation: z.string().optional(),
+  }),
+  z.object({ type: z.literal('video'), youtubeId: z.string(), title: z.string().optional() }),
+  z.object({ type: z.literal('link'), url: z.string(), label: z.string() }),
+  z.object({ type: z.literal('check') }),
+]);
+
+/**
+ * The choice of a stored place. The default (the card) is stored as no choice,
+ * and one that can't be read is dropped, with `broken` told, so the place keeps
+ * working with the card.
+ */
+function cleanArrival(raw: unknown, broken: () => void): ArrivalChoice | undefined {
+  if (raw === undefined) return undefined;
+  const parsed = StoredArrivalSchema.safeParse(raw);
+  if (!parsed.success) {
+    broken();
+    return undefined;
+  }
+  return parsed.data.type === 'card' ? undefined : parsed.data;
+}
 
 const AiErrorCodeSchema = z.enum([
   'offline',
@@ -199,6 +242,9 @@ const StoredCardSchema = z.object({
   grounding: z.enum(CONTENT_GROUNDINGS).optional(),
   error: AiErrorCodeSchema.optional(),
 });
+
+/** The place shows the AI card (or the basic sheet when none is ready): the default arrival. */
+const usesCard = (place: DraftPlace): boolean => arrivalTypeOf(place) === 'card';
 
 /** The interests in INTERESTS order, once each; whatever else a stored route had is dropped. */
 const knownInterests = (values: readonly string[]): Interest[] =>
@@ -238,7 +284,8 @@ function cleanCards(
     return cards;
   }
   for (const place of places) {
-    if (!Object.hasOwn(raw, place.tempId)) continue;
+    // A place with its own arrival has no card: whatever is stored for it is dropped.
+    if (!usesCard(place) || !Object.hasOwn(raw, place.tempId)) continue;
     const parsed = StoredCardSchema.safeParse((raw as Record<string, unknown>)[place.tempId]);
     if (!parsed.success) {
       broken();
@@ -320,7 +367,12 @@ function parseDraft(
             repaired = true;
             continue;
           }
-          const place: DraftPlace = parsed.data;
+          const { arrival, ...rest } = parsed.data;
+          const place: DraftPlace = rest;
+          const choice = cleanArrival(arrival, () => {
+            repaired = true;
+          });
+          if (choice) place.arrival = choice;
           if (seen.has(place.tempId)) {
             repaired = true;
             place.tempId = randomId();
@@ -370,7 +422,9 @@ const plainPlace = (place: DraftPlace): DraftPlace =>
 
 /** The card that ships with the route for this place, if it has one. */
 const shippedCard = (place: DraftPlace, card: CardState | undefined): GeneratedCard | null =>
-  card?.status === 'ready' && card.content && place.contentRef ? card.content : null;
+  usesCard(place) && card?.status === 'ready' && card.content && place.contentRef
+    ? card.content
+    : null;
 
 /** A place as route-builder sees it: it points to its card only when there is one to ship. */
 function placeForRoute(place: DraftPlace, card: CardState | undefined): DraftPlace {
@@ -396,6 +450,7 @@ function cardsFromBundle(
 ): Record<string, CardState> {
   const cards: Record<string, CardState> = {};
   for (const place of places) {
+    if (!usesCard(place)) continue;
     const ref = place.contentRef;
     const saved = ref && Object.hasOwn(contents, ref) ? contents[ref]?.[locale] : undefined;
     if (!saved) {
@@ -547,10 +602,23 @@ export const useCreatorStore = defineStore('creator', () => {
 
   /** How the cards are going: ready ones ship, the rest of the places use the basic sheet. */
   const cardStats = computed<CardStats>(() => {
-    const stats: CardStats = { total: 0, ready: 0, basic: 0, pending: 0, generating: 0, error: 0 };
+    const stats: CardStats = {
+      total: 0,
+      ready: 0,
+      basic: 0,
+      pending: 0,
+      generating: 0,
+      error: 0,
+      arrivals: { basic: 0, quiz: 0, video: 0, link: 0, check: 0 },
+    };
     const current = draft.value;
     if (!current) return stats;
     for (const place of current.places) {
+      const type = arrivalTypeOf(place);
+      if (type !== 'card') {
+        stats.arrivals[type] += 1;
+        continue;
+      }
       stats.total += 1;
       const card = current.cards[place.tempId];
       const status = card?.status;
@@ -565,7 +633,9 @@ export const useCreatorStore = defineStore('creator', () => {
   /** Places whose card step 3 still has to prepare (never looked at, waiting, or waiting for a connection). */
   const cardsToPrepare = computed(() => {
     const current = draft.value;
-    return current ? current.places.filter((place) => needsCard(current.cards[place.tempId])) : [];
+    return current
+      ? current.places.filter((place) => usesCard(place) && needsCard(current.cards[place.tempId]))
+      : [];
   });
 
   /** Where a resumed draft opens: the first step with something missing. */
@@ -813,19 +883,29 @@ export const useCreatorStore = defineStore('creator', () => {
     };
     delete place.address;
     if (address) place.address = address;
+    // The card is the default: only another choice is stored.
+    if (place.arrival?.type === 'card') delete place.arrival;
     places.push(place);
     return true;
   }
 
+  /**
+   * Changes a place. A new `arrival` is stored as given (the card, the default,
+   * as no choice at all); a place that stops using the AI card loses it.
+   */
   async function updatePlace(tempId: string, patch: PlacePatch): Promise<boolean> {
     await ready;
     const place = draft.value?.places.find((item) => item.tempId === tempId);
     if (!place) return false;
     const renamed = patch.name !== undefined && patch.name.trim() !== place.name.trim();
-    Object.assign(
-      place,
-      patch.name === undefined ? patch : { ...patch, name: capName(patch.name) },
-    );
+    const { arrival, ...rest } = patch;
+    Object.assign(place, rest.name === undefined ? rest : { ...rest, name: capName(rest.name) });
+    if ('arrival' in patch) {
+      if (arrival === undefined || arrival.type === 'card') delete place.arrival;
+      else place.arrival = JSON.parse(JSON.stringify(arrival)) as ArrivalChoice;
+      // No card for a place that shows something else: not asked for, not shipped.
+      if (!usesCard(place)) dropCard(tempId);
+    }
     // A point of the user's own is researched by its name: a new name needs a new card.
     if (renamed && !place.externalId) dropCard(tempId);
     return true;
@@ -1028,6 +1108,8 @@ export const useCreatorStore = defineStore('creator', () => {
     const offline = globalThis.navigator?.onLine === false;
     for (const place of current.places) {
       const id = place.tempId;
+      // Only the places that show the AI card are sent to the AI.
+      if (!usesCard(place)) continue;
       if (!needsCard(current.cards[id]) || cardJobs.has(id) || cardQueue.includes(id)) continue;
       if (offline) current.cards[id] = { status: 'error', error: 'offline' };
       else {
@@ -1049,7 +1131,7 @@ export const useCreatorStore = defineStore('creator', () => {
     await ready;
     const current = draft.value;
     const place = current?.places.find((item) => item.tempId === tempId);
-    if (!current || !place) return;
+    if (!current || !place || !usesCard(place)) return;
     cancelCard(tempId);
     const shipping = shippedCard(place, current.cards[tempId]) !== null;
     if (globalThis.navigator?.onLine === false) {
@@ -1068,7 +1150,7 @@ export const useCreatorStore = defineStore('creator', () => {
     await ready;
     const current = draft.value;
     const place = current?.places.find((item) => item.tempId === tempId);
-    if (!current || !place) return;
+    if (!current || !place || !usesCard(place)) return;
     cancelCard(tempId);
     current.cards[tempId] = { status: 'basic' };
     delete place.contentRef;

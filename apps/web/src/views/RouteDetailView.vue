@@ -8,12 +8,14 @@ import {
   Maximize2,
   Minimize2,
   Navigation,
+  Pencil,
   Route,
   Timer,
+  Trash2,
 } from '@lucide/vue';
 import { distance } from '@rumbo/geo-utils';
 import { type Locale, resolveContent } from '@rumbo/route-spec';
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import ActivityBadge from '../components/ActivityBadge.vue';
@@ -23,6 +25,7 @@ import MapFab from '../components/MapFab.vue';
 import ModeBadge from '../components/ModeBadge.vue';
 import PointListItem from '../components/PointListItem.vue';
 import StatChip from '../components/StatChip.vue';
+import { useMyRouteActions } from '../composables/useMyRouteActions.ts';
 import { useFormat } from '../i18n/useFormat.ts';
 import { useTexts } from '../i18n/text.ts';
 import type { MapMarker } from '../map/types.ts';
@@ -32,6 +35,8 @@ import { useSettingsStore } from '../stores/settings.ts';
 
 // S03 · Route detail: the map with the numbered points and the path, then
 // the route's facts, its rules (challenge) and the ordered list of points.
+// The user's own routes also get "Editar ruta" and "Eliminar ruta" here, where
+// the route is looked at before starting it (the same actions as My routes).
 const RouteMap = defineAsyncComponent(() => import('../map/RouteMap.vue'));
 
 const props = defineProps<{ routeId: string }>();
@@ -42,11 +47,30 @@ const settings = useSettingsStore();
 const texts = useTexts();
 const format = useFormat();
 
+const { busy, edit, remove } = useMyRouteActions();
+
 const route = computed(() => catalog.byId(props.routeId));
 const spec = computed(() => route.value?.bundle.spec);
 const expanded = ref(false);
 const fullMap = ref(false);
 const mapRef = ref<{ openPopup(id: string): void } | null>(null);
+
+/** Made with the creator on this device: the only routes that can be edited or deleted. */
+const isMine = computed(() => route.value?.mine !== undefined);
+/**
+ * The route on screen disappeared: it was deleted from here and My routes is
+ * on its way, which is not "not found". Set the moment the catalog drops it
+ * (sync), so no render in between says otherwise.
+ */
+const vanished = ref(false);
+watch(
+  route,
+  (now, before) => {
+    if (!now && before?.id === props.routeId) vanished.value = true;
+  },
+  { flush: 'sync' },
+);
+const notFound = computed(() => catalog.status === 'ready' && !route.value && !vanished.value);
 
 const name = computed(() => (spec.value ? texts.text(spec.value.name, spec.value.locale) : ''));
 const description = computed(() =>
@@ -111,12 +135,27 @@ function showPoint(id: string): void {
   mapRef.value?.openPopup(id);
 }
 
+async function onDelete(): Promise<void> {
+  const current = spec.value;
+  if (!current) return;
+  const deleted = await remove({
+    id: current.id,
+    name: current.name,
+    sourceLocale: current.locale,
+  });
+  if (!deleted) return;
+  // The route is gone, and so is this screen: go to My routes without leaving it in the history.
+  const list = router.resolve({ name: 'my-routes' }).fullPath;
+  if (router.options.history.state['back'] === list) router.back();
+  else await router.replace(list);
+}
+
 onMounted(() => void catalog.load());
 </script>
 
 <template>
   <main class="detail" :class="{ 'detail--full': fullMap }">
-    <EmptyState v-if="catalog.status === 'ready' && !route" :title="t('route.notFound')">
+    <EmptyState v-if="notFound" :title="t('route.notFound')">
       <AppButton size="m" @click="router.replace('/')">{{ t('notFound.cta') }}</AppButton>
     </EmptyState>
 
@@ -177,6 +216,29 @@ onMounted(() => void catalog.load());
               :icon="Timer"
               :value="t('stats.timeLimit', { time: format.limit(timeLimitMinutes) })"
             />
+          </div>
+
+          <div v-if="isMine" class="detail__actions">
+            <AppButton
+              variant="secondary"
+              size="m"
+              :disabled="busy !== null"
+              class="detail__action"
+              @click="edit(route.id)"
+            >
+              <template #icon><Pencil :size="20" aria-hidden="true" /></template>
+              {{ t('route.edit') }}
+            </AppButton>
+            <AppButton
+              variant="danger"
+              size="m"
+              :disabled="busy !== null"
+              class="detail__action"
+              @click="onDelete"
+            >
+              <template #icon><Trash2 :size="20" aria-hidden="true" /></template>
+              {{ t('route.delete') }}
+            </AppButton>
           </div>
 
           <div v-if="spec.mode === 'challenge'" class="detail__rules">
@@ -313,6 +375,18 @@ onMounted(() => void catalog.load());
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+/* Two outlined buttons that share the row, and stack when the text needs the room. */
+.detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.detail__action {
+  flex: 1 1 160px;
+}
+.detail__action.btn--danger {
+  border-color: var(--color-border);
 }
 .detail__rules {
   display: flex;
