@@ -5,6 +5,10 @@ import { loadConfig } from './config.js';
 import { createDatabase, type Database } from './db/index.js';
 import { seedCuratedRoutes } from './db/seed.js';
 import { createWikidataGeocoder } from './geo/wikidata.js';
+import { MIN_ADMIN_TOKEN_LENGTH, usableAdminToken } from './push/admin.js';
+import { createPush } from './push/index.js';
+import { startReminderJob } from './push/reminders.js';
+import { checkVapid } from './push/vapid.js';
 
 const config = loadConfig();
 const MIGRATIONS = fileURLToPath(new URL('../drizzle', import.meta.url));
@@ -37,6 +41,40 @@ if (!geocoder) app.log.warn('GEOCODING_PROVIDER=none: place search is off');
 if (!ai)
   app.log.warn('Generative AI is off: set AI_PROVIDER=anthropic and AI_API_KEY to turn it on');
 
+// Web Push: the routes decide with the same check whether it is on. The
+// reminder job shares the routes' way of sending, and waits for the database.
+const vapid = checkVapid(config);
+if (!vapid.ok) {
+  app.log.warn(
+    vapid.reason === 'unset'
+      ? 'Web Push is off: set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT to turn it on'
+      : `Web Push is off: the VAPID settings are ${vapid.reason}`,
+  );
+}
+if (config.adminToken && !usableAdminToken(config.adminToken)) {
+  app.log.warn(
+    `ADMIN_TOKEN has fewer than ${MIN_ADMIN_TOKEN_LENGTH} characters: announcements are off`,
+  );
+}
+const push = createPush(config, { database: () => ready, log: app.log });
+if (push) {
+  app.log.info(
+    {
+      reminderHours: config.pushReminderHours,
+      announcements: usableAdminToken(config.adminToken) !== null,
+    },
+    'Web Push is on',
+  );
+}
+const reminders = push
+  ? startReminderJob({
+      database: () => ready,
+      sender: push.sender,
+      afterHours: config.pushReminderHours,
+      log: app.log,
+    })
+  : null;
+
 /**
  * Migrations, then the curated routes. If the database is down at boot the API
  * still starts (health reports it, data endpoints answer 503) and retries.
@@ -58,6 +96,7 @@ if (database) await prepareDatabase(database);
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, async () => {
     app.log.info({ signal }, 'shutting down');
+    await reminders?.stop();
     await app.close();
     await database?.close();
     process.exit(0);

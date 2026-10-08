@@ -27,12 +27,20 @@ describe('the API', () => {
         '/v1/geo/resolve',
         '/v1/content/generate',
         '/v1/suggest/places',
+        '/v1/push/key',
+        '/v1/push/subscriptions',
+        '/v1/admin/push',
       ]),
     );
     expect(Object.keys(doc.paths['/v1/routes'])).toEqual(expect.arrayContaining(['get', 'post']));
     expect(Object.keys(doc.paths['/v1/routes/{id}'])).toEqual(
       expect.arrayContaining(['get', 'put', 'delete']),
     );
+    expect(Object.keys(doc.paths['/v1/push/key'])).toEqual(['get']);
+    expect(Object.keys(doc.paths['/v1/push/subscriptions'])).toEqual(
+      expect.arrayContaining(['post', 'delete']),
+    );
+    expect(Object.keys(doc.paths['/v1/admin/push'])).toEqual(['post']);
     expect(doc.servers).toEqual([{ url: '/api' }]);
   });
 

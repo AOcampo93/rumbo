@@ -52,6 +52,23 @@ export interface AppConfig {
   contentRateLimitPerMinute: number;
   /** Place suggestions per minute per client address. */
   suggestRateLimitPerMinute: number;
+  /**
+   * Web Push (VAPID, RFC 8292): the public key the browsers subscribe with,
+   * its private half and a contact (an https: URL or a mailto: address) for
+   * the push services. Push is off unless all three are set and valid.
+   */
+  vapidPublicKey: string | null;
+  /** The private half of the VAPID pair; never logged, never in an error message. */
+  vapidPrivateKey: string | null;
+  vapidSubject: string | null;
+  /** Hours after a run starts at which its device gets one "shall we go on?" push. */
+  pushReminderHours: number;
+  /** Subscribing and unsubscribing per minute per client address. */
+  pushRateLimitPerMinute: number;
+  /** Bearer token of POST /v1/admin/push (secret); null: that endpoint answers 404. */
+  adminToken: string | null;
+  /** Announcements per minute per client address. */
+  adminRateLimitPerMinute: number;
 }
 
 /** A positive integer from the environment, or the default when unset or invalid. */
@@ -120,5 +137,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     aiPricePerWebSearch: positiveNumber(env.AI_PRICE_PER_WEB_SEARCH, 0.01),
     contentRateLimitPerMinute: positiveInteger(env.CONTENT_RATE_LIMIT_PER_MINUTE, 30),
     suggestRateLimitPerMinute: positiveInteger(env.SUGGEST_RATE_LIMIT_PER_MINUTE, 20),
+    vapidPublicKey: env.VAPID_PUBLIC_KEY?.trim() || null,
+    vapidPrivateKey: env.VAPID_PRIVATE_KEY?.trim() || null,
+    vapidSubject: env.VAPID_SUBJECT?.trim() || null,
+    pushReminderHours: positiveNumber(env.PUSH_REMINDER_HOURS, 6),
+    pushRateLimitPerMinute: positiveInteger(env.PUSH_RATE_LIMIT_PER_MINUTE, 20),
+    adminToken: env.ADMIN_TOKEN?.trim() || null,
+    adminRateLimitPerMinute: positiveInteger(env.ADMIN_RATE_LIMIT_PER_MINUTE, 5),
   };
 }

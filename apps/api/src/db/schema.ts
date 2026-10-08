@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   bigserial,
   boolean,
@@ -15,7 +16,9 @@ import {
 // Database schema (docs/PROJECT_PLAN.md §11.2). The route's `spec` (jsonb) is
 // the source of truth; the other columns are copies to list and filter
 // without opening the JSON. The AI tables (ai_contents, ai_generations) are
-// phase 7's: the cards the server wrote, and what each AI call used.
+// phase 7's: the cards the server wrote, and what each AI call used. The push
+// tables belong to Web Push: the browsers that asked for reminders, and what
+// was already sent to them.
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -171,5 +174,53 @@ export const aiGenerations = pgTable(
   (t) => [
     index('ai_generations_created_idx').on(t.createdAt),
     index('ai_generations_device_created_idx').on(t.deviceId, t.createdAt),
+  ],
+);
+
+/**
+ * A browser's Web Push subscription (RFC 8030): where the push service
+ * delivers, and the keys that encrypt what we send. The endpoint is a
+ * capability, so it is never logged. One device may have several, and the
+ * same endpoint always belongs to the device that registered it last.
+ */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    deviceId: uuid('device_id').notNull(),
+    endpoint: text('endpoint').notNull().unique(),
+    /** The browser's public key and auth secret (base64url), for the payload's encryption. */
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    /** es | en | pt: the language of the notifications this browser gets. */
+    locale: text('locale').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
+    /** Consecutive pushes the push service refused (other than "gone"); a success resets it. */
+    failures: integer('failures').notNull().default(0),
+  },
+  (t) => [index('push_subscriptions_device_idx').on(t.deviceId)],
+);
+
+/**
+ * What was pushed to a device, for what must happen once: a reminder is
+ * claimed by inserting its (kind, ref) row, so two instances (or two ticks)
+ * never send the same one twice.
+ */
+export const pushLog = pgTable(
+  'push_log',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    deviceId: uuid('device_id').notNull(),
+    /** run_reminder */
+    kind: text('kind').notNull(),
+    /** What it was about (a run's id), when it must happen once per thing. */
+    ref: text('ref'),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('push_log_kind_ref_idx')
+      .on(t.kind, t.ref)
+      .where(sql`${t.ref} is not null`),
   ],
 );

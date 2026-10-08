@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { type ArrivalChoice, buildRouteSpec } from '@rumbo/route-builder';
 import type { RouteSpec } from '@rumbo/route-spec';
 import { validateRouteBundle } from '@rumbo/route-spec';
 import { eq } from 'drizzle-orm';
@@ -219,6 +220,84 @@ describe('POST /api/v1/routes', () => {
     } finally {
       await small.close();
     }
+  });
+});
+
+describe('what a place shows on arrival', () => {
+  const QUIZ: ArrivalChoice = {
+    type: 'quiz',
+    question: '¿Quién conquistó el castillo?',
+    options: ['Afonso Henriques', 'Dinis I'],
+    correctIndex: 0,
+    explanation: 'Lo tomó en 1135.',
+  };
+  const VIDEO: ArrivalChoice = { type: 'video', youtubeId: 'dQw4w9WgXcQ', title: 'El castillo' };
+  const LINK: ArrivalChoice = {
+    type: 'link',
+    url: 'https://www.visitleiria.pt/agenda',
+    label: 'Agenda de Leiria',
+  };
+
+  /** The route of `userRoute()` with these arrivals on its three places. */
+  function withArrivals(...arrivals: ArrivalChoice[]): RouteSpec {
+    const places = userRoute().points.map((point, i) => ({
+      tempId: point.id,
+      name: point.name as string,
+      position: point.position,
+      ...(arrivals[i] ? { arrival: arrivals[i] } : {}),
+    }));
+    return buildRouteSpec(
+      { name: 'Leiria a pé', locale: 'pt', mode: 'free', activity: 'walk', places },
+      { source: 'user', id: ID },
+    ).spec;
+  }
+  const firstId = (spec: RouteSpec) => spec.points[0]?.triggers?.onEnter as string;
+  const firstAction = (spec: RouteSpec) => spec.actions[firstId(spec)]!;
+
+  it('stores a route with a quiz, a video, a link and a check, and gives it back as it is', async () => {
+    for (const arrivals of [
+      [QUIZ, VIDEO, LINK],
+      [{ type: 'check' as const }, QUIZ],
+    ]) {
+      await resetDatabase(api.database);
+      await seedCuratedRoutes(api.db, CURATED);
+      const spec = withArrivals(...arrivals);
+      const res = await post(bundle(spec));
+      expect(res.statusCode, res.body).toBe(201);
+      expect((await row())?.spec).toEqual(spec);
+      const mine = await get(ID, { 'x-edit-token': TOKEN });
+      expect(mine.json()).toEqual({ spec, contents: {} });
+      expect(validateRouteBundle(mine.json()).errors).toEqual([]);
+    }
+  });
+
+  it('replaces the sheet of a saved route with a quiz (PUT)', async () => {
+    await post(bundle());
+    const spec = withArrivals(QUIZ);
+    expect((await put(ID, bundle(spec))).statusCode).toBe(200);
+    expect(firstAction((await row())?.spec as RouteSpec).type).toBe('quiz');
+  });
+
+  it('answers 422, with where, for a link, a video or a quiz the creator never writes', async () => {
+    const http = withArrivals(LINK);
+    firstAction(http).params = { url: 'http://www.visitleiria.pt', label: 'Agenda' };
+    const file = withArrivals(VIDEO);
+    firstAction(file).params = { provider: 'file', url: 'https://example.org/v.mp4' };
+    const several = withArrivals(QUIZ);
+    firstAction(several).params = { ...firstAction(several).params, question: { es: '¿Quién?' } };
+    for (const [spec, wrong] of [
+      [http, ['url']],
+      [file, ['provider', 'url']],
+      [several, ['question']],
+    ] as const) {
+      const res = await post(bundle(spec));
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('invalid_route');
+      expect(res.json().details.map((detail: { path: string }) => detail.path)).toEqual(
+        wrong.map((field) => `spec.actions.${firstId(spec)}.params.${field}`),
+      );
+    }
+    expect(await row()).toBeUndefined();
   });
 });
 

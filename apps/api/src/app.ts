@@ -17,11 +17,14 @@ import { deviceIdFrom } from './device.js';
 import { installErrorHandling } from './errors.js';
 import type { GeocodingProvider } from './geo/provider.js';
 import { trustProxyHop } from './limits.js';
+import { createPush } from './push/index.js';
+import type { PushTransport } from './push/send.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { contentRoutes } from './routes/content.js';
 import { suggestRoutes } from './routes/suggest.js';
 import { geoRoutes } from './routes/geo.js';
 import { healthRoutes } from './routes/health.js';
+import { pushRoutes } from './routes/push.js';
 import { routeRoutes } from './routes/routes.js';
 import { runRoutes } from './routes/runs.js';
 import { VERSION } from './version.js';
@@ -37,6 +40,8 @@ export interface AppDeps {
   ai?: AiProvider | null;
   /** Wikidata, Wikipedia and Commons for the AI cards; the real ones unless a test brings its own. */
   grounding?: Grounding;
+  /** How Web Push messages reach the push services; the real ones unless a test brings its own. */
+  pushTransport?: PushTransport;
 }
 
 export interface BuildOptions {
@@ -138,6 +143,20 @@ export async function buildApp(
     userAgent: config.wikimediaUserAgent,
     rateLimitPerMinute: config.suggestRateLimitPerMinute,
     model: config.aiModel,
+  });
+
+  // Web Push: off (503 push_unavailable) unless the VAPID settings are all there and valid.
+  const push = createPush(config, {
+    database: deps.data,
+    log: app.log,
+    ...(deps.pushTransport ? { transport: deps.pushTransport } : {}),
+  });
+  await app.register(pushRoutes, {
+    database: deps.data,
+    push,
+    adminToken: config.adminToken,
+    rateLimitPerMinute: config.pushRateLimitPerMinute,
+    adminRateLimitPerMinute: config.adminRateLimitPerMinute,
   });
   return app;
 }

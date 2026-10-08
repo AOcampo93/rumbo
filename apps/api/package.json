@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "start": "node dist/server.js",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "push:keys": "node scripts/push-keys.mjs"
   },
   "dependencies": {
     "@fastify/helmet": "^13.1.1",
@@ -24,12 +25,14 @@
     "fastify": "^5.12.5",
     "fastify-type-provider-zod": "^7.0.0",
     "pg": "^8.23.1",
+    "web-push": "^3.6.7",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.2.0",
     "@types/node": "^24.19.1",
     "@types/pg": "^8.23.1",
+    "@types/web-push": "^3.6.4",
     "drizzle-kit": "^0.31.11",
     "esbuild": "^0.28.2",
     "openapi-types": "^12.1.3",
