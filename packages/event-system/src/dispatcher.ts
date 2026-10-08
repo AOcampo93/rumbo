@@ -9,6 +9,7 @@ import type {
   EventSystemOptions,
   HandlerContext,
   HandlerResult,
+  UiAdapter,
   ViewOutcome,
 } from './types.ts';
 
@@ -32,6 +33,14 @@ interface AbortControllerLike {
   abort(): void;
 }
 
+/** The blocking action that is open right now. */
+interface Running {
+  item: Item;
+  controller: AbortControllerLike;
+  /** The user walked out of the point's zone while its arrival card was open. */
+  left: boolean;
+}
+
 // Browsers and Node both provide AbortController; typed by hand (no DOM lib here).
 const AbortControllerImpl = (
   globalThis as unknown as { AbortController: new () => AbortControllerLike }
@@ -41,6 +50,8 @@ const AbortControllerImpl = (
  * Turns engine events into actions and feedback (docs/PROJECT_PLAN.md §9).
  * Blocking actions run one at a time; toasts never wait. A failing action
  * never blocks the route: the point gets a basic sheet and is completed anyway.
+ * Walking out of a point's zone with its arrival card still open closes the
+ * card, and the point counts as visited.
  */
 export function createEventSystem(options: EventSystemOptions): EventSystem {
   const { engine, route, ui, feedback, logger } = options;
@@ -52,7 +63,7 @@ export function createEventSystem(options: EventSystemOptions): EventSystem {
 
   let unsubscribe: (() => void) | null = null;
   let pending: Item[] = [];
-  let running: { item: Item; controller: AbortControllerLike } | null = null;
+  let running: Running | null = null;
   let pumping = false;
   let seq = 0;
 
@@ -137,6 +148,9 @@ export function createEventSystem(options: EventSystemOptions): EventSystem {
       dispatch(event, action);
     }
     // An arrival without an action is the engine's (`autoCompleteWithoutAction`).
+
+    // After dispatching, so an exit action with the open card's key is still its duplicate.
+    if (event.type === 'exit') closeArrivalOf(event.pointId);
 
     if (event.type === 'finished' || event.type === 'cancelled') {
       enqueue({ kind: 'navigation', event, action: null, key: 'navigate:summary' });
@@ -252,6 +266,15 @@ export function createEventSystem(options: EventSystemOptions): EventSystem {
     }
   }
 
+  /**
+   * The UI as an action sees it. Its sheets take the action's signal from the
+   * handler; a dialog it opens (`confirm`) gets it here, so it goes away with
+   * the sheets when the run is cancelled or the user leaves the zone.
+   */
+  function uiFor(signal: AbortSignalLike): UiAdapter {
+    return { ...ui, confirm: (options) => ui.confirm({ signal, ...options }) };
+  }
+
   function contextFor(
     event: AnyEngineEvent,
     action: ActionRef,
@@ -263,7 +286,7 @@ export function createEventSystem(options: EventSystemOptions): EventSystem {
       point: event.pointId ? (pointsById.get(event.pointId) ?? null) : null,
       action,
       content,
-      ui,
+      ui: uiFor(signal),
       feedback,
       analytics,
       signal,
@@ -330,7 +353,8 @@ export function createEventSystem(options: EventSystemOptions): EventSystem {
 
   async function execute(item: Item): Promise<void> {
     const controller = new AbortControllerImpl();
-    running = { item, controller };
+    const slot: Running = { item, controller, left: false };
+    running = slot;
     const startedAt = now();
     try {
       if (item.kind === 'navigation') {
@@ -358,7 +382,8 @@ export function createEventSystem(options: EventSystemOptions): EventSystem {
         }
       }
       // Aborted means cancelled or stopped: the point stays reached for later.
-      if (controller.signal.aborted) return;
+      // Unless the user walked out of its zone: nobody is coming back for this card.
+      if (controller.signal.aborted && !slot.left) return;
       completeArrival(item.event, action, result, startedAt);
       if (result.decision) await decide(result.decision, item.event.type);
     } finally {
@@ -401,6 +426,21 @@ export function createEventSystem(options: EventSystemOptions): EventSystem {
   function abortAll(): void {
     running?.controller.abort();
     pending = [];
+  }
+
+  /**
+   * The user walked out of a point's zone. When that point's arrival card is
+   * still open nobody is going to close it: close it for them. The handler
+   * resolves as dismissed and execute() completes the point, as for any
+   * dismissed card. Whatever else is open (another point's card, an
+   * interruption) or already closed is left alone.
+   */
+  function closeArrivalOf(pointId: string | null): void {
+    if (!running || running.controller.signal.aborted) return;
+    const { event } = running.item;
+    if (!pointId || event.type !== 'enter' || event.pointId !== pointId) return;
+    running.left = true;
+    running.controller.abort();
   }
 
   return {

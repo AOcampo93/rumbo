@@ -11,6 +11,7 @@ import {
   type NormalizedRoutePoint,
   type NormalizedRouteSpec,
 } from '@rumbo/route-spec';
+import { challengeStates } from './challenge.ts';
 import { intervalScheduler, systemClock } from './runtime.ts';
 import type {
   AnyEngineEvent,
@@ -140,7 +141,8 @@ export function createGeoEngine(spec: NormalizedRouteSpec, options: EngineOption
 /**
  * Rebuilds an engine from a snapshot. It always comes back paused, so the user
  * confirms before anything is measured again. Throws EngineRestoreError when
- * the route changed since the snapshot (different hash).
+ * the route changed since the snapshot (different hash); `migrateSnapshot`
+ * carries a snapshot over to the changed route first.
  */
 export function restoreGeoEngine(
   spec: NormalizedRouteSpec,
@@ -210,6 +212,8 @@ function createEngine(
 
   let startPosition: LatLng | null = null;
   let selectedTargetId: string | null = null;
+  /** Score earned by places that left the route afterwards (migrateSnapshot): it stays in the total. */
+  let carriedScore = 0;
   const flags = { offRoute: false, idle: false, overtime: false };
   let timeoutFired = false;
   let offRouteSince: number | null = null;
@@ -530,29 +534,12 @@ function createEngine(
     if (finishSet.every((q) => q.state === 'completed')) finish();
   }
 
-  /**
-   * Challenge order: the next unfinished point is reachable, plus any optional
-   * points before the next required one. Optional points left behind lock.
-   */
+  /** Challenge order: which points are reachable now (the rules are in challenge.ts). */
   function refreshChallengeWindow(): void {
-    const lastDoneOrder = Math.max(
-      0,
-      ...points.filter((p) => p.state === 'completed').map((p) => p.def.order),
+    const next = challengeStates(
+      points.map((p) => ({ order: p.def.order, required: p.def.required, state: p.state })),
     );
-    let open = true;
-    for (const p of points) {
-      if (p.state === 'completed') continue;
-      if (p.state === 'reached') {
-        if (p.def.required) open = false;
-        continue;
-      }
-      if (p.def.order < lastDoneOrder) {
-        p.state = 'locked';
-        continue;
-      }
-      p.state = open ? 'active' : 'locked';
-      if (open && p.def.required) open = false;
-    }
+    for (const [i, p] of points.entries()) p.state = next[i] as PointState;
   }
 
   function currentTarget(): PointRuntime | null {
@@ -727,7 +714,7 @@ function createEngine(
 
   // --------------------------------------------------------------- state
 
-  const totalScore = () => points.reduce((sum, p) => sum + p.score, 0);
+  const totalScore = () => points.reduce((sum, p) => sum + p.score, carriedScore);
 
   function buildState(): EngineState {
     const user = lastSample
@@ -816,6 +803,7 @@ function createEngine(
     endedAt = saved.endedAt;
     accumulatedMs = saved.elapsedMs;
     selectedTargetId = saved.selectedTargetId;
+    carriedScore = saved.carriedScore ?? 0;
     Object.assign(flags, saved.flags);
     timeoutFired = saved.timeoutFired;
     startPosition = saved.startPosition;
@@ -866,13 +854,19 @@ function createEngine(
       offRouteSince = null;
       statsAnchor = null;
       weakSince = null;
-      if (!sourceRunning) {
-        if (gps === 'denied') gps = 'waiting';
-        startSource();
+      // Nothing left to visit: only a route that lost its remaining places after
+      // the run began (migrateSnapshot) can be paused like this. It finishes now.
+      const nothingLeft = finishSet.every((p) => p.state === 'completed');
+      if (!nothingLeft) {
+        if (!sourceRunning) {
+          if (gps === 'denied') gps = 'waiting';
+          startSource();
+        }
+        startTicks();
       }
-      startTicks();
       emit('resumed', reason ? { reason } : {});
-      checkTime();
+      if (nothingLeft) finish();
+      else checkTime();
       settle();
       return true;
     },
@@ -967,6 +961,7 @@ function createEngine(
         approached: p.approached,
       })),
       selectedTargetId,
+      ...(carriedScore > 0 ? { carriedScore } : {}),
       flags: { ...flags },
       timeoutFired,
       startPosition,

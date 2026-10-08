@@ -52,6 +52,8 @@ export interface UiAdapter {
     confirmLabel: UiText;
     cancelLabel: UiText;
     destructive?: boolean;
+    /** Closes the dialog, as if declined, when aborted. */
+    signal?: AbortSignalLike;
   }): Promise<boolean>;
   openExternal(url: string): void;
   navigate(to: UiDestination): void;
@@ -86,7 +88,11 @@ export interface HandlerContext {
   ui: UiAdapter;
   feedback: FeedbackAdapter;
   analytics(name: string, props?: Record<string, unknown>): void;
-  /** Aborted when the run is cancelled: close whatever is open. */
+  /**
+   * Aborted when the run is cancelled or the event system stops, and when the
+   * user walks out of the point's zone with its arrival card open: close
+   * whatever is open (the card resolves as dismissed).
+   */
   signal: AbortSignalLike;
 }
 

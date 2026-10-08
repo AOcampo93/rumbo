@@ -1,31 +1,24 @@
-import { HttpUrlSchema, localizedText } from '@rumbo/route-spec';
+import {
+  type QuizParams,
+  QuizParamsSchema,
+  type RedirectParams,
+  RedirectParamsSchema,
+  type VideoParams,
+  VideoParamsSchema,
+} from '@rumbo/route-spec';
 import { z } from 'zod';
 import type { ActionHandler, ViewOutcome } from '../types.ts';
 import { fromOutcome, pointProps } from './shared.ts';
 
-const QuizParams = z
-  .strictObject({
-    question: localizedText({ max: 300 }),
-    options: z
-      .array(localizedText({ max: 120 }))
-      .min(2)
-      .max(4),
-    correctIndex: z.number().int().min(0),
-    points: z.number().int().min(0).max(1000),
-    explanation: localizedText({ max: 500 }).optional(),
-  })
-  .refine((quiz) => quiz.correctIndex < quiz.options.length, {
-    message: 'correctIndex must point to one of the options',
-    path: ['correctIndex'],
-  });
+// The params schemas live in route-spec: the API checks user routes with them.
 
 /**
  * A question with points. The view shows right/wrong and the explanation; it
  * resolves with `data.answerIndex`. Only a right answer scores.
  */
-export const quizHandler: ActionHandler<z.infer<typeof QuizParams>> = {
+export const quizHandler: ActionHandler<QuizParams> = {
   type: 'quiz',
-  paramsSchema: QuizParams,
+  paramsSchema: QuizParamsSchema,
   async run(params, context) {
     const outcome = await context.ui.present<ViewOutcome>(
       'quiz',
@@ -46,25 +39,10 @@ export const quizHandler: ActionHandler<z.infer<typeof QuizParams>> = {
   },
 };
 
-const VideoParams = z
-  .strictObject({
-    provider: z.enum(['youtube', 'file']),
-    /** YouTube video id (11 characters). */
-    id: z
-      .string()
-      .regex(/^[A-Za-z0-9_-]{11}$/)
-      .optional(),
-    url: HttpUrlSchema.optional(),
-    title: localizedText({ max: 120 }).optional(),
-  })
-  .refine((video) => (video.provider === 'youtube' ? Boolean(video.id) : Boolean(video.url)), {
-    message: 'A YouTube video needs an id; a file needs a url',
-  });
-
 /** A video of the place; the view handles playback and "Video not available". */
-export const videoHandler: ActionHandler<z.infer<typeof VideoParams>> = {
+export const videoHandler: ActionHandler<VideoParams> = {
   type: 'video',
-  paramsSchema: VideoParams,
+  paramsSchema: VideoParamsSchema,
   async run(params, context) {
     const outcome = await context.ui.present<ViewOutcome>(
       'video',
@@ -75,20 +53,15 @@ export const videoHandler: ActionHandler<z.infer<typeof VideoParams>> = {
   },
 };
 
-const RedirectParams = z.strictObject({
-  url: HttpUrlSchema,
-  label: localizedText({ max: 120 }),
-});
-
 /** Host of an http(s) URL, for "You're about to open visitleiria.pt". */
 function hostOf(url: string): string {
   return /^https?:\/\/([^/?#:]+)/i.exec(url)?.[1] ?? url;
 }
 
 /** Opens an external website, always after the user confirms (S06d). */
-export const redirectHandler: ActionHandler<z.infer<typeof RedirectParams>> = {
+export const redirectHandler: ActionHandler<RedirectParams> = {
   type: 'redirect',
-  paramsSchema: RedirectParams,
+  paramsSchema: RedirectParamsSchema,
   async run(params, context) {
     const confirmed = await context.ui.confirm({
       title: { key: 'redirect.title' },

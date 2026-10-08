@@ -5,6 +5,12 @@ import {
   resolveText,
   type RouteSpec,
 } from '@rumbo/route-spec';
+import {
+  ARRIVAL_LIMITS,
+  arrivalFromAction,
+  type ArrivalIssueCode,
+  validateArrival,
+} from './arrival.ts';
 import { copySettings, type DraftPlace, type RouteDraft } from './build.ts';
 import { estimateMinutes } from './summary.ts';
 import { cleanText } from './text.ts';
@@ -20,6 +26,8 @@ export const DRAFT_LIMITS = {
   maxRouteMeters: 500_000,
   /** m. The arrival radius slider; `default` is also the routes' default radius. */
   radius: { min: 20, max: 200, step: 5, default: 40 },
+  /** The texts of a place's own arrival (a quiz, a video, a link), in code points. */
+  arrival: ARRIVAL_LIMITS,
 } as const;
 
 /** Minutes offered as a challenge's time limit. */
@@ -30,7 +38,9 @@ export const TIME_LIMIT_PRESETS = [30, 60, 90, 120, 180] as const;
  * the route's language and every point keeps its id (DraftPlace.pointId), so
  * `buildRouteSpec(draftFromSpec(spec), { source: 'user', id: spec.id }).spec`
  * gives back a spec equal to one buildRouteSpec made. Expects the authored
- * spec: a normalized one would freeze every default into the overrides.
+ * spec: a normalized one would freeze every default into the overrides. A
+ * place that shows a quiz, a video, a link or a notice on arrival keeps it as
+ * its `arrival`; one with a card or a basic sheet has none (the default).
  */
 export function draftFromSpec(spec: RouteSpec): RouteDraft {
   const text = (value: LocalizedText) => resolveText(value, spec.locale, spec.locale).text;
@@ -41,6 +51,8 @@ export function draftFromSpec(spec: RouteSpec): RouteDraft {
     .map((point): DraftPlace => {
       const address = point.meta?.['address'];
       const externalId = point.meta?.['externalId'];
+      const onEnter = point.triggers?.onEnter;
+      const arrival = arrivalFromAction(onEnter ? spec.actions[onEnter] : undefined, spec.locale);
       return {
         tempId: point.id,
         pointId: point.id,
@@ -51,6 +63,7 @@ export function draftFromSpec(spec: RouteSpec): RouteDraft {
         ...(point.category ? { category: point.category } : {}),
         ...(point.radius !== undefined ? { radius: point.radius } : {}),
         ...(point.required !== undefined ? { required: point.required } : {}),
+        ...(arrival ? { arrival } : {}),
         ...(point.contentRef ? { contentRef: point.contentRef } : {}),
       };
     });
@@ -138,7 +151,9 @@ export type DraftIssueCode =
   | 'place_name_required'
   | 'radius_out_of_range'
   | 'time_limit_invalid'
-  | 'route_too_long';
+  | 'route_too_long'
+  /** What is wrong with a place's own arrival (a quiz, a video, a link). */
+  | ArrivalIssueCode;
 
 export interface DraftIssue {
   code: DraftIssueCode;
@@ -175,6 +190,7 @@ export function validateDraft(draft: RouteDraft): DraftIssue[] {
     ) {
       issues.push({ code: 'radius_out_of_range', field: `places.${i}` });
     }
+    for (const code of validateArrival(place.arrival)) issues.push({ code, field: `places.${i}` });
   });
   if (polylineLength(places.map((place) => place.position)) > DRAFT_LIMITS.maxRouteMeters) {
     issues.push({ code: 'route_too_long', field: 'places' });

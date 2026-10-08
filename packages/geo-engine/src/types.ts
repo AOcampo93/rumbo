@@ -205,6 +205,12 @@ export interface EngineSnapshot {
     approached: boolean;
   }>;
   selectedTargetId: string | null;
+  /**
+   * Score earned by places that were removed from the route after the run
+   * began (see `migrateSnapshot`): it stays in the total. Absent means 0, so
+   * snapshots saved before it existed read the same.
+   */
+  carriedScore?: number;
   flags: { offRoute: boolean; idle: boolean; overtime: boolean };
   timeoutFired: boolean;
   startPosition: LatLng | null;

@@ -1,4 +1,16 @@
 export {
+  ARRIVAL_LIMITS,
+  ARRIVAL_TYPES,
+  type ArrivalChoice,
+  type ArrivalIssueCode,
+  type ArrivalType,
+  arrivalTypeOf,
+  CHECK_MESSAGE_KEY,
+  emptyArrival,
+  parseYoutubeId,
+  validateArrival,
+} from './arrival.ts';
+export {
   type BuildOptions,
   buildRouteSpec,
   type BuiltRoute,

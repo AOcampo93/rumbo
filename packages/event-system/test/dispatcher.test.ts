@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { type AnyActionHandler, builtinHandlers, infoSheetHandler } from '../src/index.ts';
+import {
+  type AnyActionHandler,
+  builtinHandlers,
+  infoSheetHandler,
+  type UiAdapter,
+} from '../src/index.ts';
 import { answerAll, ARRIVAL, baseState, flush, P1, P2, route, setupFake } from './harness.ts';
 
 const OFF_ROUTE = { offRoute: true, idle: false, overtime: false };
@@ -346,6 +351,284 @@ describe('toasts', () => {
     expect(t.toasts).toEqual([]);
     expect(t.analytics).toHaveBeenCalledWith('error', { code: 'action_failed', type: 'toast' });
     expect(t.state().points[0]?.state).toBe('completed');
+  });
+});
+
+describe("leaving a point's zone", () => {
+  const EXIT = { distance: 80 };
+  const completions = (t: ReturnType<typeof setupFake>) =>
+    t.analytics.mock.calls.filter(([name]) => name === 'point_completed');
+
+  it('closes the arrival card nobody closed, and the point counts as visited once', async () => {
+    const t = setupFake();
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    const card = t.current();
+    expect(card?.signal?.aborted).toBe(false);
+
+    t.emit('exit', EXIT, { pointId: 'p1' });
+    t.emit('exit', EXIT, { pointId: 'p1' }); // a repeated exit finds nothing left to close
+    await flush();
+    expect(card?.signal?.aborted).toBe(true);
+    expect(t.open).toEqual([]);
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(t.engine.complete).toHaveBeenCalledWith('p1', {});
+    expect(t.state().points[0]?.state).toBe('completed');
+    expect(completions(t)).toEqual([
+      [
+        'point_completed',
+        expect.objectContaining({ pointId: 'p1', handlerType: 'info_sheet', status: 'dismissed' }),
+      ],
+    ]);
+    expect(t.toasts).toEqual([]);
+    expect(t.events.busy).toBe(false);
+  });
+
+  it('does nothing once the card was closed', async () => {
+    const t = setupFake();
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    t.current()?.answer({});
+    await flush();
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+
+    t.emit('exit', EXIT, { pointId: 'p1' });
+    await flush();
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(completions(t)).toHaveLength(1);
+    expect(t.opened).toHaveLength(1);
+  });
+
+  it("keeps the user's answer when the exit comes in the same instant", async () => {
+    const t = setupFake();
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    t.current()?.answer({ decision: 'pause' }); // "Pausar" was tapped...
+    t.emit('exit', EXIT, { pointId: 'p1' }); // ...as the position left the zone
+    await flush();
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(t.engine.pause).toHaveBeenCalledWith('user');
+    expect(completions(t)).toEqual([
+      ['point_completed', expect.objectContaining({ pointId: 'p1', status: 'done' })],
+    ]);
+  });
+
+  it("does nothing when it is another point's exit", async () => {
+    const t = setupFake();
+    t.reach('p1', 'p2');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    const card = t.current();
+
+    t.emit('exit', EXIT, { pointId: 'p2' });
+    t.emit('exit', EXIT); // and one that names no point at all
+    await flush();
+    expect(card?.signal?.aborted).toBe(false);
+    expect(t.current()).toBe(card);
+    expect(t.engine.complete).not.toHaveBeenCalled();
+
+    card?.answer({});
+    await flush();
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(t.engine.complete).toHaveBeenCalledWith('p1', {});
+  });
+
+  it("leaves alone what is open for the same point but isn't its arrival", async () => {
+    const hint = { es: 'Casi llegas', en: 'Almost there', pt: 'Quase a chegar' };
+    const t = setupFake(
+      route({
+        points: [
+          {
+            id: 'p1',
+            name: 'P1',
+            position: P1,
+            order: 1,
+            triggers: { onApproach: 'hint', onEnter: 'card' },
+          },
+          { id: 'p2', name: 'P2', position: P2, order: 2 },
+        ],
+        actions: {
+          card: { type: 'info_sheet' },
+          hint: { type: 'info_sheet', params: { title: hint } },
+        },
+      }),
+    );
+    t.emit('approach', { distance: 90 }, { pointId: 'p1', trigger: 'hint' });
+    await flush();
+    const open = t.current();
+    expect(open?.props).toMatchObject({ pointId: 'p1', title: hint });
+
+    t.emit('exit', EXIT, { pointId: 'p1' });
+    await flush();
+    expect(open?.signal?.aborted).toBe(false);
+    expect(t.current()).toBe(open);
+    open?.answer({});
+    await flush();
+    expect(t.engine.complete).not.toHaveBeenCalled(); // only an arrival completes its point
+  });
+
+  it('lets queued interruptions and cards have their turn', async () => {
+    const t = setupFake();
+    t.reach('p1', 'p2');
+    t.setState({ flags: OFF_ROUTE });
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    t.emit('enter', ARRIVAL, { pointId: 'p2', trigger: 'card' });
+    t.emit('deviation', DEVIATION);
+
+    t.emit('exit', EXIT, { pointId: 'p1' });
+    await flush();
+    expect(t.engine.complete).toHaveBeenCalledWith('p1', {});
+    expect(t.current()).toMatchObject({ view: 'decision', props: { preset: 'deviation' } });
+
+    await answerAll(t);
+    expect(t.opened.map((v) => `${v.view}:${String(v.props.pointId)}`)).toEqual([
+      'info_sheet:p1',
+      'decision:null',
+      'info_sheet:p2',
+    ]);
+    expect(t.engine.complete).toHaveBeenCalledTimes(2);
+  });
+
+  it("still runs the exit's own action, after the card", async () => {
+    const bye = { es: 'Hasta luego', en: 'See you', pt: 'Até logo' };
+    const t = setupFake(
+      route({
+        points: [
+          {
+            id: 'p1',
+            name: 'P1',
+            position: P1,
+            order: 1,
+            triggers: { onEnter: 'card', onExit: 'bye' },
+          },
+          { id: 'p2', name: 'P2', position: P2, order: 2 },
+        ],
+        actions: {
+          card: { type: 'info_sheet' },
+          bye: { type: 'info_sheet', params: { title: bye } },
+        },
+      }),
+    );
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    const card = t.current();
+
+    t.emit('exit', EXIT, { pointId: 'p1', trigger: 'bye' });
+    await flush();
+    expect(card?.signal?.aborted).toBe(true);
+    expect(t.current()?.props).toMatchObject({ pointId: 'p1', title: bye });
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+
+    t.current()?.answer({});
+    await flush();
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(t.events.busy).toBe(false);
+  });
+
+  it("doesn't show again an exit action that is the open card's own", async () => {
+    const t = setupFake(
+      route({
+        points: [
+          {
+            id: 'p1',
+            name: 'P1',
+            position: P1,
+            order: 1,
+            triggers: { onEnter: 'card', onExit: 'card' },
+          },
+          { id: 'p2', name: 'P2', position: P2, order: 2 },
+        ],
+      }),
+    );
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    t.emit('exit', EXIT, { pointId: 'p1', trigger: 'card' });
+    await answerAll(t);
+    expect(t.opened).toHaveLength(1);
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('completes the point of a failed action, whose basic sheet was open', async () => {
+    const t = setupFake(route({ actions: { card: { type: 'boom' } } }), [...builtinHandlers, boom]);
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    expect(t.current()?.view).toBe('info_sheet');
+
+    t.emit('exit', EXIT, { pointId: 'p1' });
+    await flush();
+    expect(t.open).toEqual([]);
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(completions(t)).toEqual([
+      [
+        'point_completed',
+        expect.objectContaining({ pointId: 'p1', handlerType: 'boom', status: 'failed' }),
+      ],
+    ]);
+  });
+
+  it('closes the dialog of a redirect arrival, and opens nothing', async () => {
+    const params = { url: 'https://www.visitleiria.pt/agenda', label: 'Agenda' };
+    const t = setupFake(route({ actions: { card: { type: 'redirect', params } } }));
+    // A dialog that stays open until its signal aborts, as the app's does.
+    const asked: Array<Parameters<UiAdapter['confirm']>[0]> = [];
+    t.ui.confirm = (options) => {
+      asked.push(options);
+      return new Promise((resolve) =>
+        options.signal?.addEventListener('abort', () => resolve(false)),
+      );
+    };
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.signal?.aborted).toBe(false);
+
+    t.emit('exit', EXIT, { pointId: 'p1' });
+    await flush();
+    expect(asked[0]?.signal?.aborted).toBe(true);
+    expect(t.external).toEqual([]);
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(completions(t)).toEqual([
+      [
+        'point_completed',
+        expect.objectContaining({ handlerType: 'redirect', status: 'dismissed' }),
+      ],
+    ]);
+    expect(t.events.busy).toBe(false);
+  });
+
+  it("doesn't open a card the user already walked away from", async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const slow: AnyActionHandler = {
+      type: 'slow',
+      run: async (_params, context) => {
+        await gate; // the card's content is still on its way
+        const outcome = await context.ui.present('info_sheet', {}, { signal: context.signal });
+        return { status: outcome ? 'done' : 'dismissed' };
+      },
+    };
+    const t = setupFake(route({ actions: { card: { type: 'slow' } } }), [slow]);
+    t.reach('p1');
+    t.emit('enter', ARRIVAL, { pointId: 'p1', trigger: 'card' });
+    await flush();
+    expect(t.events.busy).toBe(true);
+
+    t.emit('exit', EXIT, { pointId: 'p1' });
+    release();
+    await flush();
+    expect(t.opened).toEqual([]);
+    expect(t.engine.complete).toHaveBeenCalledTimes(1);
+    expect(t.events.busy).toBe(false);
   });
 });
 

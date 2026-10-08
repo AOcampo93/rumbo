@@ -21,6 +21,7 @@ export {
   localizedText,
   type MediaRef,
   MediaRefSchema,
+  plainText,
   type PointCategory,
   PointCategorySchema,
   type PointTriggers,
@@ -64,6 +65,7 @@ export {
 export { type RouteBundle, type RouteBundleValidation, validateRouteBundle } from './bundle.ts';
 export { type Poi, type PoiCollection, PoiCollectionSchema, PoiSchema } from './poi.ts';
 export {
+  ACTION_LIMITS,
   type AiTemplateParams,
   AiTemplateParamsSchema,
   type DecisionParams,
@@ -72,4 +74,15 @@ export {
   InfoSheetParamsSchema,
   INTERRUPTIONS,
   type Interruption,
+  type QuizParams,
+  QuizParamsSchema,
+  type RedirectParams,
+  RedirectParamsSchema,
+  type ToastParams,
+  ToastParamsSchema,
+  USER_QUIZ_POINTS,
+  UserLinkSchema,
+  type VideoParams,
+  VideoParamsSchema,
+  YOUTUBE_ID,
 } from './actions.ts';

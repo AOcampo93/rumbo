@@ -14,6 +14,7 @@ import type {
   RouteTriggers,
 } from '@rumbo/route-spec';
 import { RoutePointSchema, validateRouteSpec } from '@rumbo/route-spec';
+import { type ArrivalChoice, ownArrivalAction, validateArrival } from './arrival.ts';
 import { newIdSuffix, slugify, uniqueIds } from './slug.ts';
 import { cleanText } from './text.ts';
 
@@ -36,6 +37,12 @@ export interface DraftPlace {
   category?: PointCategory;
   radius?: number;
   required?: boolean;
+  /**
+   * What happens on arrival; the AI card when ready, else the basic sheet
+   * (`{ type: 'card' }`) when left out. Only a place that uses the card
+   * keeps its `contentRef` in the route.
+   */
+  arrival?: ArrivalChoice;
   /** Card generated in step 3, if any. */
   contentRef?: string;
 }
@@ -99,10 +106,11 @@ const isPointId = (id: string) => RoutePointSchema.shape.id.safeParse(id).succes
 
 /**
  * Builds a RouteSpec from the planner's draft (docs/PROJECT_PLAN.md §7):
- * stable ids, order from array position, a card action on arrival at every
- * point, and the default decision for every interruption. Texts are cleaned
- * (see cleanText) and nothing in the result is shared with the draft. The
- * result always passes validateRouteSpec; otherwise this throws RouteBuildError.
+ * stable ids, order from array position, the action each place picked for its
+ * arrival (a card by default) and the default decision for every interruption.
+ * Texts are cleaned (see cleanText) and nothing in the result is shared with
+ * the draft. The result always passes validateRouteSpec; otherwise this throws
+ * RouteBuildError.
  */
 export function buildRouteSpec(draft: RouteDraft, options: BuildOptions): BuiltRoute {
   const name = cleanText(draft.name);
@@ -110,18 +118,27 @@ export function buildRouteSpec(draft: RouteDraft, options: BuildOptions): BuiltR
   // content_<point id> cut to 64 characters can repeat: number the repeats.
   const actionIds = uniqueIds(pointIds.map((id) => `content_${id}`.slice(0, 64)));
 
+  const invalid: Issue[] = [];
   const actions: Record<string, ActionDef> = {};
   const points: RoutePoint[] = draft.places.map((place, i) => {
     const pointName = cleanText(place.name);
     const address = cleanText(place.address ?? '');
     const actionId = actionIds[i] as string;
-    // A generated card when there is one; otherwise a basic sheet with name and address.
-    actions[actionId] = place.contentRef
-      ? { type: 'ai_template', params: { contentRef: place.contentRef } }
-      : {
-          type: 'info_sheet',
-          params: { title: pointName, ...(address ? { body: address } : {}) },
-        };
+    for (const code of validateArrival(place.arrival)) {
+      invalid.push({ path: `places[${i}].arrival`, code: 'schema', message: code });
+    }
+    // The place's own pick (a quiz, a video, a link, a notice); else the generated card when
+    // it has one, or a basic sheet with name and address.
+    const own = place.arrival ? ownArrivalAction(place.arrival) : null;
+    const usesCard = (place.arrival?.type ?? 'card') === 'card';
+    actions[actionId] =
+      own ??
+      (usesCard && place.contentRef
+        ? { type: 'ai_template', params: { contentRef: place.contentRef } }
+        : {
+            type: 'info_sheet',
+            params: { title: pointName, ...(address ? { body: address } : {}) },
+          });
     const meta = {
       ...(address ? { address } : {}),
       ...(place.externalId ? { externalId: place.externalId } : {}),
@@ -134,11 +151,12 @@ export function buildRouteSpec(draft: RouteDraft, options: BuildOptions): BuiltR
       ...(place.radius !== undefined ? { radius: place.radius } : {}),
       ...(place.required !== undefined ? { required: place.required } : {}),
       ...(place.category ? { category: place.category } : {}),
-      ...(place.contentRef ? { contentRef: place.contentRef } : {}),
+      ...(usesCard && place.contentRef ? { contentRef: place.contentRef } : {}),
       triggers: { onEnter: actionId },
       ...(Object.keys(meta).length > 0 ? { meta } : {}),
     };
   });
+  if (invalid.length > 0) throw new RouteBuildError(invalid);
 
   const triggers: RouteTriggers = {};
   for (const [trigger, preset] of Object.entries(DECISION_PRESETS)) {

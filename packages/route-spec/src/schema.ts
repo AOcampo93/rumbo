@@ -6,13 +6,18 @@ import { LOCALES } from './locale.ts';
 
 export const LocaleSchema = z.enum(LOCALES);
 
-/** A LocalizedText whose every language obeys the same length limits. */
-export function localizedText(limits: { min?: number; max: number }) {
-  const text = z
+/** A text in a single language, trimmed and within the limits (counted in code points). */
+export function plainText(limits: { min?: number; max: number }) {
+  return z
     .string()
     .trim()
     .min(limits.min ?? 1)
     .max(limits.max);
+}
+
+/** A LocalizedText whose every language obeys the same length limits. */
+export function localizedText(limits: { min?: number; max: number }) {
+  const text = plainText(limits);
   return z.union([
     text,
     z

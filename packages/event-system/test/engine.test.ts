@@ -21,7 +21,6 @@ import {
 
 const challenge = () =>
   route({ id: 'events-challenge', mode: 'challenge', path: [ORIGIN, P1, P2] });
-const OFF_PATH = north(P1, 200);
 
 describe('with the real engine', () => {
   it('walks the curated Leiria route in simulation, card by card', async () => {
@@ -102,34 +101,122 @@ describe('with the real engine', () => {
     expect(t.navigations).toEqual(['summary']);
   });
 
-  it('an interruption waits for the open card, and is dropped if the user is back by then', async () => {
-    const t = setupReal(challenge());
+  it('an interruption that comes while a card is open waits for it', async () => {
+    const t = setupReal(route({ settings: { timeLimit: 20 } }));
     t.engine.start();
     await t.stay(ORIGIN, 1);
     await t.stay(P1, 6);
     expect(t.current()?.props.pointId).toBe('p1');
 
-    await t.stay(OFF_PATH, 31); // reading the card while wandering off
-    expect(t.engine.getState().flags.offRoute).toBe(true);
-    expect(t.current()?.view).toBe('info_sheet');
-    await t.stay(east(P1, 100), 1); // back on the path before closing it
-    expect(t.toasts).toContainEqual({ key: 'run.backOnTrack', params: {} });
+    await t.stay(P1, 14); // still reading the card when the time limit passes
+    expect(t.engine.getState().flags.overtime).toBe(true);
+    expect(t.open.map((v) => v.view)).toEqual(['info_sheet']);
 
     t.current()?.answer({});
     await flush();
-    expect(t.opened.map((v) => v.view)).toEqual(['info_sheet']);
+    expect(t.current()).toMatchObject({ view: 'decision', props: { preset: 'timeout' } });
     expect(t.point('p1')?.state).toBe('completed');
   });
 
-  it('an interruption still off route when the card closes is shown', async () => {
-    const t = setupReal(challenge());
-    t.engine.start();
-    await t.stay(ORIGIN, 1);
-    await t.stay(P1, 6);
-    await t.stay(OFF_PATH, 31);
-    t.current()?.answer({});
-    await flush();
-    expect(t.current()).toMatchObject({ view: 'decision', props: { preset: 'deviation' } });
+  describe('walking out of the zone with the card open', () => {
+    it('closes the card by itself, and the point counts as visited', async () => {
+      const t = setupReal(route());
+      t.engine.start();
+      await t.stay(ORIGIN, 1);
+      await t.stay(P1, 6);
+      const card = t.current();
+      expect(card?.props.pointId).toBe('p1');
+      expect(t.point('p1')?.state).toBe('reached');
+
+      // Radius 40 m + 10 m of hysteresis: still inside until farther than 50 m.
+      await t.stay(east(P1, 30), 1);
+      await t.stay(east(P1, 48), 1);
+      expect(card?.signal?.aborted).toBe(false);
+      expect(t.current()).toBe(card);
+
+      await t.stay(east(P1, 60), 1);
+      expect(card?.signal?.aborted).toBe(true);
+      expect(t.open).toEqual([]);
+      expect(t.point('p1')?.state).toBe('completed');
+      expect(t.engine.getState().progress.completed).toBe(1);
+      expect(t.engine.getState().status).toBe('running');
+      expect(t.analytics.mock.calls.filter(([name]) => name === 'point_completed')).toEqual([
+        ['point_completed', expect.objectContaining({ pointId: 'p1', status: 'dismissed' })],
+      ]);
+
+      // The route goes on as usual: the next card, closed by hand, ends it.
+      await t.stay(P2, 6);
+      expect(t.current()?.props.pointId).toBe('p2');
+      t.current()?.answer({});
+      await flush();
+      expect(t.engine.getState().status).toBe('finished');
+      expect(t.navigations).toEqual(['summary']);
+      expect(t.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it('does nothing once the card was closed', async () => {
+      const t = setupReal(route());
+      t.engine.start();
+      await t.stay(ORIGIN, 1);
+      await t.stay(P1, 6);
+      t.current()?.answer({});
+      await flush();
+      expect(t.point('p1')?.state).toBe('completed');
+
+      await t.stay(east(P1, 100), 2);
+      expect(t.opened).toHaveLength(1);
+      expect(t.analytics.mock.calls.filter(([name]) => name === 'point_completed')).toHaveLength(1);
+      expect(t.engine.getState().progress.completed).toBe(1);
+    });
+
+    it("doesn't close the card for another point's exit", async () => {
+      // Two zones overlap: the user stands in both. Only p1 has a card.
+      const near = east(P1, 60);
+      const t = setupReal(
+        route({
+          points: [
+            { id: 'p1', name: 'P1', position: P1, order: 1, triggers: { onEnter: 'card' } },
+            { id: 'p2', name: 'P2', position: near, order: 2 },
+          ],
+        }),
+      );
+      const exits: Array<string | null> = [];
+      t.engine.on('exit', (event) => exits.push(event.pointId));
+      t.engine.start();
+      await t.stay(east(P1, -80), 1);
+      await t.stay(east(P1, 30), 6);
+      const card = t.current();
+      expect(card?.props.pointId).toBe('p1');
+      expect(t.point('p2')?.state).toBe('completed'); // nothing to show: the engine did it
+
+      // Out of p2's zone, still in p1's: p2's exit changes nothing.
+      await t.stay(east(P1, -20), 2);
+      expect(exits).toEqual(['p2']);
+      expect(card?.signal?.aborted).toBe(false);
+      expect(t.current()).toBe(card);
+      expect(t.point('p1')?.state).toBe('reached');
+
+      await t.stay(east(P1, -60), 1);
+      expect(exits).toEqual(['p2', 'p1']);
+      expect(card?.signal?.aborted).toBe(true);
+      expect(t.point('p1')?.state).toBe('completed');
+      expect(t.engine.getState().status).toBe('finished');
+    });
+
+    it('lets a queued interruption have its turn', async () => {
+      const t = setupReal(route({ settings: { timeLimit: 20 } }));
+      t.engine.start();
+      await t.stay(ORIGIN, 1);
+      await t.stay(P1, 6);
+      await t.stay(P1, 14); // the time limit passes behind the open card
+      expect(t.open.map((v) => v.view)).toEqual(['info_sheet']);
+
+      await t.stay(east(P1, 60), 1);
+      expect(t.point('p1')?.state).toBe('completed');
+      expect(t.opened.map((v) => v.view)).toEqual(['info_sheet', 'decision']);
+      expect(t.current()).toMatchObject({ view: 'decision', props: { preset: 'timeout' } });
+      expect(t.analytics).toHaveBeenCalledWith('interruption_shown', { type: 'timeout' });
+    });
   });
 
   it('a broken action falls back to the basic sheet and the run goes on', async () => {

@@ -1,10 +1,12 @@
 import { destination } from '@rumbo/geo-utils';
 import {
+  type ArrivalChoice,
   buildRouteSpec,
   DRAFT_LIMITS,
   type DraftPlace,
   type RouteDraft,
   truncateText,
+  validateDraft,
 } from '@rumbo/route-builder';
 import { type RouteSpec, validateRouteBundle } from '@rumbo/route-spec';
 import { describe, expect, it } from 'vitest';
@@ -143,7 +145,7 @@ describe('checkUserRoute: refuses what the creator never makes', () => {
       type: 'info_sheet',
       params: { title: 'Castelo', image: { url: 'https://example.com/pixel.png', alt: 'x' } },
     };
-    actions['content_se-de-leiria'] = { type: 'redirect', params: { url: 'https://example.com' } };
+    actions['content_se-de-leiria'] = { type: 'three_scene', params: { model: 'sé' } };
     actions['content_punto-personalizado-1'] = {
       type: 'ai_template',
       params: {},
@@ -158,6 +160,18 @@ describe('checkUserRoute: refuses what the creator never makes', () => {
       'spec.actions.content_punto-personalizado-1.presentation',
       'spec.actions.content_punto-personalizado-1.feedback',
       'spec.actions.decision_idle.params', // neither a preset nor a question
+    ]);
+  });
+
+  it('names every type a user route may use when it meets another one', () => {
+    const bundle = userRoute();
+    bundle.spec.actions['content_se-de-leiria'] = { type: 'three_scene' };
+    expect(checkUserRoute(bundle)).toEqual([
+      {
+        path: 'spec.actions.content_se-de-leiria.type',
+        message:
+          'User routes only use info_sheet, ai_template, quiz, video, redirect, toast and decision',
+      },
     ]);
   });
 
@@ -293,5 +307,296 @@ describe('checkUserRoute: AI cards', () => {
   it('no more than 30 cards', () => {
     const many = Object.fromEntries(Array.from({ length: 31 }, (_, i) => [`c${i}`, {}]));
     expect(paths(withCard({ ...many, [REF]: { es: card() } }))).toContain('contents');
+  });
+});
+
+describe('checkUserRoute: what a place shows on arrival', () => {
+  const QUIZ: ArrivalChoice = {
+    type: 'quiz',
+    question: '¿Quién conquistó el castillo?',
+    options: ['Afonso Henriques', 'Dinis I', 'Joana I'],
+    correctIndex: 0,
+    explanation: 'Lo tomó a los musulmanes en 1135.',
+  };
+  const VIDEO: ArrivalChoice = { type: 'video', youtubeId: 'dQw4w9WgXcQ', title: 'El castillo' };
+  const LINK: ArrivalChoice = {
+    type: 'link',
+    url: 'https://www.visitleiria.pt/agenda?x=1#hoy',
+    label: 'Agenda de Leiria',
+  };
+  const CHECK: ArrivalChoice = { type: 'check' };
+
+  /** The three places of `draft()`, each showing the arrival given (none: the basic sheet). */
+  function arrivalDraft(...arrivals: Array<ArrivalChoice | undefined>): Partial<RouteDraft> {
+    const places = draft().places.map((place, i) => ({
+      ...place,
+      ...(arrivals[i] ? { arrival: arrivals[i] } : {}),
+    }));
+    return { places };
+  }
+  const withArrivals = (...arrivals: Array<ArrivalChoice | undefined>) =>
+    userRoute(arrivalDraft(...arrivals));
+  const FIRST = 'content_castelo-de-leiria';
+  const paramsOf = (bundle: { spec: RouteSpec }, id = FIRST) =>
+    bundle.spec.actions[id]?.params as Record<string, unknown>;
+
+  it('accepts a quiz, a video, a link and a check, alone or mixed', () => {
+    for (const arrivals of [
+      [QUIZ],
+      [VIDEO],
+      [LINK],
+      [CHECK],
+      [{ type: 'basic' as const }, { type: 'card' as const }],
+      [QUIZ, VIDEO, LINK],
+      [CHECK, QUIZ, CHECK],
+    ]) {
+      const bundle = withArrivals(...arrivals);
+      expect(validateRouteBundle(bundle).errors).toEqual([]);
+      expect(checkUserRoute(bundle)).toEqual([]);
+    }
+    const types = Object.values(withArrivals(QUIZ, VIDEO, LINK).spec.actions).map(
+      (action) => action.type,
+    );
+    expect(types).toEqual(expect.arrayContaining(['quiz', 'video', 'redirect']));
+  });
+
+  it('keeps one action per place plus the decisions, whatever each shows', () => {
+    const bundle = withArrivals(QUIZ, VIDEO, LINK);
+    expect(Object.keys(bundle.spec.actions)).toHaveLength(3 + 4);
+    bundle.spec.actions['extra'] = { type: 'toast', params: { messageKey: 'run.arrivedAt' } };
+    expect(paths(bundle)).toEqual([]);
+    for (let i = 0; i < 8; i++)
+      bundle.spec.actions[`extra_${i}`] = { type: 'toast', params: { message: 'x' } };
+    expect(checkUserRoute(bundle).map((issue) => issue.path)).toEqual(['spec.actions']);
+  });
+
+  it('accepts the longest texts the creator takes, counted in code points', () => {
+    const { question, option, explanation, videoTitle, linkLabel, linkUrl } = DRAFT_LIMITS.arrival;
+    const arrivals: ArrivalChoice[] = [
+      {
+        type: 'quiz',
+        question: '😀'.repeat(question),
+        options: ['a'.repeat(option), '😀'.repeat(option), 'c', 'd'],
+        correctIndex: 3,
+        explanation: 'é'.repeat(explanation),
+      },
+      { type: 'video', youtubeId: 'a_b-c123456', title: 't'.repeat(videoTitle) },
+      {
+        type: 'link',
+        url: `https://example.org/${'x'.repeat(linkUrl - 'https://example.org/'.length)}`,
+        label: '😀'.repeat(linkLabel),
+      },
+    ];
+    const change = arrivalDraft(...arrivals);
+    expect(validateDraft({ ...draft(), ...change })).toEqual([]);
+    expect(checkUserRoute(userRoute(change))).toEqual([]);
+  });
+
+  describe('quiz', () => {
+    const quizBundle = () => withArrivals(QUIZ);
+
+    it('takes plain texts in one language, never a LocalizedText', () => {
+      const bundle = quizBundle();
+      Object.assign(paramsOf(bundle), {
+        question: { es: '¿Quién?', pt: 'Quem?' },
+        options: ['Afonso', { es: 'Dinis' }, 'Joana'],
+        explanation: { en: 'In 1135.' },
+      });
+      expect(paths(bundle)).toEqual([
+        'spec.actions.content_castelo-de-leiria.params.question',
+        'spec.actions.content_castelo-de-leiria.params.options[1]',
+        'spec.actions.content_castelo-de-leiria.params.explanation',
+      ]);
+    });
+
+    it('needs 2 to 4 options and a right one among them', () => {
+      for (const [options, correctIndex] of [
+        [['solo'], 0],
+        [['a', 'b', 'c', 'd', 'e'], 0],
+        [['a', 'b'], 2],
+        [['a', 'b'], -1],
+      ] as const) {
+        const bundle = quizBundle();
+        Object.assign(paramsOf(bundle), { options, correctIndex });
+        expect(checkUserRoute(bundle), JSON.stringify([options, correctIndex])).not.toEqual([]);
+      }
+      const four = quizBundle();
+      Object.assign(paramsOf(four), { options: ['a', 'b', 'c', 'd'], correctIndex: 3 });
+      expect(checkUserRoute(four)).toEqual([]);
+    });
+
+    it('keeps the texts within the limits and takes nothing unknown', () => {
+      const { question, option, explanation } = DRAFT_LIMITS.arrival;
+      for (const change of [
+        { question: 'q'.repeat(question + 1) },
+        { options: ['a'.repeat(option + 1), 'b'] },
+        { explanation: 'e'.repeat(explanation + 1) },
+        { question: '   ' },
+        { points: 1001 },
+        { hint: 'typo' },
+      ]) {
+        const bundle = quizBundle();
+        Object.assign(paramsOf(bundle), change);
+        expect(checkUserRoute(bundle), JSON.stringify(change)).toHaveLength(1);
+      }
+    });
+  });
+
+  describe('video', () => {
+    const videoBundle = () => withArrivals(VIDEO);
+
+    it('takes YouTube ids only', () => {
+      for (const change of [
+        { provider: 'file', id: undefined, url: 'https://example.org/v.mp4' },
+        { url: 'https://example.org/v.mp4' },
+        { id: 'short' },
+        { id: 'https://youtu.be/dQw4w9WgXcQ' },
+        { id: undefined },
+        { provider: 'vimeo' },
+      ]) {
+        const bundle = videoBundle();
+        Object.assign(paramsOf(bundle), change);
+        expect(checkUserRoute(bundle), JSON.stringify(change)).not.toEqual([]);
+      }
+    });
+
+    it('says what is wrong with a video from a file', () => {
+      const bundle = videoBundle();
+      paramsOf(bundle)['provider'] = 'file';
+      delete paramsOf(bundle)['id'];
+      paramsOf(bundle)['url'] = 'https://example.org/v.mp4';
+      expect(paths(bundle)).toEqual([
+        'spec.actions.content_castelo-de-leiria.params.provider',
+        'spec.actions.content_castelo-de-leiria.params.url',
+      ]);
+    });
+
+    it('takes a title in one language, within the limit', () => {
+      const bundle = videoBundle();
+      Object.assign(paramsOf(bundle), { title: { es: 'El castillo' } });
+      expect(paths(bundle)).toEqual(['spec.actions.content_castelo-de-leiria.params.title']);
+      Object.assign(paramsOf(bundle), { title: 't'.repeat(DRAFT_LIMITS.arrival.videoTitle + 1) });
+      expect(checkUserRoute(bundle)).toHaveLength(1);
+    });
+  });
+
+  describe('redirect', () => {
+    const linkBundle = () => withArrivals(LINK);
+
+    it('opens full https links only', () => {
+      for (const url of [
+        'http://www.visitleiria.pt',
+        'javascript:alert(1)',
+        'data:text/html,hi',
+        '//www.visitleiria.pt',
+        'www.visitleiria.pt',
+        'https://www.visitleiria.pt/a b',
+        'https://visitleiria.pt:pass@evil.example/',
+        'https://visitleiria.pt@evil.example/',
+        `https://example.org/${'x'.repeat(DRAFT_LIMITS.arrival.linkUrl)}`,
+      ]) {
+        const bundle = linkBundle();
+        paramsOf(bundle)['url'] = url;
+        expect(
+          checkUserRoute(bundle).map((issue) => issue.path),
+          url,
+        ).toEqual(['spec.actions.content_castelo-de-leiria.params.url']);
+      }
+    });
+
+    it('takes a plain label within the limit', () => {
+      const bundle = linkBundle();
+      paramsOf(bundle)['label'] = { es: 'Agenda' };
+      expect(paths(bundle)).toEqual(['spec.actions.content_castelo-de-leiria.params.label']);
+      paramsOf(bundle)['label'] = 'l'.repeat(DRAFT_LIMITS.arrival.linkLabel + 1);
+      expect(checkUserRoute(bundle)).toHaveLength(1);
+      delete paramsOf(bundle)['label'];
+      expect(checkUserRoute(bundle)).toHaveLength(1);
+    });
+  });
+
+  describe('toast', () => {
+    const checkBundle = () => withArrivals(CHECK);
+
+    it('shows an i18n key or a plain text, either one', () => {
+      expect(paramsOf(checkBundle())).toEqual({ messageKey: 'run.arrivedAt' });
+      const text = checkBundle();
+      text.spec.actions[FIRST] = { type: 'toast', params: { message: 'Mira hacia arriba' } };
+      expect(checkUserRoute(text)).toEqual([]);
+      const timed = checkBundle();
+      Object.assign(paramsOf(timed), { durationMs: 5000, icon: 'map-pin' });
+      expect(checkUserRoute(timed)).toEqual([]);
+    });
+
+    it('refuses a text in several languages and a key that is not one', () => {
+      const several = checkBundle();
+      several.spec.actions[FIRST] = {
+        type: 'toast',
+        params: { message: { es: 'Mira', pt: 'Olha' } },
+      };
+      expect(paths(several)).toEqual(['spec.actions.content_castelo-de-leiria.params.message']);
+      for (const messageKey of [
+        'arrived',
+        'Run.arrivedAt',
+        'run.arrived at',
+        'run..x',
+        '../x',
+        'run.',
+      ]) {
+        const bundle = checkBundle();
+        paramsOf(bundle)['messageKey'] = messageKey;
+        expect(paths(bundle), messageKey).toEqual([
+          'spec.actions.content_castelo-de-leiria.params.messageKey',
+        ]);
+      }
+    });
+
+    it('needs exactly one of the two, and nothing unknown', () => {
+      const both = checkBundle();
+      paramsOf(both)['message'] = 'Hola';
+      expect(checkUserRoute(both)).toHaveLength(1);
+      const none = checkBundle();
+      none.spec.actions[FIRST] = { type: 'toast', params: {} };
+      expect(checkUserRoute(none)).toHaveLength(1);
+      const unknown = checkBundle();
+      paramsOf(unknown)['sound'] = 'x'.repeat(10_000);
+      expect(checkUserRoute(unknown)).toHaveLength(1);
+      const slow = checkBundle();
+      paramsOf(slow)['durationMs'] = 60_000;
+      expect(checkUserRoute(slow)).toHaveLength(1);
+    });
+  });
+
+  it('still refuses the extras of an action: presentation and feedback', () => {
+    const bundle = withArrivals(CHECK);
+    bundle.spec.actions[FIRST] = {
+      ...bundle.spec.actions[FIRST]!,
+      presentation: 'blocking',
+      feedback: { vibrate: true },
+    };
+    expect(paths(bundle)).toEqual([
+      'spec.actions.content_castelo-de-leiria.presentation',
+      'spec.actions.content_castelo-de-leiria.feedback',
+    ]);
+  });
+
+  it('accepts whatever the creator lets through its own validation', () => {
+    const arrivals: Array<ArrivalChoice | undefined> = [
+      undefined,
+      { type: 'card' },
+      { type: 'basic' },
+      QUIZ,
+      { ...QUIZ, options: ['a', 'b'], correctIndex: 1, explanation: undefined },
+      VIDEO,
+      { type: 'video', youtubeId: 'dQw4w9WgXcQ' },
+      LINK,
+      { type: 'link', url: 'https://example.org', label: 'Ejemplo' },
+      CHECK,
+    ];
+    for (const arrival of arrivals) {
+      const change = arrivalDraft(arrival, CHECK, QUIZ);
+      expect(validateDraft({ ...draft(), ...change }), JSON.stringify(arrival)).toEqual([]);
+      expect(checkUserRoute(userRoute(change)), JSON.stringify(arrival)).toEqual([]);
+    }
   });
 });

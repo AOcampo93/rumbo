@@ -6,6 +6,7 @@ export {
   type GeoEngine,
   restoreGeoEngine,
 } from './engine.ts';
+export { migrateSnapshot } from './migrate.ts';
 export { intervalScheduler, systemClock } from './runtime.ts';
 export {
   createSimulatedSource,

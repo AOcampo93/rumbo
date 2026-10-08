@@ -2,29 +2,18 @@ import {
   type DecisionParams,
   DecisionParamsSchema,
   type Interruption,
-  localizedText,
+  type ToastParams,
+  ToastParamsSchema,
 } from '@rumbo/route-spec';
-import { z } from 'zod';
 import type { ActionHandler, HandlerContext, UiText, ViewOutcome } from '../types.ts';
 import { fromOutcome, pointProps } from './shared.ts';
 
-const ToastParams = z
-  .strictObject({
-    /** i18n key; receives the point's `name` as a parameter. */
-    messageKey: z.string().min(1).max(80).optional(),
-    /** Or the route's own text, in up to three languages. */
-    message: localizedText({ max: 200 }).optional(),
-    icon: z.string().max(40).optional(),
-    durationMs: z.number().int().min(1000).max(15_000).optional(),
-  })
-  .refine((toast) => Boolean(toast.messageKey) !== Boolean(toast.message), {
-    message: 'Give either messageKey or message',
-  });
+// The params schemas live in route-spec: the API checks user routes with them.
 
 /** A short notice that never blocks the run (e.g. "You're near the castle"). */
-export const toastHandler: ActionHandler<z.infer<typeof ToastParams>> = {
+export const toastHandler: ActionHandler<ToastParams> = {
   type: 'toast',
-  paramsSchema: ToastParams,
+  paramsSchema: ToastParamsSchema,
   presentation: 'toast',
   async run(params, context) {
     const message: UiText = params.message ?? {
@@ -92,7 +81,6 @@ function presetTexts(preset: Interruption, context: HandlerContext) {
 /**
  * Interruption sheet with three choices (S07): the primary action resolves
  * as 'continue', then Pause and End the run. Swiping it away dismisses it.
- * Its params schema lives in route-spec: the API checks user routes with it.
  */
 export const decisionHandler: ActionHandler<DecisionParams> = {
   type: 'decision',

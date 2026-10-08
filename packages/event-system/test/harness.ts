@@ -120,6 +120,11 @@ export function createFakeUi(
       options?: Parameters<UiAdapter['present']>[2],
     ) {
       return new Promise<R | undefined>((resolve) => {
+        // As the app's overlay stack: a signal that already aborted opens nothing.
+        if (options?.signal?.aborted) {
+          resolve(undefined);
+          return;
+        }
         let done = false;
         const entry: OpenView = {
           view,
