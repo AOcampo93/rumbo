@@ -7,7 +7,7 @@ set -euo pipefail
 BASE_URL="https://rumbo.arturoocampo.com"
 # Coolify only redeploys an app when a push touches its watch paths.
 # Keep these in sync with each app's "Watch Paths" in Coolify (docs/DEPLOY.md).
-API_PATHS='^(apps/api/|packages/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.dockerignore$)'
+API_PATHS='^(apps/api/|packages/|data/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.dockerignore$)'
 WEB_PATHS='^(apps/web/|packages/|data/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|\.dockerignore$)'
 
 cd "$(git rev-parse --show-toplevel)"

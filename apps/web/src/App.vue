@@ -7,6 +7,7 @@ import OverlayHost from './components/OverlayHost.vue';
 import RecoverSheet from './components/RecoverSheet.vue';
 import { applyLocale } from './i18n/index.ts';
 import { clearAnalytics, initAnalytics, track } from './services/analytics.ts';
+import { flushRunOutbox } from './services/runs.ts';
 import { useThemeEffect } from './services/theme.ts';
 import { useRunStore } from './stores/run.ts';
 import { useSettingsStore } from './stores/settings.ts';
@@ -39,6 +40,8 @@ const showMiniRun = computed(() => showNav.value && run.active);
 onMounted(async () => {
   await initAnalytics(() => settings.analyticsConsent === true);
   track('app_open', {});
+  // Run ends that couldn't reach the API last time (offline).
+  void flushRunOutbox();
   // A run left half done (reload, closed tab): offer to continue (S11).
   if (settings.onboarded) await run.checkRecoverable();
 });

@@ -1,9 +1,11 @@
+import { DEVICE_ID_HEADER } from '@rumbo/api-contract';
+import { deviceId } from './device.ts';
 import { db, KEYS } from './storage.ts';
 
 // Anonymous product analytics (PROJECT_PLAN §13): only with consent, never
 // with coordinates, sent in batches every 30 s or when the page is hidden.
-// The endpoint arrives with the API in phase 5; until then batches that get
-// a 4xx are dropped, not retried.
+// Batches the API refuses (4xx) are dropped; network errors, 5xx and rate
+// limits keep them for the next try.
 
 export interface AnalyticsEvent {
   name: string;
@@ -41,7 +43,9 @@ export async function flush(useBeacon = false): Promise<void> {
   const batch = queue;
   queue = [];
   void db.set(KEYS.analyticsQueue, queue);
-  const body = JSON.stringify({ events: batch });
+  const device = await deviceId();
+  // sendBeacon can't set headers: the device id also travels in the body.
+  const body = JSON.stringify({ deviceId: device, events: batch });
   try {
     if (
       useBeacon &&
@@ -50,11 +54,12 @@ export async function flush(useBeacon = false): Promise<void> {
       return;
     const response = await fetch(ENDPOINT, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', [DEVICE_ID_HEADER]: device },
       body,
       keepalive: true,
     });
-    if (response.status >= 500) queue = [...batch, ...queue].slice(-MAX_QUEUE);
+    if (response.status >= 500 || response.status === 429)
+      queue = [...batch, ...queue].slice(-MAX_QUEUE);
   } catch {
     // Offline or blocked: try again next time.
     queue = [...batch, ...queue].slice(-MAX_QUEUE);

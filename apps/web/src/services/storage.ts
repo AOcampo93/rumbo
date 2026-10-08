@@ -58,6 +58,8 @@ export const KEYS = {
   lastSummary: 'run:last',
   bundle: (routeId: string) => `bundle:${routeId}`,
   analyticsQueue: 'analytics:queue',
+  /** Run ends the API hasn't received yet (offline). */
+  runOutbox: 'runs:outbox',
   deviceId: 'device:id',
 } as const;
 

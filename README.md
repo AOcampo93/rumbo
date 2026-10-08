@@ -18,9 +18,11 @@ The map uses the ArcGIS Maps SDK for JavaScript. The Explore map shows 37 marker
 ```bash
 pnpm install
 pnpm dev        # web on http://localhost:5173, API on http://localhost:3000
-pnpm test       # unit and scenario tests
+pnpm test       # unit, scenario and API integration tests (the latter need Docker)
 pnpm build && pnpm e2e   # end-to-end tests against the production build
 ```
+
+The API (Fastify, Drizzle ORM, PostgreSQL) applies its migrations and loads the curated routes on start. Its OpenAPI documentation is served at `/api/v1/docs`.
 
 Without an ArcGIS API key the map uses Esri's public tile services. To use the vector basemap styles, put a key restricted to your domains in `apps/web/.env` (`VITE_ARCGIS_API_KEY`).
 

@@ -7,7 +7,9 @@ import {
   type RouteBundle,
   validateRouteBundle,
 } from '@rumbo/route-spec';
+import type { RouteSummary as ApiRouteSummary } from '@rumbo/api-contract';
 import { ROUTE_COLORS } from '../map/symbols.ts';
+import { api } from './api.ts';
 
 // Where routes come from (PROJECT_PLAN §10.6): the API when it answers
 // (phase 5), otherwise the curated routes bundled with the app from
@@ -75,38 +77,38 @@ export function bundledPois(): PoiLayer[] {
   return layers;
 }
 
-const API_TIMEOUT_MS = 4000;
+const API_TIMEOUT_MS = 6000;
 
 /**
- * Routes from the API (`GET /api/v1/routes` → summaries, then each bundle).
+ * Routes from the API (`GET /routes` → summaries, then each bundle).
  * Null when the API isn't there or fails: the caller falls back to the
- * bundled routes.
+ * bundled routes. `request` is swappable for tests.
  */
-export async function routesFromApi(fetcher: typeof fetch = fetch): Promise<CatalogRoute[] | null> {
+export async function routesFromApi(
+  request: (path: string, init: { signal: AbortSignal }) => Promise<Response> = (path, init) =>
+    api(path, { signal: init.signal, timeoutMs: API_TIMEOUT_MS }),
+): Promise<CatalogRoute[] | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
-    const response = await fetcher('/api/v1/routes', {
-      headers: { accept: 'application/json' },
-      signal: controller.signal,
-    });
+    const response = await request('/routes', { signal: controller.signal });
     if (!response.ok) return null;
     const summaries = (await response.json()) as unknown;
     if (!Array.isArray(summaries) || summaries.length === 0) return null;
-    const bundles: RouteBundle[] = [];
-    for (const summary of summaries as Array<{ id?: unknown }>) {
-      if (typeof summary.id !== 'string') continue;
-      const one = await fetcher(`/api/v1/routes/${encodeURIComponent(summary.id)}`, {
-        headers: { accept: 'application/json' },
-        signal: controller.signal,
-      });
-      if (!one.ok) continue;
-      const result = validateRouteBundle(await one.json());
-      if (result.bundle) bundles.push(result.bundle);
-    }
-    return bundles.length > 0
-      ? bundles.map((bundle, index) => toCatalogRoute(bundle, index))
-      : null;
+    const ids = summaries
+      .map((summary) => (summary as Partial<ApiRouteSummary>).id)
+      .filter((id): id is string => typeof id === 'string');
+    const bundles = await Promise.all(
+      ids.map(async (id) => {
+        const one = await request(`/routes/${encodeURIComponent(id)}`, {
+          signal: controller.signal,
+        });
+        if (!one.ok) return null;
+        return validateRouteBundle(await one.json()).bundle ?? null;
+      }),
+    );
+    const valid = bundles.filter((bundle): bundle is RouteBundle => bundle !== null);
+    return valid.length > 0 ? valid.map((bundle, index) => toCatalogRoute(bundle, index)) : null;
   } catch {
     return null;
   } finally {

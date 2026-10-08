@@ -24,6 +24,7 @@ import {
   type NotificationStatus,
 } from '../services/notifications.ts';
 import { supports } from '../services/platform.ts';
+import { forgetDeviceId } from '../services/device.ts';
 import { db, local } from '../services/storage.ts';
 import { type ThemeSetting, useSettingsStore } from '../stores/settings.ts';
 import { useUiStore } from '../stores/ui.ts';
@@ -81,6 +82,7 @@ async function clearData(): Promise<void> {
   });
   if (!confirmed) return;
   await db.clear();
+  forgetDeviceId();
   local.remove('rumbo.settings');
   try {
     for (const key of (await globalThis.caches?.keys()) ?? []) await caches.delete(key);

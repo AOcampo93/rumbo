@@ -81,7 +81,19 @@ test('a deviation offers to pause; resuming and walking back puts the user on th
   await until(page, visible(page.getByText('¡De vuelta en la ruta!')), 180);
 });
 
-test('ending the run asks first and shows a neutral summary', async ({ page }) => {
+test('ending the run asks first, tells the API and shows a neutral summary', async ({ page }) => {
+  const RUN_ID = '3c8f0a52-7d1e-4b6a-9f2c-5e4d3c2b1a09';
+  const sent: Array<{ method: string; body: Record<string, unknown> }> = [];
+  await page.route('**/api/v1/runs**', (route) => {
+    const request = route.request();
+    sent.push({
+      method: request.method(),
+      body: request.postDataJSON() as Record<string, unknown>,
+    });
+    return request.method() === 'POST'
+      ? route.fulfill({ status: 201, json: { runId: RUN_ID } })
+      : route.fulfill({ status: 204 });
+  });
   await setup(page);
   await startRoute(page, 'leiria-historica');
   await page.getByRole('button', { name: 'Pausar' }).click();
@@ -91,6 +103,17 @@ test('ending the run asks first and shows a neutral summary', async ({ page }) =
   await until(page, async () => page.url().endsWith('/run/summary'), 30);
   await expect(page.getByRole('heading', { name: 'Recorrido terminado' })).toBeVisible();
   await expect(page.getByText('0/12')).toBeVisible();
+
+  // The run's start and end reached the API (phase 5), with the device id.
+  await until(page, async () => sent.length === 2, 10);
+  expect(sent[0]).toMatchObject({
+    method: 'POST',
+    body: { routeId: 'leiria-historica', mode: 'free', simulated: true, locale: 'es' },
+  });
+  expect(sent[1]).toMatchObject({
+    method: 'PATCH',
+    body: { status: 'cancelled', completedPoints: 0, totalPoints: 12 },
+  });
 });
 
 test('after a reload mid-run, "Continue" brings the run back, paused', async ({ page }) => {

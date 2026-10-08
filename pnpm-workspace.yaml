@@ -5,6 +5,11 @@ allowBuilds:
   esbuild: true
   # Pulled in by @arcgis/core; its install script only collects usage statistics.
   '@vaadin/vaadin-usage-statistics': false
+  # Testcontainers' Docker client: native add-ons for SSH connections, which
+  # the tests don't use (they talk to the local Docker socket).
+  cpu-features: false
+  ssh2: false
+  protobufjs: false
 minimumReleaseAgeExclude:
   - '@arcgis/core@5.1.27'
   - vue-router@5.4.0

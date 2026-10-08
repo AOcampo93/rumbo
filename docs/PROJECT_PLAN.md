@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 4 completadas (base, contratos, motor, sistema de eventos y la web para recorrer rutas); producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 4 completadas (base, contratos, motor, sistema de eventos y la web para recorrer rutas); fase 5 (backend mínimo) terminada en código, a falta de desplegarla. Producción activa en https://rumbo.arturoocampo.com ([DEPLOY.md](DEPLOY.md)).
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -1120,9 +1120,36 @@ En marcha desde el 2026-10-07. El detalle operativo está en [DEPLOY.md](DEPLOY.
   - `rumbo-db`: PostgreSQL 17 + PostGIS 3.5, con volumen persistente y sin puerto público.
 - **Un solo origen:** `https://rumbo.arturoocampo.com` para la web y `/api` para la API, con HTTPS de Let's Encrypt vía Traefik.
 - **Ramas:** `main` es desarrollo y `production` es lo desplegado. Desplegar es promover a `production` un commit de `main` con la CI en verde (`pnpm deploy:prod`), y solo cuando lo pide el responsable del proyecto.
-- **Migraciones:** `drizzle-kit migrate` al arrancar la API (o como paso previo del despliegue).
-- **Backups:** dump diario de Postgres, pendiente de programar en Coolify.
-- **CI:** GitHub Actions ejecuta formato, lint, typecheck, tests, build, las imágenes Docker y el escaneo de secretos; añadirá `validate:routes` cuando exista.
+- **Migraciones:** la API aplica las pendientes al arrancar (§11.6).
+- **Backups:** dump diario de Postgres en Coolify desde el 2026-10-07 ([DEPLOY.md](DEPLOY.md)).
+- **CI:** GitHub Actions ejecuta formato, lint, typecheck, tests (los de la API, contra un PostgreSQL en contenedor), `validate:routes`, build, los e2e, las imágenes Docker y el escaneo de secretos.
+
+### 11.6 Precisiones de la implementación (fase 5)
+
+- **Contrato (`packages/api-contract`):** los DTOs en Zod que comparten la API (validación de entrada y OpenAPI) y la web (tipos): `RouteSummary`, los filtros del listado, el inicio y el cierre de un recorrido, el lote de analytics y los códigos de error.
+- **Base de datos:** Drizzle ORM sobre `pg`. El esquema está en `apps/api/src/db/schema.ts` y las migraciones SQL en `apps/api/drizzle`.
+  - Respecto a la tabla de §11.2: `point_contents` usa `content_ref` (la clave de `RouteBundle.contents`) en lugar de `point_id`; `routes` guarda además `locales` (idiomas completos); `runs` guarda `simulated` y `locale`.
+  - `content_cache` y `ai_generations` llegan con la fase 7.
+- **Arranque:**
+  - aplica las migraciones pendientes y carga las rutas de `data/routes` (inserta las nuevas, reemplaza las que cambiaron y deja igual el resto);
+  - si Postgres no responde, arranca igual y reintenta cada 10 s, mientras los endpoints de datos devuelven `503 { code: "unavailable" }`.
+- **Endpoints de la fase:** `GET /routes`, `GET /routes/:id`, `POST /runs`, `PATCH /runs/:id`, `POST /analytics/batch` y `GET /health`.
+  - **Listado:**
+    - filtra por origen, modo y actividad en SQL;
+    - busca en nombre y resumen, en todos los idiomas y sin tildes;
+    - ordena por cercanía con `near=lat,lng`.
+  - **Detalle:** lleva `ETag` y responde `304` si el cliente ya tiene esa versión.
+  - **Cierre de un recorrido:** solo puede hacerlo su dispositivo, y es idempotente (la app reintenta los cierres que no pudo enviar).
+  - **Analytics:** rechaza propiedades con forma de posición (`lat`, `lng`…).
+  - La documentación OpenAPI está en `/api/v1/docs`.
+- **Seguridad:** `@fastify/helmet`, 1 MB por petición y 300 por minuto por dispositivo o IP (`trustProxy` detrás de Traefik); 30 por minuto en recorridos y analytics. Los logs guardan solo la ruta, sin la *query* (podría llevar una posición).
+- **Build:** esbuild empaqueta la API en `dist/server.js`, con los paquetes del workspace compilados dentro; las dependencias de npm se instalan en la imagen. La imagen incluye las migraciones y `data/routes`.
+- **Web:**
+  - Carga las rutas de la API y, si no responde, usa las que lleva dentro.
+  - Envía `Accept-Language` y el identificador anónimo del dispositivo (un UUID en IndexedDB).
+  - Registra el inicio y el cierre de cada recorrido sin hacer esperar al usuario. Los cierres que no se pudieron enviar se reintentan al abrir la app.
+  - Los eventos de analytics de un recorrido llevan su `runId`.
+- **Tests:** 31 de integración de la API contra un PostgreSQL real (Testcontainers; en local hace falta Docker). Usan `postgres:17-alpine` porque la imagen de PostGIS no tiene versión ARM y la v1 no hace consultas espaciales.
 
 ---
 
@@ -1335,9 +1362,11 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
 
 ### Fase 5: Backend mínimo y despliegue (P1)
 
-- [ ] Fastify, Drizzle, migraciones, seed, `GET /routes`, `GET /routes/:id`, `POST /runs`, `PATCH /runs/:id` y `POST /analytics/batch`.
+- [x] Fastify, Drizzle, migraciones, seed, `GET /routes`, `GET /routes/:id`, `POST /runs`, `PATCH /runs/:id` y `POST /analytics/batch` (2026-10-08).
 - [x] Despliegue en Coolify (web + api + postgres) con HTTPS. Se adelantó a la fase 0.
-- **DoD:** la app en producción carga las rutas desde la API.
+- **DoD:** la app en producción carga las rutas desde la API. **Pendiente del despliegue.**
+  - En local ya funciona de punta a punta: la web carga las rutas de la API, y la API registra el inicio y el cierre del recorrido en Postgres.
+  - Precisiones de la implementación en el §11.6.
 
 ### Fase 6: Creador en la web (P1)
 

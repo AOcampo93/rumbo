@@ -5,11 +5,15 @@
 export interface AppConfig {
   host: string;
   port: number;
-  /** Null runs the API without a database (local experiments, tests). */
+  /** Null runs the API without a database (local experiments). */
   databaseUrl: string | null;
   logLevel: string;
   /** Git commit being served; Coolify injects SOURCE_COMMIT on deploy. */
   commit: string | null;
+  /** Off: analytics batches are accepted (202) but not stored. */
+  analyticsEnabled: boolean;
+  /** Requests per minute per device (or IP) across the API. */
+  rateLimitPerMinute: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -17,11 +21,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (!Number.isInteger(port) || port <= 0) {
     throw new Error(`Invalid PORT: ${env.PORT}`);
   }
+  const rateLimitPerMinute = Number(env.RATE_LIMIT_PER_MINUTE ?? 300);
   return {
     host: env.HOST ?? '0.0.0.0',
     port,
     databaseUrl: env.DATABASE_URL || null,
     logLevel: env.LOG_LEVEL ?? 'info',
     commit: env.SOURCE_COMMIT || null,
+    analyticsEnabled: env.ANALYTICS_ENABLED !== 'false',
+    rateLimitPerMinute:
+      Number.isInteger(rateLimitPerMinute) && rateLimitPerMinute > 0 ? rateLimitPerMinute : 300,
   };
 }

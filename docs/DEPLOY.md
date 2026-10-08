@@ -16,7 +16,7 @@ Todo vive en el proyecto **Rumbo** de Coolify (entorno `production`). El VPS alo
 
 - **`main`**: desarrollo. La CI (GitHub Actions) corre en cada push: typecheck, tests, build y las dos imágenes Docker.
 - **`production`**: lo que está desplegado. Coolify despliega automáticamente cada push a esta rama.
-- **Watch paths:** cada app solo se redespliega si cambian sus archivos (`apps/web/**` o `apps/api/**`), `packages/**`, el lockfile, la configuración del workspace o `.dockerignore`. La web además incluye `data/**`, porque empaqueta las rutas curadas y los lugares de interés. La misma lista está en `scripts/deploy-prod.sh`: si cambia en Coolify, hay que cambiarla también ahí.
+- **Watch paths:** cada app solo se redespliega si cambian sus archivos (`apps/web/**` o `apps/api/**`), `packages/**`, `data/**`, el lockfile, la configuración del workspace o `.dockerignore`. Las dos apps vigilan `data/**`: la web empaqueta las rutas curadas y los lugares de interés, y la API siembra las rutas en la base de datos al arrancar. La misma lista está en `scripts/deploy-prod.sh`: si cambia en Coolify, hay que cambiarla también ahí.
 - **Solo se despliega cuando lo pide el responsable del proyecto.**
 - **Si se borra y se recrea la rama `production`**, el webhook de una rama nueva no trae archivos cambiados y Coolify no despliega. Ese primer despliegue se lanza desde Coolify (botón *Deploy* o `GET /api/v1/deploy?uuid=…`).
 
@@ -49,7 +49,15 @@ La web y la API comparten dominio. La PWA llama a `/api/v1/…` sin CORS, y el s
 Las reglas completas sobre secretos están en [`docs/SECURITY.md`](SECURITY.md).
 
 - En producción se gestionan en Coolify, **nunca en el repo**. En local, en `apps/*/.env`, que git ignora. Las plantillas son los `.env.example`.
-- **API:** por ahora, `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen.
+- **API:** `DATABASE_URL` (URL interna de `rumbo-db`) y `LOG_LEVEL`. Opcionales, con valor por defecto: `RATE_LIMIT_PER_MINUTE` (300) y `ANALYTICS_ENABLED` (`true`). Las que lleven secretos se marcan **solo de ejecución** (no de build), para que no queden en los metadatos de la imagen.
+
+## Base de datos: migraciones y datos iniciales
+
+Al arrancar, la API aplica las migraciones pendientes (`apps/api/drizzle`, generadas con `pnpm --filter @rumbo/api db:generate`). Después carga las rutas curadas de `data/routes`: inserta las nuevas, reemplaza las que cambiaron y deja igual el resto.
+
+Si la base de datos no responde al arrancar, la API arranca igual: `/api/v1/health` informa del fallo, los endpoints de datos devuelven `503 { "code": "unavailable" }` y reintenta cada 10 s. Así un despliegue no queda bloqueado por una caída momentánea de Postgres.
+
+La documentación OpenAPI está en `/api/v1/docs`.
 - **Web:** las `VITE_*` se inyectan en el bundle durante el build. Son públicas por definición: nunca secretos.
 
 ## Copias de seguridad de la base de datos
@@ -90,4 +98,4 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] Primer despliegue de `rumbo-api` y `rumbo-web` (2026-10-07): HTTPS de Let's Encrypt, API con la BD conectada y commit servido verificado.
 - [x] Backups programados de `rumbo-db` (diarios) en Coolify (2026-10-07). Ver «Copias de seguridad».
 - [ ] Copia de los backups fuera del VPS (S3).
-- [ ] Añadir `data/**` a las watch paths de `rumbo-web` en Coolify (el script ya lo tiene en cuenta). Se hará en el próximo despliegue.
+- [x] `data/**` en las watch paths de `rumbo-web` y `rumbo-api` (2026-10-08).

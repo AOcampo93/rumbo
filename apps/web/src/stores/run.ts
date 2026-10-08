@@ -30,6 +30,7 @@ import { useRouter } from 'vue-router';
 import { currentLocale, i18n } from '../i18n/index.ts';
 import { uiTextIn } from '../i18n/text.ts';
 import { track } from '../services/analytics.ts';
+import { registerRunEnd, registerRunStart } from '../services/runs.ts';
 import { showLocalNotification } from '../services/notifications.ts';
 import { supports } from '../services/platform.ts';
 import { playSound } from '../services/sound.ts';
@@ -50,6 +51,8 @@ interface ActiveRunRecord {
   simulated: boolean;
   snapshot: EngineSnapshot;
   savedAt: number;
+  /** The run's id on the server (null when its start couldn't be sent). */
+  runId?: string | null;
 }
 
 export interface RunSummaryRecord {
@@ -96,6 +99,8 @@ export const useRunStore = defineStore('run', () => {
   const recoverable = shallowRef<Recoverable | null>(null);
 
   let engine: GeoEngine | null = null;
+  /** The run's id on the server, for its end and for analytics. */
+  let runId: string | null = null;
   let events: EventSystem | null = null;
   let sim: SimulatedSource | null = null;
   let cleanups: Array<() => void> = [];
@@ -204,7 +209,8 @@ export const useRunStore = defineStore('run', () => {
       ui: uiAdapter,
       feedback: feedbackAdapter,
       content: async (ref) => bundle.value?.contents[ref] ?? null,
-      analytics: (name, props) => track(name, props),
+      // Analytics of a run carry its server id (never a position).
+      analytics: (name, props) => track(name, { ...props, ...(runId ? { runId } : {}) }),
       logger: { warn: (message, data) => console.warn(message, data) },
     });
     events.start();
@@ -241,6 +247,7 @@ export const useRunStore = defineStore('run', () => {
       simulated: simulated.value,
       snapshot: engine.serialize(),
       savedAt: Date.now(),
+      runId,
     };
     await db.set(KEYS.activeRun, record);
   }
@@ -272,6 +279,16 @@ export const useRunStore = defineStore('run', () => {
       })),
     };
     lastSummary.value = record;
+    if (runId) {
+      void registerRunEnd(runId, {
+        status,
+        endedAt: new Date(record.endedAt).toISOString(),
+        elapsedMs: Math.round(record.elapsedMs),
+        completedPoints: record.completed,
+        totalPoints: record.total,
+        score: record.score,
+      });
+    }
     await db.set(KEYS.lastSummary, record);
     await db.del(KEYS.activeRun);
     void releaseScreen();
@@ -294,9 +311,24 @@ export const useRunStore = defineStore('run', () => {
         logger: { warn: (message, data) => console.warn(message, data) },
       }),
     );
+    runId = null;
     wire(next);
     next.start();
     void save();
+    // Best effort: the run goes on whether or not the API answers.
+    const startedAt = new Date().toISOString();
+    void registerRunStart({
+      routeId: id,
+      specHash: next.getState().specHash,
+      mode: route.bundle.spec.mode,
+      simulated: simulated.value,
+      locale: currentLocale(),
+      startedAt,
+    }).then((serverId) => {
+      if (engine !== next) return;
+      runId = serverId;
+      void save();
+    });
     return true;
   }
 
@@ -332,6 +364,7 @@ export const useRunStore = defineStore('run', () => {
     const next = markRaw(
       restoreGeoEngine(recovered.bundle.spec, recovered.record.snapshot, { source }),
     );
+    runId = recovered.record.runId ?? null;
     wire(next);
     recoverable.value = null;
     return true;
