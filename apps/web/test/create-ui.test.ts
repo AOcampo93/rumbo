@@ -15,6 +15,9 @@ import ContentStep from '../src/views/create/ContentStep.vue';
 import DetailsStep from '../src/views/create/DetailsStep.vue';
 import { apiError, castle, cathedral, generated, json, suggestion } from './create-fixtures.ts';
 
+/** vi.waitFor with room for a slow CI runner (its default is 1 s). */
+const waitFor = <T>(check: () => T | Promise<T>) => vi.waitFor(check, { timeout: 5000 });
+
 // The screens of the AI guide in the creator (design §4): the interests, the
 // cards step that never shows a card, and the suggestions sheet.
 
@@ -192,7 +195,7 @@ describe('C1 interests and language', () => {
 describe('C3 · Fichas', () => {
   it('shows each card as ready with its sources, and never the card', async () => {
     const { view } = await mountStep(ContentStep);
-    await vi.waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
+    await waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
     const rows = view.findAll('.row');
     expect(rows.map((row) => row.get('.row__name').text())).toEqual([
       'Castelo de Leiria',
@@ -226,7 +229,7 @@ describe('C3 · Fichas', () => {
         }),
     );
     const { view } = await mountStep(ContentStep);
-    await vi.waitFor(() => expect(releases).toHaveLength(2));
+    await waitFor(() => expect(releases).toHaveLength(2));
     expect(view.text()).toContain('Preparando fichas 0 de 2');
     expect(view.findAll('.row__status').map((status) => status.text())).toEqual([
       'Preparando la ficha…',
@@ -238,13 +241,13 @@ describe('C3 · Fichas', () => {
     // "Siguiente" is never blocked, and says what happens to the unfinished ones.
     expect(view.text()).toContain('Los lugares sin ficha lista usarán la ficha básica.');
     releases.forEach((release) => release());
-    await vi.waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
+    await waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
     expect(view.text()).not.toContain('Los lugares sin ficha lista');
   });
 
   it('asks before showing a card, and then shows it like the arrival does', async () => {
     const { view, creator, ui } = await mountStep(ContentStep);
-    await vi.waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
+    await waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
     const confirm = vi.spyOn(ui, 'confirm').mockResolvedValueOnce(false);
     const present = vi.spyOn(ui, 'present').mockResolvedValue(undefined);
 
@@ -280,13 +283,13 @@ describe('C3 · Fichas', () => {
       body['name'] === 'Sé de Leiria' ? apiError('generation_failed', 502) : cardOf(body),
     );
     const { view, creator } = await mountStep(ContentStep);
-    await vi.waitFor(() => expect(view.text()).toContain('No pudimos preparar esta ficha.'));
+    await waitFor(() => expect(view.text()).toContain('No pudimos preparar esta ficha.'));
     expect(view.text()).toContain('1 de 2 fichas listas');
     expect(view.find('.content__blocked').exists()).toBe(false);
 
     serve((_url, body) => cardOf(body));
     await buttons(view, 'Reintentar')[0]?.trigger('click');
-    await vi.waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
+    await waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
     expect(creator.cardStats.ready).toBe(2);
 
     // The menu of a ready card: back to the basic sheet.
@@ -299,7 +302,7 @@ describe('C3 · Fichas', () => {
   it('with the budget spent it says so once and offers the basic cards for all', async () => {
     serve(() => apiError('ai_budget_exceeded', 429));
     const { view, creator } = await mountStep(ContentStep);
-    await vi.waitFor(() => expect(view.find('.content__blocked').exists()).toBe(true));
+    await waitFor(() => expect(view.find('.content__blocked').exists()).toBe(true));
     expect(view.get('.content__blocked').text()).toContain(
       'Hoy hemos llegado al límite de uso de la IA',
     );
@@ -321,7 +324,7 @@ describe('C3 · Fichas', () => {
     ]);
     expect(creator.cardStats.ready).toBe(0);
     setOnline(true);
-    await vi.waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
+    await waitFor(() => expect(view.text()).toContain('2 de 2 fichas listas'));
   });
 
   it('goes on to the review whenever the user wants', async () => {
@@ -369,7 +372,7 @@ describe('the suggestions sheet', () => {
     await view.findAll('[role="radio"]')[3]?.trigger('click');
     await buttons(view, 'Gastronomía')[0]?.trigger('click');
     await buttons(view, 'Sugerir')[0]?.trigger('click');
-    await vi.waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
+    await waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
 
     expect(suggestBodies[0]).toEqual({
       near: { lat: 39.744, lng: -8.807 },
@@ -396,7 +399,7 @@ describe('the suggestions sheet', () => {
     serveSuggestions(() => json(suggestion));
     const view = mountSheet();
     await buttons(view, 'Sugerir')[0]?.trigger('click');
-    await vi.waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
+    await waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
     const boxes = view.findAll('input[type="checkbox"]');
     expect(boxes.every((box) => (box.element as HTMLInputElement).checked)).toBe(true);
     expect(buttons(view, 'Añadir 3 lugares')).toHaveLength(1);
@@ -421,7 +424,7 @@ describe('the suggestions sheet', () => {
     serveSuggestions(() => json(suggestion));
     const view = mountSheet();
     await buttons(view, 'Sugerir')[0]?.trigger('click');
-    await vi.waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
+    await waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
     await buttons(view, 'Usar el título sugerido')[0]?.trigger('click');
     expect(view.emitted('useTitle')).toEqual([
       [{ title: 'Leiria en una mañana', summary: 'Del castillo al río, pasando por la catedral.' }],
@@ -436,7 +439,7 @@ describe('the suggestions sheet', () => {
     serveSuggestions(() => json(suggestion));
     const view = mountSheet({ room: 2 });
     await buttons(view, 'Sugerir')[0]?.trigger('click');
-    await vi.waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
+    await waitFor(() => expect(view.find('.suggest__list').exists()).toBe(true));
     const boxes = view.findAll('input[type="checkbox"]');
     expect(boxes.map((box) => (box.element as HTMLInputElement).checked)).toEqual([
       true,
@@ -453,14 +456,14 @@ describe('the suggestions sheet', () => {
     serveSuggestions(() => apiError('ai_budget_exceeded', 429));
     const view = mountSheet();
     await buttons(view, 'Sugerir')[0]?.trigger('click');
-    await vi.waitFor(() => expect(view.find('[role="alert"]').exists()).toBe(true));
+    await waitFor(() => expect(view.find('[role="alert"]').exists()).toBe(true));
     expect(view.get('[role="alert"]').text()).toBe(
       'Hoy hemos llegado al límite de uso de la IA. Vuelve mañana.',
     );
 
     serveSuggestions(() => json({ title: 'Nada', summary: 'Sin ideas.', places: [] }));
     await buttons(view, 'Reintentar')[0]?.trigger('click');
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(view.text()).toContain('No encontramos lugares que sugerir por aquí'),
     );
     expect(buttons(view, /Añadir/)[0]?.attributes('disabled')).toBeDefined();
@@ -490,8 +493,8 @@ describe('the suggestions sheet', () => {
     );
     const view = mountSheet();
     await buttons(view, 'Sugerir')[0]?.trigger('click');
-    await vi.waitFor(() => expect(view.text()).toContain('Buscando ideas…'));
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+    await waitFor(() => expect(view.text()).toContain('Buscando ideas…'));
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
     view.unmount();
     expect(aborted).toBe(true);
     wrapper = null;
