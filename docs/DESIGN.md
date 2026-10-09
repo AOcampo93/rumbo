@@ -437,11 +437,12 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
 - **Entradas:** `RouteSummary[]` (nombre, resumen, modo, actividad, portada, nº de puntos, distancia, minutos estimados); para la vista Mapa, los puntos de todas las rutas curadas y de las creadas en este dispositivo (nombre, categoría, ruta, posición, imagen). Las tuyas llevan la etiqueta «Creada por ti».
 - **Salidas:** abrir ruta → `/routes/:routeId`; filtrar (Libre/Reto/A pie/Bici); alternar Lista/Mapa; tocar un marcador → popup → "Ver ruta".
 - **Layout:**
-  - Cabecera con wordmark, chip de ciudad ("Leiria ▾") y búsqueda.
+  - Cabecera con el wordmark. Sin chip de ciudad: Rumbo sirve donde esté el usuario, no solo en Leiria (se quitó el 2026-10-09, tras la prueba en un iPhone).
   - **SegmentedControl Lista | Mapa.**
   - Chips de filtro: Todas · Libre · Reto · A pie · Bici.
   - **Lista:** RouteCards apiladas.
   - **Mapa:** mapa a pantalla completa con **más de 20 marcadores** (color por ruta + icono de categoría), botón Filtro que abre el FilterPanel (por ruta, categoría y modo, con leyenda) y popup al tocar.
+  - **Mi ubicación** (botón flotante con la mirilla): al tocarlo, lee la posición una vez (el permiso se pide entonces, nunca antes), la marca con el punto azul y su círculo de precisión, y centra el mapa en ella (zoom 16), esté donde esté el usuario. La posición solo mueve el mapa: no se guarda ni se envía. Si se niega el permiso: «No podemos ver tu ubicación. Activa el permiso de ubicación en el navegador.»; si falla: «No pudimos obtener tu ubicación. Inténtalo de nuevo.». No se ve si el navegador no tiene geolocalización.
 - **Estados:** carga (skeletons), sin conexión (rutas guardadas + banner), vacío ("Aún no hay rutas en esta zona" + "Crea la tuya") y error.
 - Si hay un recorrido activo: **MiniRunBar** encima de la navegación.
 
@@ -950,6 +951,8 @@ Los textos de la fase 7 (`create.details.*`, `create.interests.*`, `create.sugge
 | `lang.continue` | Continuar |
 | `explore.offline` | Sin conexión. Te mostramos tus rutas descargadas. |
 | `explore.empty.title` / `.body` | Aún no hay rutas en esta zona / Elige los lugares que quieres ver y preparamos la guía por ti. |
+| `explore.locate` | Mi ubicación |
+| `explore.locationDenied` / `.locationFailed` | No podemos ver tu ubicación. Activa el permiso de ubicación en el navegador. / No pudimos obtener tu ubicación. Inténtalo de nuevo. |
 | `popup.distance` | a {distance} de ti |
 | `route.downloaded` | Descargada |
 | `prepare.ready` | Todo listo. Guarda el móvil y camina. |

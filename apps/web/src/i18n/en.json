@@ -61,7 +61,6 @@
     "steps": "Tap Share, then “Add to Home Screen”."
   },
   "home": {
-    "city": "Leiria",
     "view": {
       "label": "View",
       "list": "List",
@@ -79,7 +78,10 @@
       "title": "No routes in this area yet",
       "body": "Pick the places you want to see and we'll put the guide together for you.",
       "cta": "Create your own"
-    }
+    },
+    "locate": "My location",
+    "locationDenied": "We can't see your location. Allow location access in your browser.",
+    "locationFailed": "We couldn't get your location. Try again."
   },
   "mode": {
     "free": "Free",

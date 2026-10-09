@@ -61,7 +61,6 @@
     "steps": "Toca em Partilhar e depois em «Adicionar ao ecrã principal»."
   },
   "home": {
-    "city": "Leiria",
     "view": {
       "label": "Vista",
       "list": "Lista",
@@ -79,7 +78,10 @@
       "title": "Ainda não há rotas nesta zona",
       "body": "Escolhe os lugares que queres ver e preparamos o guia por ti.",
       "cta": "Cria a tua"
-    }
+    },
+    "locate": "A minha localização",
+    "locationDenied": "Não conseguimos ver a tua localização. Ativa a permissão de localização no navegador.",
+    "locationFailed": "Não conseguimos obter a tua localização. Tenta de novo."
   },
   "mode": {
     "free": "Livre",

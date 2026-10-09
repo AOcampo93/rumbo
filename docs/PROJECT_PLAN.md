@@ -1122,6 +1122,8 @@ Las hojas de llegada y de decisión **no son rutas**: forman una pila de overlay
 
 La vista **Mapa** de Inicio muestra **todos los puntos de todas las rutas curadas** (más de 20), y también los de las rutas que creaste en este dispositivo, con iconos por categoría, color por ruta, popup y panel de filtros. Esto cubre los requisitos del curso en una sola vista; cada detalle de ruta muestra además sus propios puntos.
 
+El botón **Mi ubicación** lee la posición una vez al tocarlo (`getCurrentPosition`, alta precisión, 15 s de plazo y hasta 1 min de antigüedad), la pinta con el punto azul del recorrido y centra el mapa en ella a zoom 16. La posición solo mueve el mapa: no se guarda ni se envía. Si el permiso se niega o la lectura falla, un aviso lo explica (DESIGN S01). Inicio no nombra ninguna ciudad: Rumbo sirve donde esté el usuario (desde el 2026-10-09; antes, un chip fijo decía «Leiria» y el botón solo volvía a encuadrar las rutas).
+
 ### 10.5 Capacidades del navegador (lo que funciona de verdad)
 
 | Capacidad | Android (Chrome) | iOS (Safari) | Implementación |
@@ -1872,6 +1874,7 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - Cancelar.
   - Recargar a mitad → "Continuar recorrido".
   - Mapa Explorar con 20+ marcadores, popup y filtro.
+  - «Mi ubicación» con el permiso concedido centra el mapa en la posición del usuario (Oporto, lejos de las rutas de Leiria), y sin permiso muestra el aviso. Inicio no nombra ninguna ciudad.
   - Idioma: elegir PT en el primer arranque → recargar → sigue en PT → cambiar a EN en Ajustes a mitad de recorrido, sin recargar y sin alterar el motor.
 - **e2e del creador (fase 6, `apps/web/e2e/create.spec.ts`):**
   - Crear una ruta, probarla en simulación, guardarla y recorrerla de principio a fin: el DoD de la fase.

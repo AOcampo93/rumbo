@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { List, ListFilter, LocateFixed, Map as MapIcon, MapPin, Plus, WifiOff } from '@lucide/vue';
+import { List, ListFilter, LocateFixed, Map as MapIcon, Plus, WifiOff } from '@lucide/vue';
 import type { Locale, PointCategory } from '@rumbo/route-spec';
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import AppButton from '../components/AppButton.vue';
@@ -15,11 +15,13 @@ import ToggleSwitch from '../components/ToggleSwitch.vue';
 import WordMark from '../components/WordMark.vue';
 import { useTexts } from '../i18n/text.ts';
 import { filterMarkers, poiMarkers, routeMarkers } from '../map/explore.ts';
+import type { MapUser, RouteMapApi } from '../map/types.ts';
 import { useOnline } from '../services/network.ts';
 import { resolvedTheme as theme } from '../services/theme.ts';
 import { local } from '../services/storage.ts';
 import { useCatalogStore } from '../stores/catalog.ts';
 import { useSettingsStore } from '../stores/settings.ts';
+import { useUiStore } from '../stores/ui.ts';
 
 // S01 · Explore: routes as a list or on a map with every curated point and
 // the points of interest (the course's 20+ markers, popups and filter).
@@ -29,6 +31,7 @@ const { t, locale } = useI18n();
 const router = useRouter();
 const catalog = useCatalogStore();
 const settings = useSettingsStore();
+const ui = useUiStore();
 const texts = useTexts();
 const online = useOnline();
 
@@ -86,7 +89,41 @@ const fit = computed(() =>
   routes.value.flatMap((route) => route.bundle.spec.points.map((p) => p.position)),
 );
 
-const mapRef = ref<{ fitTo(): Promise<void> } | null>(null);
+const mapRef = ref<RouteMapApi | null>(null);
+
+// "Mi ubicación": Rumbo works wherever the user is, so the map shows where
+// that is. The position is read once per tap (nothing is asked before) and
+// only moves the map: it isn't stored or sent anywhere.
+const me = shallowRef<MapUser | null>(null);
+const locating = ref(false);
+/** Without a geolocation API (or in a context that forbids it) the button isn't offered. */
+const canLocate = globalThis.navigator?.geolocation !== undefined;
+
+function locateMe(): void {
+  if (locating.value) return;
+  locating.value = true;
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      locating.value = false;
+      const position = { lat: coords.latitude, lng: coords.longitude };
+      me.value = { position, accuracy: coords.accuracy, heading: null, simulated: false };
+      void mapRef.value?.goTo(position, 16);
+    },
+    (error) => {
+      locating.value = false;
+      ui.toast(
+        {
+          key:
+            error.code === error.PERMISSION_DENIED
+              ? 'explore.locationDenied'
+              : 'explore.locationFailed',
+        },
+        { tone: 'warning' },
+      );
+    },
+    { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+  );
+}
 
 function toggleRoute(id: string, on: boolean): void {
   const next = new Set(hiddenRoutes.value);
@@ -123,7 +160,6 @@ onMounted(() => {
   <main class="home" :class="{ 'home--map': view === 'map' }">
     <header class="home__top">
       <WordMark :size="30" />
-      <span class="home__city"><MapPin :size="16" aria-hidden="true" />{{ t('home.city') }}</span>
     </header>
     <div class="home__controls">
       <SegmentedControl v-model="view" :options="viewOptions" :label="t('home.view.label')" />
@@ -168,6 +204,7 @@ onMounted(() => {
         ref="mapRef"
         :markers="markers"
         :fit="fit"
+        :user="me"
         :theme="theme"
         :large="settings.sol"
         :label="t('home.view.map')"
@@ -176,10 +213,12 @@ onMounted(() => {
         <div class="home__fabs">
           <MapFab :icon="ListFilter" :label="t('filter.open')" @click="filterOpen = true" />
           <MapFab
+            v-if="canLocate"
             :icon="LocateFixed"
             tone="primary"
-            :label="t('run.recenter')"
-            @click="mapRef?.fitTo()"
+            :label="t('explore.locate')"
+            :aria-busy="locating || undefined"
+            @click="locateMe"
           />
         </div>
         <div class="legend" :aria-label="t('filter.legend')">
@@ -261,21 +300,6 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: calc(16px + var(--safe-top)) var(--gutter) 12px;
-}
-.home__city {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 40px;
-  margin-left: auto;
-  padding: 0 14px;
-  border: var(--control-border) solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  font: 600 15px var(--font-ui);
-}
-.home__city svg {
-  color: var(--color-accent);
 }
 .home__controls {
   display: flex;
