@@ -3,16 +3,24 @@ import {
   AnalyticsBatchBodySchema,
   API_ERROR_CODES,
   ApiErrorSchema,
+  COMMUNITY_ROUTES,
   EDIT_TOKEN_HEADER,
   EditTokenSchema,
   GeoResolveQuerySchema,
   GeoSuggestionSchema,
   GeoSuggestQuerySchema,
   GeoSuggestResponseSchema,
+  ModerationActionBodySchema,
+  ModerationItemSchema,
   NearSchema,
+  REPORT_REASONS,
+  REPORTS_TO_HIDE,
   ResolvedPlaceSchema,
   RouteBundleBodySchema,
   RouteListQuerySchema,
+  RouteOwnerStatusSchema,
+  RouteReportBodySchema,
+  RouteReportResponseSchema,
   RouteWriteResponseSchema,
   RunEndBodySchema,
   RunStartBodySchema,
@@ -79,10 +87,10 @@ describe('route list query', () => {
     expect(RouteListQuerySchema.safeParse({ mode: 'race' }).success).toBe(false);
   });
 
-  it('has no source filter: the list is curated routes only', () => {
-    expect(RouteListQuerySchema.parse({ source: 'user', activity: 'bike' })).toEqual({
-      activity: 'bike',
-    });
+  it('has no source or visibility filter: the server decides what is listed', () => {
+    expect(
+      RouteListQuerySchema.parse({ source: 'user', visibility: 'private', activity: 'bike' }),
+    ).toEqual({ activity: 'bike' });
   });
 });
 
@@ -98,6 +106,73 @@ describe('route writes', () => {
     const ok = { id: 'mi-ruta-k3x9q2m7p1', updatedAt: '2026-10-08T09:00:00.000Z' };
     expect(RouteWriteResponseSchema.parse(ok)).toEqual(ok);
     expect(RouteWriteResponseSchema.safeParse({ ...ok, updatedAt: 'ayer' }).success).toBe(false);
+  });
+
+  it('take an optional visibility, and answer it with the moderation state (phase 7.2)', () => {
+    expect(RouteBundleBodySchema.safeParse({ spec: {}, visibility: 'public' }).success).toBe(true);
+    expect(RouteBundleBodySchema.safeParse({ spec: {}, visibility: 'private' }).success).toBe(true);
+    expect(RouteBundleBodySchema.safeParse({ spec: {}, visibility: 'friends' }).success).toBe(
+      false,
+    );
+    const answer = {
+      id: 'mi-ruta-k3x9q2m7p1',
+      updatedAt: '2026-10-08T09:00:00.000Z',
+      visibility: 'public',
+      moderation: 'visible',
+    };
+    expect(RouteWriteResponseSchema.parse(answer)).toEqual(answer);
+    expect(RouteWriteResponseSchema.safeParse({ ...answer, moderation: 'gone' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('community routes (phase 7.2)', () => {
+  it('list the public routes within 30 km, 20 at most', () => {
+    expect(COMMUNITY_ROUTES).toEqual({ radiusMeters: 30_000, maxListed: 20 });
+  });
+
+  it('tell the owner what others see of the route', () => {
+    const status = { visibility: 'public', moderation: 'hidden', publishedAt: null };
+    expect(RouteOwnerStatusSchema.parse(status)).toEqual(status);
+    expect(
+      RouteOwnerStatusSchema.safeParse({ ...status, publishedAt: '2026-10-09T10:00:00.000Z' })
+        .success,
+    ).toBe(true);
+    expect(RouteOwnerStatusSchema.safeParse({ ...status, visibility: 'unlisted' }).success).toBe(
+      false,
+    );
+  });
+
+  it('take a report with one of the reasons and nothing else (no free text)', () => {
+    for (const reason of REPORT_REASONS) {
+      expect(RouteReportBodySchema.safeParse({ reason }).success, reason).toBe(true);
+    }
+    expect(RouteReportBodySchema.safeParse({ reason: 'boring' }).success).toBe(false);
+    expect(RouteReportBodySchema.safeParse({ reason: 'spam', comment: 'x' }).success).toBe(false);
+    expect(RouteReportBodySchema.safeParse({}).success).toBe(false);
+    expect(RouteReportResponseSchema.parse({ received: true })).toEqual({ received: true });
+    expect(REPORTS_TO_HIDE).toBe(3);
+  });
+
+  it("take the operator's two actions and list routes with their open reports by reason", () => {
+    expect(ModerationActionBodySchema.safeParse({ action: 'block' }).success).toBe(true);
+    expect(ModerationActionBodySchema.safeParse({ action: 'restore' }).success).toBe(true);
+    expect(ModerationActionBodySchema.safeParse({ action: 'delete' }).success).toBe(false);
+    const item = {
+      id: 'mi-ruta-k3x9q2m7p1',
+      name: { es: 'Mi ruta' },
+      locale: 'es',
+      visibility: 'public',
+      moderation: 'hidden',
+      reports: { spam: 2, offensive: 1 },
+      openReports: 3,
+      publishedAt: '2026-10-09T10:00:00.000Z',
+      updatedAt: '2026-10-09T10:00:00.000Z',
+    };
+    expect(ModerationItemSchema.parse(item)).toEqual(item);
+    expect(ModerationItemSchema.safeParse({ ...item, reports: { boring: 1 } }).success).toBe(false);
+    expect(ModerationItemSchema.safeParse({ ...item, reports: { spam: 0 } }).success).toBe(false);
   });
 });
 

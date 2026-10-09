@@ -145,18 +145,114 @@ export const NearSchema = z
   .pipe(LatLngSchema)
   .transform(({ lat, lng }) => ({ lat: roundCoordinate(lat), lng: roundCoordinate(lng) }));
 
-/** Curated routes only: user routes are private to the device that made them. */
+/**
+ * The curated routes and, with `near`, the community routes around it (phase
+ * 7.2): user routes their owners made public, never private ones.
+ */
 export const RouteListQuerySchema = z.object({
   mode: RouteModeSchema.optional(),
   activity: ActivitySchema.optional(),
   /** Text search in the route's name and summary, any language. */
   q: z.string().trim().min(1).max(80).optional(),
-  /** Sorts by distance from this position. */
+  /** Sorts by distance from this position, and adds the community routes around it. */
   near: NearSchema.optional(),
 });
 export type RouteListQuery = z.infer<typeof RouteListQuerySchema>;
 
 export const RouteIdParamsSchema = z.object({ id: z.string().regex(/^[a-z0-9-]{3,64}$/) });
+
+// ------------------------------------------------------------------ community routes (phase 7.2)
+
+/**
+ * Who sees a user route: only the device that made it ('private', the
+ * default) or anyone who uses Rumbo near it ('public'), without knowing who
+ * made it. Curated routes are always public.
+ */
+export const ROUTE_VISIBILITIES = ['private', 'public'] as const;
+export const RouteVisibilitySchema = z.enum(ROUTE_VISIBILITIES);
+export type RouteVisibility = z.infer<typeof RouteVisibilitySchema>;
+
+/**
+ * Moderation of a user route. 'hidden': enough devices reported it, and it
+ * waits for the operator's review. 'blocked': the operator took it down.
+ * Neither is listed nor served to anyone but its owner, whatever its
+ * visibility says.
+ */
+export const MODERATION_STATES = ['visible', 'hidden', 'blocked'] as const;
+export const ModerationStateSchema = z.enum(MODERATION_STATES);
+export type ModerationState = z.infer<typeof ModerationStateSchema>;
+
+/**
+ * GET /routes?near=… adds the public, visible user routes whose centroid is
+ * within `radiusMeters` of `near`: the nearest first, `maxListed` at most.
+ */
+export const COMMUNITY_ROUTES = { radiusMeters: 30_000, maxListed: 20 } as const;
+
+/** GET /routes/:id/status, for the owner (X-Edit-Token): what others can see of the route. */
+export const RouteOwnerStatusSchema = z.object({
+  visibility: RouteVisibilitySchema,
+  moderation: ModerationStateSchema,
+  /** When it was last made public; null if it never was. */
+  publishedAt: z.iso.datetime().nullable(),
+});
+export type RouteOwnerStatus = z.infer<typeof RouteOwnerStatusSchema>;
+
+/** Why someone reports a community route. No free text: nothing personal to keep or to moderate. */
+export const REPORT_REASONS = [
+  'spam',
+  'offensive',
+  'dangerous',
+  'privacy',
+  'wrong',
+  'other',
+] as const;
+export const ReportReasonSchema = z.enum(REPORT_REASONS);
+export type ReportReason = z.infer<typeof ReportReasonSchema>;
+
+/** Open reports from this many different devices hide a public route until it's reviewed. */
+export const REPORTS_TO_HIDE = 3;
+
+/** POST /routes/:id/reports, with X-Device-Id. */
+export const RouteReportBodySchema = z.strictObject({ reason: ReportReasonSchema });
+export type RouteReportBody = z.infer<typeof RouteReportBodySchema>;
+
+/**
+ * The same answer for a new report, a repeated one and one about the
+ * reporter's own route (which counts for nothing): it never tells how many
+ * reports a route has or whether it was hidden.
+ */
+export const RouteReportResponseSchema = z.object({ received: z.literal(true) });
+export type RouteReportResponse = z.infer<typeof RouteReportResponseSchema>;
+
+/** The operator's actions (ADMIN_TOKEN): take a route down, or put it back and close its reports. */
+export const MODERATION_ACTIONS = ['block', 'restore'] as const;
+export const ModerationActionBodySchema = z.strictObject({ action: z.enum(MODERATION_ACTIONS) });
+export type ModerationActionBody = z.infer<typeof ModerationActionBodySchema>;
+
+export const ModerationActionResponseSchema = z.object({
+  id: z.string(),
+  moderation: ModerationStateSchema,
+});
+export type ModerationActionResponse = z.infer<typeof ModerationActionResponseSchema>;
+
+/** One route in GET /admin/moderation: hidden, blocked or with open reports. */
+export const ModerationItemSchema = z.object({
+  id: z.string(),
+  name: localizedText({ max: 80 }),
+  locale: LocaleSchema,
+  visibility: RouteVisibilitySchema,
+  moderation: ModerationStateSchema,
+  /** Open reports, by reason (reasons without reports are left out). */
+  reports: z.partialRecord(ReportReasonSchema, z.number().int().positive()),
+  openReports: z.number().int().nonnegative(),
+  publishedAt: z.iso.datetime().nullable(),
+  updatedAt: z.iso.datetime(),
+});
+export type ModerationItem = z.infer<typeof ModerationItemSchema>;
+
+/** Hidden routes first, then blocked ones, then the rest by open reports, most first. */
+export const ModerationQueueResponseSchema = z.object({ routes: z.array(ModerationItemSchema) });
+export type ModerationQueueResponse = z.infer<typeof ModerationQueueResponseSchema>;
 
 /**
  * Body of POST /routes and PUT /routes/:id: only the envelope here, so every
@@ -166,11 +262,18 @@ export const RouteIdParamsSchema = z.object({ id: z.string().regex(/^[a-z0-9-]{3
 export const RouteBundleBodySchema = z.strictObject({
   spec: z.unknown(),
   contents: z.unknown().optional(),
+  /** Phase 7.2. Left out: 'private' on a POST, unchanged on a PUT. */
+  visibility: RouteVisibilitySchema.optional(),
 });
 export type RouteBundleBody = z.infer<typeof RouteBundleBodySchema>;
 
-/** Answer to a route write. */
-export const RouteWriteResponseSchema = z.object({ id: z.string(), updatedAt: z.iso.datetime() });
+/** Answer to a route write. `visibility` and `moderation` since phase 7.2 (older servers leave them out). */
+export const RouteWriteResponseSchema = z.object({
+  id: z.string(),
+  updatedAt: z.iso.datetime(),
+  visibility: RouteVisibilitySchema.optional(),
+  moderation: ModerationStateSchema.optional(),
+});
 export type RouteWriteResponse = z.infer<typeof RouteWriteResponseSchema>;
 
 // ------------------------------------------------------------------ user routes
