@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está en producción desde el 2026-10-09, y la 7.3 (portadas y vista de rutas, [ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)) está construida y pendiente del despliegue.
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está en producción desde el 2026-10-09, y la 7.3 (portadas y vista de rutas, [ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)) desde el mismo día.
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -2219,7 +2219,7 @@ La pidió el responsable del proyecto tras probar la 7.1 en un iPhone: que Rumbo
     - traducir las fichas;
     - avisar al responsable cuando se oculta una ruta.
 
-### Fase 7.3: portadas y vista de rutas · construida el 2026-10-09, pendiente del despliegue
+### Fase 7.3: portadas y vista de rutas · completada el 2026-10-09
 
 La pidió el responsable del proyecto tras probar la 7.2: una foto de portada para cada ruta (o una imagen según su tema), una vista del mapa con las rutas unidas por actividad y un filtro sin nombres de rutas ([ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)).
 
@@ -2227,8 +2227,9 @@ La pidió el responsable del proyecto tras probar la 7.2: una foto de portada pa
 - [x] API (§11.1): `POST /media` con `sharp` (sin metadatos), `GET /media/:file`, la portada en las escrituras de rutas, la limpieza semanal, `DELETE /admin/media/:id` y la migración 0004.
 - [x] Web (§10.13): la tarjeta «Portada» en C4 (subir o elegir de los lugares), RouteCover con las ilustraciones por interés, las fotos propias sin conexión, la vista Puntos | Rutas con colores por actividad, la leyenda y el filtro por origen e intereses.
 - [x] La ruta curada con su foto de portada y sus intereses.
-- **DoD:** pendiente del despliegue (API primero: migración 0004 y `sharp`).
-  - En producción: subir una portada desde el móvil y ver que la foto guardada no tiene GPS, elegir la de un lugar, ver una ruta sin foto con su ilustración y la vista Rutas en Explorar.
+- **DoD:** desplegada el 2026-10-09 (commit `1397e38`); falta la prueba del responsable en su móvil.
+  - [x] En producción: una foto con GPS en su EXIF se guarda reducida y sin metadatos, sirve de portada a una ruta temporal (y no a la de otro dispositivo), y el responsable la borra; «Leiria histórica» con su foto, la vista Rutas y el filtro por origen e intereses en un iPhone emulado.
+  - [ ] El responsable del proyecto: subir una portada con la cámara del móvil y elegir la de un lugar.
 - **Notas de implementación:**
   - Tests: 1.797 en total (1.458 en la fase 7.2). La API pasa de 482 a 589, la web de 549 a 772, `api-contract` de 53 a 59, `route-builder` de 90 a 93 y los e2e de 27 a 34.
   - Queda para después: sacar las fotos de la base de datos (a un volumen o un almacenamiento de objetos) si el uso crece, y quitar los colores por ruta que ya no se usan.
