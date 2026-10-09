@@ -1,6 +1,7 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
 > **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está en producción desde el 2026-10-09, y la 7.3 (portadas y vista de rutas, [ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)) desde el mismo día.
+> **Versión 1 terminada** con la fase 7.3 (2026-10-09). La versión 2 (retos con cuentas, clasificaciones y gamificación) se planifica en [PROJECT_PLAN_V2.md](PROJECT_PLAN_V2.md).
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
