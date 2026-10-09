@@ -28,8 +28,19 @@ vi.mock('../src/map/RouteMap.vue', async () => {
     __esModule: true,
     default: define({
       name: 'RouteMap',
-      props: ['markers', 'fit', 'fitZoom', 'user', 'theme', 'large', 'label'],
-      emits: ['action'],
+      props: [
+        'markers',
+        'lines',
+        'linesLabel',
+        'popups',
+        'fit',
+        'fitZoom',
+        'user',
+        'theme',
+        'large',
+        'label',
+      ],
+      emits: ['action', 'markerTap', 'lineTap', 'mapClick'],
       setup(_, { expose, slots }) {
         expose({ goTo: map.goTo });
         return () => h('div', { class: 'map-stub' }, slots['default']?.());
@@ -470,7 +481,7 @@ describe('the Explore map with the community routes', () => {
     stubPermission('granted');
   });
 
-  it('draws their points, and lists them in the legend and in the filter', async () => {
+  it('draws their points, and the legend names no route (just the activity they share)', async () => {
     stubApi(around());
     const { view } = await open();
     await vi.waitFor(() => expect(communityCards(view)).toHaveLength(2));
@@ -479,9 +490,11 @@ describe('the Explore map with the community routes', () => {
     expect(markerIds.filter((id) => id.startsWith('paseo-aaaa/'))).toHaveLength(2);
     expect(markerIds.filter((id) => id.startsWith('paseo-bbbb/'))).toHaveLength(2);
     expect(markerIds.filter((id) => id.startsWith('leiria-historica/'))).toHaveLength(12);
-    expect(view.findAll('.legend__item').map((item) => item.text())).toEqual(
-      expect.arrayContaining(['Leiria histórica', 'Paseo del río', 'Paseo del parque']),
-    );
+    // Every route here is a walk, and the legend says so once, whatever the routes' names.
+    expect(view.findAll('.legend__item').map((item) => item.text())).toEqual([
+      'A pie',
+      'Lugares de interés',
+    ]);
   });
 
   it('opens on the routes around the user when the position is known', async () => {

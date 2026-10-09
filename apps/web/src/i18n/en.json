@@ -87,6 +87,12 @@
       "invite": "Tap “My location” to see the community's routes near you.",
       "empty": "There are no community routes near you yet.",
       "error": "We couldn't load the community routes."
+    },
+    "map": {
+      "mode": "Show on the map",
+      "points": "Points",
+      "routes": "Routes",
+      "routesList": "Map routes"
     }
   },
   "mode": {
@@ -194,10 +200,15 @@
   "filter": {
     "open": "Filter the map",
     "title": "Filter the map",
-    "routes": "Routes",
+    "origin": "Origin",
+    "origins": {
+      "curated": "Official",
+      "community": "From the community",
+      "mine": "Yours"
+    },
+    "interests": "Interests",
     "places": "Points of interest",
     "categories": "Categories",
-    "modes": "Mode",
     "showAll": "Show everything",
     "done": "Done",
     "legend": "Legend",

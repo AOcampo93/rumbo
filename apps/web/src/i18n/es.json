@@ -87,6 +87,12 @@
       "invite": "Toca «Mi ubicación» para ver las rutas de la comunidad que hay cerca de ti.",
       "empty": "Aún no hay rutas de la comunidad cerca de ti.",
       "error": "No pudimos cargar las rutas de la comunidad."
+    },
+    "map": {
+      "mode": "Mostrar en el mapa",
+      "points": "Puntos",
+      "routes": "Rutas",
+      "routesList": "Rutas del mapa"
     }
   },
   "mode": {
@@ -194,10 +200,15 @@
   "filter": {
     "open": "Filtrar el mapa",
     "title": "Filtrar el mapa",
-    "routes": "Rutas",
+    "origin": "Origen",
+    "origins": {
+      "curated": "Oficiales",
+      "community": "De la comunidad",
+      "mine": "Tuyas"
+    },
+    "interests": "Intereses",
     "places": "Lugares de interés",
     "categories": "Categorías",
-    "modes": "Modo",
     "showAll": "Mostrar todo",
     "done": "Listo",
     "legend": "Leyenda",
