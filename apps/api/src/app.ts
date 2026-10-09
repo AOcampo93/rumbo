@@ -25,6 +25,7 @@ import { contentRoutes } from './routes/content.js';
 import { suggestRoutes } from './routes/suggest.js';
 import { geoRoutes } from './routes/geo.js';
 import { healthRoutes } from './routes/health.js';
+import { mediaRoutes } from './routes/media.js';
 import { moderationRoutes } from './routes/moderation.js';
 import { pushRoutes } from './routes/push.js';
 import { reportRoutes } from './routes/reports.js';
@@ -122,6 +123,7 @@ export async function buildApp(
     writeRateLimitPerMinute: config.writeRateLimitPerMinute,
     writeRateLimitPerDay: config.writeRateLimitPerDay,
     userRoutesMax: config.userRoutesMax,
+    publicOrigin: config.publicOrigin,
   });
   await app.register(reportRoutes, {
     database: deps.data,
@@ -152,13 +154,24 @@ export async function buildApp(
     model: config.aiModel,
   });
 
-  // The operator's token guards the announcements and the moderation of
-  // community routes alike, under one budget per address.
+  // The operator's token guards the announcements, the moderation of
+  // community routes and the deletion of photos alike, under one budget per
+  // address.
   const admin = adminGuard(app, {
     adminToken: config.adminToken,
     rateLimitPerMinute: config.adminRateLimitPerMinute,
   });
   await app.register(moderationRoutes, { database: deps.data, admin });
+
+  // Phase 7.3: the photos users upload as the cover of their routes.
+  await app.register(mediaRoutes, {
+    database: deps.data,
+    admin,
+    publicOrigin: config.publicOrigin,
+    rateLimitPerMinute: config.mediaRateLimitPerMinute,
+    uploadsPerDevicePerDay: config.mediaUploadsPerDevicePerDay,
+    maxTotalBytes: Math.floor(config.mediaMaxTotalMb * 1024 * 1024),
+  });
 
   // Web Push: off (503 push_unavailable) unless the VAPID settings are all there and valid.
   const push = createPush(config, {

@@ -5,6 +5,7 @@ import { loadConfig } from './config.js';
 import { createDatabase, type Database } from './db/index.js';
 import { seedCuratedRoutes } from './db/seed.js';
 import { createWikidataGeocoder } from './geo/wikidata.js';
+import { startMediaCleanup } from './media/cleanup.js';
 import { MIN_ADMIN_TOKEN_LENGTH, usableAdminToken } from './push/admin.js';
 import { createPush } from './push/index.js';
 import { startReminderJob } from './push/reminders.js';
@@ -77,6 +78,9 @@ const reminders = push
     })
   : null;
 
+// Photos no route uses are deleted a day later; the job waits for the database.
+const mediaCleanup = startMediaCleanup({ database: () => ready, log: app.log });
+
 /**
  * Migrations, then the curated routes. If the database is down at boot the API
  * still starts (health reports it, data endpoints answer 503) and retries.
@@ -99,6 +103,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.once(signal, async () => {
     app.log.info({ signal }, 'shutting down');
     await reminders?.stop();
+    await mediaCleanup.stop();
     await app.close();
     await database?.close();
     process.exit(0);

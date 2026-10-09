@@ -16,6 +16,17 @@
     "locale": "pt",
     "mode": "free",
     "activity": "walk",
+    "coverImage": {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/10/CASTELO_DE_LEIRIA.jpg",
+      "alt": {
+        "pt": "O castelo de Leiria no alto da sua colina",
+        "es": "El castillo de Leiria en lo alto de su colina",
+        "en": "Leiria Castle on top of its hill"
+      },
+      "credit": "JMFH4778",
+      "license": "CC BY-SA 3.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:CASTELO_DE_LEIRIA.jpg"
+    },
     "source": "curated",
     "points": [
       {
@@ -296,7 +307,8 @@
       }
     },
     "meta": {
-      "attribution": "Coordinates: Wikidata (CC0), except Castelo de Leiria: © OpenStreetMap contributors (ODbL). Texts based on Wikipedia."
+      "attribution": "Coordinates: Wikidata (CC0), except Castelo de Leiria: © OpenStreetMap contributors (ODbL). Texts based on Wikipedia. Cover photo: JMFH4778, CC BY-SA 3.0, Wikimedia Commons.",
+      "interests": ["history", "architecture"]
     }
   },
   "contents": {}

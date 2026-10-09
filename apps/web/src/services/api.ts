@@ -2,13 +2,16 @@ import { type ApiErrorCode, ApiErrorSchema, DEVICE_ID_HEADER } from '@rumbo/api-
 import { LOCALE_TAGS, currentLocale } from '../i18n/index.ts';
 import { deviceId } from './device.ts';
 
-// Calls to the API on the same origin (/api/v1, PROJECT_PLAN §11.1): JSON,
-// the active language in Accept-Language, the anonymous device id when the
-// endpoint needs it, and a timeout so the app never hangs on a bad network.
+// Calls to the API on the same origin (/api/v1, PROJECT_PLAN §11.1): JSON
+// (or a photo as it is, for POST /media), the active language in
+// Accept-Language, the anonymous device id when the endpoint needs it, and a
+// timeout so the app never hangs on a bad network.
 
 export interface ApiRequest {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
+  /** A file sent as the body, as it is and with its own Content-Type, instead of JSON (a cover photo). */
+  blob?: Blob;
   /** Sends X-Device-Id. */
   device?: boolean;
   /** Extra headers, e.g. X-Edit-Token. */
@@ -43,16 +46,18 @@ export async function api(path: string, request: ApiRequest = {}): Promise<Respo
       accept: 'application/json',
       'accept-language': LOCALE_TAGS[currentLocale()],
     };
-    if (request.body !== undefined) headers['content-type'] = 'application/json';
+    if (request.blob) headers['content-type'] = request.blob.type || 'application/octet-stream';
+    else if (request.body !== undefined) headers['content-type'] = 'application/json';
     if (request.device) headers[DEVICE_ID_HEADER] = await deviceId();
     // Aborted already (or while reading the device id): never send it.
     if (controller.signal.aborted) {
       throw controller.signal.reason ?? new DOMException('The request was aborted', 'AbortError');
     }
+    const body = request.blob ?? (request.body !== undefined ? JSON.stringify(request.body) : null);
     return await fetch(`/api/v1${path}`, {
       method: request.method ?? 'GET',
       headers,
-      ...(request.body !== undefined ? { body: JSON.stringify(request.body) } : {}),
+      ...(body !== null ? { body } : {}),
       signal: controller.signal,
       ...(request.keepalive ? { keepalive: true } : {}),
     });

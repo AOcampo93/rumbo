@@ -37,6 +37,25 @@ describe('api()', () => {
     expect(del?.body).toBeUndefined();
   });
 
+  it('sends a file as the body as it is, with its own Content-Type instead of JSON (a cover photo)', async () => {
+    const fetchMock = stubFetch();
+    const photo = new Blob([new Uint8Array(16)], { type: 'image/jpeg' });
+    await api('/media', { method: 'POST', blob: photo, device: true });
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('/api/v1/media');
+    expect(init).toMatchObject({ method: 'POST', body: photo });
+    expect(init?.headers).toMatchObject({
+      'content-type': 'image/jpeg',
+      accept: 'application/json',
+      'x-device-id': expect.stringMatching(/^[0-9a-f-]{36}$/),
+    });
+    // Without a type of its own it is plain bytes.
+    await api('/media', { method: 'POST', blob: new Blob([new Uint8Array(1)]) });
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
+      'content-type': 'application/octet-stream',
+    });
+  });
+
   it('only lets small requests that may outlive the page ask for keepalive (the run end)', async () => {
     const fetchMock = stubFetch(async () => new Response(null, { status: 204 }));
     await registerRunEnd('3c8f0a52-7d1e-4b6a-9f2c-5e4d3c2b1a09', {

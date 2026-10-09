@@ -41,8 +41,10 @@ import { type OtherArrival, useCreatorStore } from '../../stores/creator.ts';
 import { useRunStore } from '../../stores/run.ts';
 import { useSettingsStore } from '../../stores/settings.ts';
 import { useUiStore } from '../../stores/ui.ts';
+import CoverCard from './CoverCard.vue';
 
-// C4 · Revisar (DESIGN C4; design ux-8): the route on the map, its facts and
+// C4 · Revisar (DESIGN C4; design ux-8): the route on the map, its facts, the
+// "Portada" card (phase 7.3: the route's cover and how to change it) and
 // a checklist (places, overlapping zones, how many places have an AI card,
 // what the others show on arrival, addresses of the places with the basic
 // sheet, a challenge's time limit and anything that keeps the route from
@@ -100,6 +102,8 @@ const mapKey = ref(0);
 let mapTimer: ReturnType<typeof setTimeout> | null = null;
 
 const saveError = ref(false);
+/** A cover photo is being uploaded: saving (or testing) now would leave it out. */
+const coverBusy = ref(false);
 const draft = computed(() => creator.draft);
 
 const publish = computed({
@@ -384,6 +388,8 @@ onBeforeUnmount(() => {
           />
         </div>
 
+        <CoverCard v-model:busy="coverBusy" />
+
         <section class="review__checks" :aria-labelledby="checksId">
           <h2 :id="checksId" class="t-h2">{{ t('create.review.checklist') }}</h2>
           <ul class="checks">
@@ -451,13 +457,13 @@ onBeforeUnmount(() => {
           <AppButton
             variant="secondary"
             class="review__test"
-            :disabled="blocked || creator.saving"
+            :disabled="blocked || creator.saving || coverBusy"
             @click="test"
           >
             <template #icon><FlaskConical :size="20" aria-hidden="true" /></template>
             {{ t('create.review.test') }}
           </AppButton>
-          <AppButton :disabled="blocked" :loading="creator.saving" @click="save">
+          <AppButton :disabled="blocked || coverBusy" :loading="creator.saving" @click="save">
             {{ creator.saving ? t('create.review.saving') : t('create.review.save') }}
           </AppButton>
         </div>

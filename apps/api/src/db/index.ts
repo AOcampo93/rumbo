@@ -5,6 +5,9 @@ import * as schema from './schema.js';
 
 export type Db = NodePgDatabase<typeof schema>;
 
+/** What a `db.transaction` callback works on. */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
 /** The data layer: Drizzle on a small pg pool, plus a ping for /health. */
 export interface Database {
   db: Db;

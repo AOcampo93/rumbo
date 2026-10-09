@@ -150,3 +150,110 @@ describe('the community routes settings', () => {
     }
   });
 });
+
+describe('the route covers settings', () => {
+  // Made up for the tests: a credential in a URL, to see that no message repeats it.
+  const PASSWORD = ['made', 'up', 'password'].join('-');
+
+  it('are the production origin, 10 uploads a minute per address, 30 a day per device and 300 MB', () => {
+    const empty = loadConfig({});
+    expect(empty).toMatchObject({
+      publicOrigin: 'https://rumbo.arturoocampo.com',
+      mediaRateLimitPerMinute: 10,
+      mediaUploadsPerDevicePerDay: 30,
+      mediaMaxTotalMb: 300,
+    });
+    // The empty values of a copied .env.example are the defaults too.
+    expect(
+      loadConfig({
+        PUBLIC_ORIGIN: '',
+        MEDIA_RATE_LIMIT_PER_MINUTE: '',
+        MEDIA_UPLOADS_PER_DEVICE_PER_DAY: '',
+        MEDIA_MAX_TOTAL_MB: '',
+      }),
+    ).toEqual(empty);
+    expect(loadConfig({ PUBLIC_ORIGIN: '   ' }).publicOrigin).toBe(
+      'https://rumbo.arturoocampo.com',
+    );
+  });
+
+  it('read the environment', () => {
+    expect(
+      loadConfig({
+        PUBLIC_ORIGIN: 'http://localhost:5173',
+        MEDIA_RATE_LIMIT_PER_MINUTE: '3',
+        MEDIA_UPLOADS_PER_DEVICE_PER_DAY: '5',
+        MEDIA_MAX_TOTAL_MB: '0.5',
+      }),
+    ).toMatchObject({
+      publicOrigin: 'http://localhost:5173',
+      mediaRateLimitPerMinute: 3,
+      mediaUploadsPerDevicePerDay: 5,
+      mediaMaxTotalMb: 0.5,
+    });
+  });
+
+  it('fall back on the defaults for a number that is not a positive one', () => {
+    for (const bad of ['many', '0', '-3', 'Infinity', 'NaN']) {
+      expect(
+        loadConfig({
+          MEDIA_RATE_LIMIT_PER_MINUTE: bad,
+          MEDIA_UPLOADS_PER_DEVICE_PER_DAY: bad,
+          MEDIA_MAX_TOTAL_MB: bad,
+        }),
+        bad,
+      ).toMatchObject({
+        mediaRateLimitPerMinute: 10,
+        mediaUploadsPerDevicePerDay: 30,
+        mediaMaxTotalMb: 300,
+      });
+    }
+    // The counts are whole numbers; the space may be a fraction of a MB.
+    const fractions = loadConfig({
+      MEDIA_RATE_LIMIT_PER_MINUTE: '2.5',
+      MEDIA_UPLOADS_PER_DEVICE_PER_DAY: '1.5',
+      MEDIA_MAX_TOTAL_MB: '2.5',
+    });
+    expect(fractions).toMatchObject({
+      mediaRateLimitPerMinute: 10,
+      mediaUploadsPerDevicePerDay: 30,
+      mediaMaxTotalMb: 2.5,
+    });
+  });
+
+  it('keep only the origin of PUBLIC_ORIGIN: scheme, host and port', () => {
+    const origins: Array<[string, string]> = [
+      ['https://rumbo.example.com', 'https://rumbo.example.com'],
+      ['https://rumbo.example.com/', 'https://rumbo.example.com'],
+      ['  https://rumbo.example.com/  ', 'https://rumbo.example.com'],
+      ['HTTPS://Rumbo.Example.com', 'https://rumbo.example.com'],
+      ['https://rumbo.example.com:443', 'https://rumbo.example.com'],
+      ['http://127.0.0.1:3000', 'http://127.0.0.1:3000'],
+      ['http://localhost:5173', 'http://localhost:5173'],
+    ];
+    for (const [given, origin] of origins) {
+      expect(loadConfig({ PUBLIC_ORIGIN: given }).publicOrigin, given).toBe(origin);
+    }
+  });
+
+  it('refuse a PUBLIC_ORIGIN that is not an origin, without echoing its credentials', () => {
+    for (const bad of [
+      'rumbo.example.com',
+      'ftp://rumbo.example.com',
+      'https://rumbo.example.com/app',
+      'https://rumbo.example.com/api/v1',
+      'https://rumbo.example.com?x=1',
+      'https://rumbo.example.com/#top',
+      `https://user:${PASSWORD}@rumbo.example.com`,
+      'javascript:alert(1)',
+      'https://',
+    ]) {
+      expect(() => loadConfig({ PUBLIC_ORIGIN: bad }), bad).toThrow(/PUBLIC_ORIGIN/);
+      try {
+        loadConfig({ PUBLIC_ORIGIN: bad });
+      } catch (error) {
+        expect((error as Error).message).not.toContain(PASSWORD);
+      }
+    }
+  });
+});

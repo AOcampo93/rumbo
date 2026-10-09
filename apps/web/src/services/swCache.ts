@@ -20,3 +20,15 @@ export function isCacheableRouteRequest(url: URL, method: string): boolean {
     !OWNER_STATUS.test(url.pathname)
   );
 }
+
+/** GET /media/<id>.jpg: a user's own photo, a route's cover (phase 7.3). api-contract's MEDIA_PATH, copied: this file has no imports. */
+const OWN_PHOTO = /^\/api\/v1\/media\/[A-Za-z0-9_-]{22}\.jpg$/;
+
+/**
+ * The photos users upload as covers. The worker asks the network first (the
+ * operator may delete one: the API then answers 404) and keeps the last copy
+ * for offline use, a downloaded route's cover included.
+ */
+export function isOwnPhotoRequest(url: URL, method: string): boolean {
+  return method === 'GET' && OWN_PHOTO.test(url.pathname);
+}

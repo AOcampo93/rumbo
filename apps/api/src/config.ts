@@ -71,6 +71,18 @@ export interface AppConfig {
   adminRateLimitPerMinute: number;
   /** Reports of community routes per minute per client address. */
   reportRateLimitPerMinute: number;
+  /**
+   * The origin the web and the API are reached at (scheme and host, no path):
+   * the address of every photo the server stores, and the only one a route's
+   * own cover may carry (phase 7.3).
+   */
+  publicOrigin: string;
+  /** Photo uploads per minute per client address. */
+  mediaRateLimitPerMinute: number;
+  /** Photos one device may upload in 24 hours. */
+  mediaUploadsPerDevicePerDay: number;
+  /** The most the stored photos may weigh in total, in MiB: past it, uploads answer 503. */
+  mediaMaxTotalMb: number;
 }
 
 /** A positive integer from the environment, or the default when unset or invalid. */
@@ -83,6 +95,29 @@ function positiveInteger(value: string | undefined, fallback: number): number {
 function positiveNumber(value: string | undefined, fallback: number): number {
   const parsed = Number(value ?? fallback);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/** Where Rumbo runs, unless PUBLIC_ORIGIN says otherwise (local development, a preview). */
+export const DEFAULT_PUBLIC_ORIGIN = 'https://rumbo.arturoocampo.com';
+
+/**
+ * PUBLIC_ORIGIN as an origin: `https://host[:port]`. A trailing slash is
+ * tolerated; a path, a query or credentials are a mistake that would put wrong
+ * addresses on every stored photo, so they stop the server at start. The value
+ * is not echoed: it might carry credentials.
+ */
+function originOf(value: string | undefined): string {
+  const invalid = () =>
+    new Error(`Invalid PUBLIC_ORIGIN (use an origin like ${DEFAULT_PUBLIC_ORIGIN})`);
+  let url: URL;
+  try {
+    url = new URL(value?.trim() || DEFAULT_PUBLIC_ORIGIN);
+  } catch {
+    throw invalid();
+  }
+  const plain = url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password;
+  if ((url.protocol !== 'https:' && url.protocol !== 'http:') || !plain) throw invalid();
+  return url.origin;
 }
 
 const GEOCODING_PROVIDERS = ['wikidata', 'none'] as const;
@@ -147,5 +182,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     adminToken: env.ADMIN_TOKEN?.trim() || null,
     adminRateLimitPerMinute: positiveInteger(env.ADMIN_RATE_LIMIT_PER_MINUTE, 5),
     reportRateLimitPerMinute: positiveInteger(env.REPORT_RATE_LIMIT_PER_MINUTE, 10),
+    publicOrigin: originOf(env.PUBLIC_ORIGIN),
+    mediaRateLimitPerMinute: positiveInteger(env.MEDIA_RATE_LIMIT_PER_MINUTE, 10),
+    mediaUploadsPerDevicePerDay: positiveInteger(env.MEDIA_UPLOADS_PER_DEVICE_PER_DAY, 30),
+    mediaMaxTotalMb: positiveNumber(env.MEDIA_MAX_TOTAL_MB, 300),
   };
 }

@@ -6,6 +6,7 @@ import {
   GeneratedCardSchema,
   INTERESTS,
   type Interest,
+  isOwnMediaUrl,
 } from '@rumbo/api-contract';
 import {
   type ArrivalChoice,
@@ -29,11 +30,14 @@ import {
 import {
   type Activity,
   ActivitySchema,
+  canonicalJson,
   type Issue,
   type LatLng,
   LatLngSchema,
   type Locale,
   LocaleSchema,
+  type MediaRef,
+  MediaRefSchema,
   type NormalizedRouteSpec,
   PointCategorySchema,
   type PointContent,
@@ -65,6 +69,24 @@ import { useUiStore } from './ui.ts';
 // moves through the steps, two at a time) and ships the ready ones with the
 // route; a place without one gets the basic sheet. Each place also picks what
 // it shows on arrival (`arrival`): only the ones that use the AI card get one.
+// The route's cover (phase 7.3) is the user's own photo, already uploaded, or
+// one of the photos of its ready cards; the review step sets it.
+
+/**
+ * The route's cover in the draft (phase 7.3, ADR 0005). The user's own photo is
+ * kept as its address only: its alt text is made when the route is built, from
+ * the route's name. A photo of a card is kept exactly as the card has it,
+ * credit and licence included: the API only takes it unchanged.
+ */
+export type DraftCover = { type: 'own'; url: string } | { type: 'card'; image: MediaRef };
+
+/** A photo of a ready card that can be the cover, with the place it belongs to. */
+export interface CoverChoice {
+  /** The place whose card has the photo. */
+  tempId: string;
+  place: string;
+  image: MediaRef;
+}
 
 /** What the creator keeps between sessions (`create:draft`). */
 export interface CreatorDraft {
@@ -98,6 +120,12 @@ export interface CreatorDraft {
    * the route's visibility. Drafts from before it have none and read as off.
    */
   publish: boolean;
+  /**
+   * The cover the user chose in the review step. Drafts from before phase 7.3
+   * have none. What the route ships with is `coverImage` (the getter): a card's
+   * photo only counts while one of the ready cards still has it.
+   */
+  cover?: DraftCover;
   /**
    * The card of each place by tempId (step 3). A place without an entry has
    * not been looked at yet; a `ready` one ships with the route.
@@ -249,6 +277,12 @@ const StoredCardSchema = z.object({
   grounding: z.enum(CONTENT_GROUNDINGS).optional(),
   error: AiErrorCodeSchema.optional(),
 });
+
+/** A stored cover: a broken one is dropped (the draft says it was repaired). */
+const DraftCoverSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('own'), url: z.string().refine(isOwnMediaUrl) }),
+  z.object({ type: z.literal('card'), image: MediaRefSchema }),
+]);
 
 /** The place shows the AI card (or the basic sheet when none is ready): the default arrival. */
 const usesCard = (place: DraftPlace): boolean => arrivalTypeOf(place) === 'card';
@@ -404,6 +438,8 @@ function parseDraft(
       .optional()
       .catch(fallback(() => undefined))
       .transform((value) => value ?? false),
+    // A draft from before phase 7.3 has none: nothing to repair, the route just has no cover.
+    cover: DraftCoverSchema.optional().catch(fallback(() => undefined)),
     cards: z.unknown().optional(),
     settingsOverrides: RouteSettingsInputSchema.optional().catch(fallback(() => undefined)),
     updatedAt: z.string().catch(fallback(() => new Date().toISOString())),
@@ -489,6 +525,53 @@ function contentsFor(draft: CreatorDraft): RouteBundle['contents'] {
   return contents;
 }
 
+/** Plain data, never a reactive proxy: a photo reference travels and is compared as JSON. */
+const plainMedia = (media: MediaRef): MediaRef => JSON.parse(JSON.stringify(media)) as MediaRef;
+
+/** The photos of the ready cards that ship with the route, once each (by address), in route order. */
+function cardPhotos(draft: CreatorDraft): CoverChoice[] {
+  const seen = new Set<string>();
+  const photos: CoverChoice[] = [];
+  for (const place of draft.places) {
+    const card = shippedCard(place, draft.cards[place.tempId]);
+    for (const image of card?.images ?? []) {
+      if (seen.has(image.url)) continue;
+      seen.add(image.url);
+      photos.push({ tempId: place.tempId, place: place.name, image: plainMedia(image) });
+    }
+  }
+  return photos;
+}
+
+/**
+ * The cover the route ships with, or null: the user's own photo gets its alt
+ * from the route's name in the route's language (it follows the name); a
+ * card's photo only counts while one of the ready cards still has exactly that
+ * photo (a regenerated card, a removed place or a basic card takes it away),
+ * because the API refuses any other.
+ */
+function coverFor(draft: CreatorDraft): MediaRef | null {
+  const cover = draft.cover;
+  if (!cover) return null;
+  if (cover.type === 'own') {
+    const name = truncateText(draft.name, DRAFT_LIMITS.nameMax);
+    return name ? { url: cover.url, alt: { [draft.locale]: name } } : null;
+  }
+  const wanted = canonicalJson(cover.image);
+  const shipped = draft.places.some((place) =>
+    shippedCard(place, draft.cards[place.tempId])?.images.some(
+      (image) => canonicalJson(image) === wanted,
+    ),
+  );
+  return shipped ? plainMedia(cover.image) : null;
+}
+
+/** A saved route's cover as a draft keeps it: its own photo by address (the server's), else a card's. */
+const draftCoverOf = (cover: MediaRef): DraftCover =>
+  isOwnMediaUrl(cover.url)
+    ? { type: 'own', url: cover.url }
+    : { type: 'card', image: plainMedia(cover) };
+
 /** Cuts a name to the limit without trimming it (the user may be typing a space). */
 const capName = (name: string): string =>
   [...name].length > DRAFT_LIMITS.nameMax
@@ -559,9 +642,11 @@ export const useCreatorStore = defineStore('creator', () => {
     const current = draft.value;
     if (!current) return null;
     const summaryText = truncateText(current.summary ?? '', SUMMARY_MAX);
+    const shippedCover = coverFor(current);
     return {
       name: current.name,
       ...(summaryText ? { summary: summaryText } : {}),
+      ...(shippedCover ? { coverImage: shippedCover } : {}),
       locale: current.locale,
       mode: current.mode,
       activity: current.activity,
@@ -579,6 +664,14 @@ export const useCreatorStore = defineStore('creator', () => {
   });
 
   const hasContent = computed(() => hasContentIn(draft.value));
+  /**
+   * The cover the route would ship with if it were saved now, or null (the
+   * review step previews this): the chosen cover unless it is a card's photo
+   * that no ready card has any more.
+   */
+  const coverImage = computed<MediaRef | null>(() => routeDraft.value?.coverImage ?? null);
+  /** The photos of the ready cards, which "Elegir de tus lugares" offers as the cover. */
+  const coverChoices = computed<CoverChoice[]>(() => (draft.value ? cardPhotos(draft.value) : []));
   const summary = computed<DraftSummary | null>(() =>
     routeDraft.value ? summarizeDraft(routeDraft.value) : null,
   );
@@ -862,6 +955,7 @@ export const useCreatorStore = defineStore('creator', () => {
       places,
       publish: published,
       cards: cardsFromBundle(places, contents, base.locale),
+      ...(base.coverImage ? { cover: draftCoverOf(base.coverImage) } : {}),
       ...(base.summary ? { summary: base.summary } : {}),
       ...(base.interests ? { interests: knownInterests(base.interests) } : {}),
       ...(base.settingsOverrides ? { settingsOverrides: base.settingsOverrides } : {}),
@@ -882,6 +976,29 @@ export const useCreatorStore = defineStore('creator', () => {
         ? patch
         : { ...patch, summary: truncateText(patch.summary, SUMMARY_MAX) },
     );
+  }
+
+  /**
+   * Sets the route's cover, or removes it with null. The user's own photo must
+   * be an address of this server's photos (isOwnMediaUrl); a card's photo is
+   * copied as it is. False when there is no draft or the photo is not an
+   * acceptable cover.
+   */
+  async function setCover(next: DraftCover | null): Promise<boolean> {
+    await ready;
+    const current = draft.value;
+    if (!current) return false;
+    if (next === null) {
+      delete current.cover;
+      return true;
+    }
+    if (next.type === 'own') {
+      if (!isOwnMediaUrl(next.url)) return false;
+      current.cover = { type: 'own', url: next.url };
+    } else {
+      current.cover = { type: 'card', image: plainMedia(next.image) };
+    }
+    return true;
   }
 
   /** Adds a place at the end. False when the list is full or the same place (externalId) is there. */
@@ -1276,6 +1393,8 @@ export const useCreatorStore = defineStore('creator', () => {
     recovered,
     hasContent,
     routeDraft,
+    coverImage,
+    coverChoices,
     summary,
     overlaps,
     overlapIds,
@@ -1298,6 +1417,7 @@ export const useCreatorStore = defineStore('creator', () => {
     ensureDraft,
     loadForEdit,
     update,
+    setCover,
     addPlace,
     updatePlace,
     removePlace,

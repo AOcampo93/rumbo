@@ -27,12 +27,13 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { centroidNear, communityFilter, isCommunityRoute } from '../community.js';
-import type { Database, Db } from '../db/index.js';
+import type { Database, Db, Tx } from '../db/index.js';
 import { aiContents, pointContents, routes } from '../db/schema.js';
 import { requireDeviceId, touchDevice } from '../device.js';
 import { editTokenFrom, editTokenMatches, hashEditToken, requireEditToken } from '../edit-token.js';
 import { fail, isDataException } from '../errors.js';
 import { addressLimit } from '../limits.js';
+import { attachCover, releasePhotos } from '../media/cover.js';
 import { contentRows, routeRow, summaryColumns, toSummary } from '../summary.js';
 
 export interface DataOptions {
@@ -46,6 +47,8 @@ export interface RoutesOptions extends DataOptions {
   writeRateLimitPerDay: number;
   /** User routes the server keeps at most. */
   userRoutesMax: number;
+  /** The origin of the photos the server stores: the only one a route's own cover may carry. */
+  publicOrigin: string;
 }
 
 export function requireDatabase(options: DataOptions): Database {
@@ -60,7 +63,6 @@ export const ROUTES_PER_DEVICE = 50;
 /** POST and PUT bodies: 30 places take about 20 KB, the schema's 100 about 60 KB. */
 const ROUTE_BODY_LIMIT = 128 * 1024;
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 type RouteInsert = typeof routes.$inferInsert;
 
 /** Lowercase, without accents: "Sé" and "se" match. */
@@ -247,14 +249,20 @@ function isOwner(
  * Locks a route for a write by its owner until the transaction ends, so no
  * other write slips between this check and ours: 404 when it doesn't exist,
  * 403 when it is curated or the token is another one. Answers how visible it
- * is now.
+ * is now, and which device it belongs to.
  */
-async function authorizeWrite(tx: Tx, id: string, token: string): Promise<{ visibility: string }> {
+async function authorizeWrite(
+  tx: Tx,
+  id: string,
+  token: string,
+): Promise<{ visibility: string; ownerDeviceId: string | null; coverImage: unknown }> {
   const [row] = await tx
     .select({
       source: routes.source,
       editTokenHash: routes.editTokenHash,
       visibility: routes.visibility,
+      ownerDeviceId: routes.ownerDeviceId,
+      coverImage: routes.coverImage,
     })
     .from(routes)
     .where(eq(routes.id, id))
@@ -264,6 +272,13 @@ async function authorizeWrite(tx: Tx, id: string, token: string): Promise<{ visi
     throw fail(403, 'forbidden');
   }
   return row;
+}
+
+/** The url of a stored route's cover (the `cover_image` column), if it has one. */
+function coverUrlOf(stored: unknown): string | undefined {
+  if (typeof stored !== 'object' || stored === null) return undefined;
+  const url = (stored as { url?: unknown }).url;
+  return typeof url === 'string' ? url : undefined;
 }
 
 /** PUT, or a POST repeated by the owner: new spec and listing columns, cards replaced. */
@@ -449,6 +464,17 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
 
       const row = routeRow(authored, bundle.spec);
       const now = new Date();
+      // The cover, if it is one of the server's photos, is checked and attached
+      // once the route is written, in the same transaction: any problem undoes it.
+      const cover = (tx: Tx, ownerDeviceId: string | null, storedCover?: unknown) =>
+        attachCover(tx, {
+          routeId: id,
+          ownerDeviceId,
+          coverUrl: bundle.spec.coverImage?.url,
+          previousCoverUrl: coverUrlOf(storedCover),
+          publicOrigin: options.publicOrigin,
+          now,
+        });
       const { created, written } = await storing(() =>
         db.transaction(async (tx) => {
           const [inserted] = await tx
@@ -464,6 +490,7 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
           if (inserted) {
             const cards = contentRows(id, bundle.contents);
             if (cards.length > 0) await tx.insert(pointContents).values(cards);
+            await cover(tx, owner);
             return { created: true, written: inserted };
           }
           // The id is taken. Its owner repeating the POST (a lost 201) updates
@@ -473,6 +500,8 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
               source: routes.source,
               editTokenHash: routes.editTokenHash,
               visibility: routes.visibility,
+              ownerDeviceId: routes.ownerDeviceId,
+              coverImage: routes.coverImage,
             })
             .from(routes)
             .where(eq(routes.id, id))
@@ -481,10 +510,9 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
             throw fail(409, 'route_exists');
           }
           const columns = visibilityColumns(existing.visibility, visibility, now);
-          return {
-            created: false,
-            written: await replaceRoute(tx, id, row, bundle.contents, columns, now),
-          };
+          const replaced = await replaceRoute(tx, id, row, bundle.contents, columns, now);
+          await cover(tx, existing.ownerDeviceId, existing.coverImage);
+          return { created: false, written: replaced };
         }),
       );
       return reply.status(created ? 201 : 200).send(writeResponse(written));
@@ -519,7 +547,17 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
           if (bundle.spec.id !== id) throw fail(400, 'route_id_mismatch');
           const columns = visibilityColumns(current.visibility, visibility, now);
           const row = routeRow(authored, bundle.spec);
-          return replaceRoute(tx, id, row, bundle.contents, columns, now);
+          const replaced = await replaceRoute(tx, id, row, bundle.contents, columns, now);
+          // The photo is the stored owner's, whoever sends the update.
+          await attachCover(tx, {
+            routeId: id,
+            ownerDeviceId: current.ownerDeviceId,
+            coverUrl: bundle.spec.coverImage?.url,
+            previousCoverUrl: coverUrlOf(current.coverImage),
+            publicOrigin: options.publicOrigin,
+            now,
+          });
+          return replaced;
         }),
       );
       return writeResponse(written);
@@ -532,7 +570,8 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       onRequest: [writeLimit, authenticate],
       schema: {
         tags: ['routes'],
-        summary: 'Deletes a user route with its cards, runs and reports (needs its X-Edit-Token)',
+        summary:
+          'Deletes a user route with its cards, runs and reports; its cover photo is deleted a day later (needs its X-Edit-Token)',
         params: RouteIdParamsSchema,
       },
     },
@@ -542,6 +581,8 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       const { id } = request.params;
       await db.transaction(async (tx) => {
         await authorizeWrite(tx, id, token);
+        // Its photos stay for a day, unused, before the cleanup deletes them.
+        await releasePhotos(tx, id, new Date());
         const deleted = await tx
           .delete(routes)
           .where(eq(routes.id, id))

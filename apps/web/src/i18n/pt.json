@@ -732,6 +732,28 @@
         "label": "Publicar para a comunidade",
         "help": "Quem usar o Rumbo por perto poderá vê-la e percorrê-la, sem saber quem a criou.",
         "warning": "Vai ser vista por desconhecidos: não incluas a tua casa nem dados pessoais."
+      },
+      "cover": {
+        "title": "Capa",
+        "fallback": "Sem foto, a rota usa esta ilustração.",
+        "fallbackPattern": "Sem foto, a rota usa o padrão de azulejos do Rumbo.",
+        "upload": "Enviar uma foto",
+        "uploading": "A enviar a foto…",
+        "choose": "Escolher dos teus lugares",
+        "noPhotos": "Os teus lugares ainda não têm fotos nas fichas.",
+        "remove": "Remover capa",
+        "updated": "Capa atualizada.",
+        "removed": "Capa removida.",
+        "photoFailed": "Não conseguimos carregar esta foto. Podes enviar outra ou remover a capa.",
+        "errors": {
+          "offline": "Precisas de ligação para enviar uma foto.",
+          "unsupported": "Não conseguimos ler essa foto. Tenta outra.",
+          "failed": "Não conseguimos enviar a foto. Tenta de novo daqui a pouco."
+        },
+        "sheet": {
+          "title": "Fotos dos teus lugares",
+          "intro": "Escolhe a foto que vai ser a capa da rota."
+        }
       }
     },
     "trial": {

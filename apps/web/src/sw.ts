@@ -10,7 +10,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst } from 'workbox-strategies';
 // No `.ts` here, unlike the page's imports: tsconfig.sw.json doesn't allow it.
 import { openNotificationTarget, showPush } from './services/pushEvents';
-import { isCacheableRouteRequest } from './services/swCache';
+import { isCacheableRouteRequest, isOwnPhotoRequest } from './services/swCache';
 
 // Service worker (PROJECT_PLAN §10.6): the app shell and the three language
 // catalogs are precached; the map SDK, photos and route data are cached as
@@ -55,13 +55,28 @@ registerRoute(
   }),
 );
 
-// Photos of places (Wikimedia Commons) and video thumbnails.
+// Photos of places (Wikimedia Commons) and video thumbnails. The page asks for
+// a downloaded route's photos, which keeps them for offline use.
 registerRoute(
   ({ request, url }) =>
     request.destination === 'image' &&
     (url.hostname.endsWith('.wikimedia.org') || url.hostname === 'i.ytimg.com'),
   new CacheFirst({
     cacheName: 'rumbo-images',
+    plugins: [new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * DAY })],
+  }),
+);
+
+// The photos users upload as route covers (phase 7.3): the network first, so
+// a photo the operator deleted stops showing as soon as the device is online
+// (the API answers 404 and the app shows the route's illustration), and the
+// last copy offline, a downloaded route's cover included.
+registerRoute(
+  ({ request, url }) =>
+    request.destination === 'image' && sameOrigin(url) && isOwnPhotoRequest(url, request.method),
+  new NetworkFirst({
+    cacheName: 'rumbo-covers',
+    networkTimeoutSeconds: 4,
     plugins: [new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * DAY })],
   }),
 );

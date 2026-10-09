@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigserial,
   boolean,
+  customType,
   doublePrecision,
   index,
   integer,
@@ -19,7 +20,13 @@ import {
 // phase 7's: the cards the server wrote, and what each AI call used. The push
 // tables belong to Web Push: the browsers that asked for reminders, and what
 // was already sent to them. route_reports belongs to the community routes
-// (phase 7.2): who reported a public route, and why.
+// (phase 7.2): who reported a public route, and why. media is phase 7.3's: the
+// photos users upload as the cover of their routes.
+
+/** PostgreSQL `bytea`, read and written as a Buffer. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => 'bytea',
+});
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -258,5 +265,40 @@ export const pushLog = pgTable(
     uniqueIndex('push_log_kind_ref_idx')
       .on(t.kind, t.ref)
       .where(sql`${t.ref} is not null`),
+  ],
+);
+
+/**
+ * A photo a user uploaded as the cover of a route (phase 7.3, ADR 0005): the
+ * JPEG the server made of it, without any metadata. It belongs to the route
+ * that uses it (`route_id`); one that no route uses (an abandoned upload, a
+ * cover that was changed, a route that was deleted) is deleted 24 hours
+ * later, counted from `unused_since`, or from `created_at` if it never was
+ * attached.
+ */
+export const media = pgTable(
+  'media',
+  {
+    /** 16 random bytes in base64url (22 characters): the address of the photo, impossible to guess. */
+    id: text('id').primaryKey(),
+    /** The device that uploaded it: only its routes may use it as a cover. */
+    deviceId: uuid('device_id').notNull(),
+    data: bytea('data').notNull(),
+    /** Size of `data`, so the space the photos take is a sum and never reads the photos. */
+    bytes: integer('bytes').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    routeId: text('route_id').references(() => routes.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /** When the route that used it stopped using it; null while attached or if it never was. */
+    unusedSince: timestamp('unused_since', { withTimezone: true }),
+  },
+  (t) => [
+    // The cleanup looks for unattached photos by the time they became unused.
+    index('media_unused_idx')
+      .on(sql`coalesce(${t.unusedSince}, ${t.createdAt})`)
+      .where(sql`${t.routeId} is null`),
+    // A device's uploads of the last day.
+    index('media_device_created_idx').on(t.deviceId, t.createdAt),
   ],
 );

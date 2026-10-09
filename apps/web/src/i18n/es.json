@@ -732,6 +732,28 @@
         "label": "Publicar para la comunidad",
         "help": "Quien use Rumbo cerca podrá verla y recorrerla, sin saber quién la creó.",
         "warning": "Lo verán desconocidos: no incluyas tu casa ni datos personales."
+      },
+      "cover": {
+        "title": "Portada",
+        "fallback": "Sin foto, la ruta usa esta ilustración.",
+        "fallbackPattern": "Sin foto, la ruta usa el patrón de azulejos de Rumbo.",
+        "upload": "Subir una foto",
+        "uploading": "Subiendo la foto…",
+        "choose": "Elegir de tus lugares",
+        "noPhotos": "Tus lugares aún no tienen fotos en sus fichas.",
+        "remove": "Quitar portada",
+        "updated": "Portada actualizada.",
+        "removed": "Portada quitada.",
+        "photoFailed": "No pudimos cargar esta foto. Puedes subir otra o quitar la portada.",
+        "errors": {
+          "offline": "Necesitas conexión para subir una foto.",
+          "unsupported": "No pudimos leer esa foto. Prueba con otra.",
+          "failed": "No pudimos subir la foto. Inténtalo de nuevo en un rato."
+        },
+        "sheet": {
+          "title": "Fotos de tus lugares",
+          "intro": "Elige la foto que será la portada de la ruta."
+        }
       }
     },
     "trial": {

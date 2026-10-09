@@ -7,9 +7,11 @@ import { useTexts } from '../i18n/text.ts';
 import { type CatalogRoute, isCommunityRoute } from '../services/catalog.ts';
 import ActivityBadge from './ActivityBadge.vue';
 import ModeBadge from './ModeBadge.vue';
+import RouteCover, { coverInterest } from './RouteCover.vue';
 import StatChip from './StatChip.vue';
 
-// RouteCard (DESIGN §7): 16:9 cover (or the brand pattern), mode badge,
+// RouteCard (DESIGN §7): 16:9 cover (the route's photo, else the illustration
+// of its first interest, else the brand pattern: RouteCover), mode badge,
 // "Created by you" on the user's own routes, "From the community" on the ones
 // other people published, Fraunces title, activity, summary and the stats
 // row. `published` adds "Published" to the user's own route that is public
@@ -29,13 +31,13 @@ const spec = computed(() => props.route.bundle.spec);
 const name = computed(() => texts.text(spec.value.name, spec.value.locale));
 const summary = computed(() => texts.text(spec.value.summary, spec.value.locale));
 const cover = computed(() => spec.value.coverImage);
+const interest = computed(() => coverInterest(spec.value.meta?.['interests']));
 const community = computed(() => isCommunityRoute(props.route));
 </script>
 
 <template>
   <RouterLink :to="{ name: 'route', params: { routeId: route.id } }" class="card">
-    <div class="card__cover" :class="{ azulejo: !cover }">
-      <img v-if="cover" :src="cover.url" :alt="texts.text(cover.alt, spec.locale)" loading="lazy" />
+    <RouteCover class="card__cover" :cover="cover" :interest="interest" :locale="spec.locale">
       <div class="card__badges" :class="{ 'card__badges--menu': menuSpace }">
         <ModeBadge :mode="spec.mode" />
         <span v-if="route.mine" class="card__badge card__badge--mine">
@@ -51,7 +53,7 @@ const community = computed(() => isCommunityRoute(props.route));
           <CircleCheck :size="15" aria-hidden="true" />{{ t('route.downloaded') }}
         </span>
       </div>
-    </div>
+    </RouteCover>
     <div class="card__body">
       <div class="card__titlerow">
         <h2 class="t-card-title card__title">{{ name }}</h2>
@@ -85,16 +87,6 @@ const community = computed(() => isCommunityRoute(props.route));
   color: var(--color-text);
   box-shadow: var(--shadow-e1);
   text-decoration: none;
-}
-.card__cover {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  background-color: var(--color-surface-2);
-}
-.card__cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 /* Badges wrap instead of overlapping when the text is long or large. */
 .card__badges {

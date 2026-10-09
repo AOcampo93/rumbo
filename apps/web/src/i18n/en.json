@@ -732,6 +732,28 @@
         "label": "Publish for the community",
         "help": "Anyone using Rumbo nearby will be able to see it and walk it, without knowing who made it.",
         "warning": "Strangers will see it: don't include your home or personal details."
+      },
+      "cover": {
+        "title": "Cover",
+        "fallback": "With no photo, the route uses this illustration.",
+        "fallbackPattern": "With no photo, the route uses Rumbo's azulejo pattern.",
+        "upload": "Upload a photo",
+        "uploading": "Uploading the photo…",
+        "choose": "Choose from your places",
+        "noPhotos": "Your places don't have photos in their cards yet.",
+        "remove": "Remove cover",
+        "updated": "Cover updated.",
+        "removed": "Cover removed.",
+        "photoFailed": "We couldn't load this photo. You can upload another or remove the cover.",
+        "errors": {
+          "offline": "You need a connection to upload a photo.",
+          "unsupported": "We couldn't read that photo. Try another one.",
+          "failed": "We couldn't upload the photo. Try again in a while."
+        },
+        "sheet": {
+          "title": "Photos of your places",
+          "intro": "Choose the photo to use as the route's cover."
+        }
       }
     },
     "trial": {
