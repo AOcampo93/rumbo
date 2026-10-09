@@ -1,4 +1,4 @@
-import type { PointCategory } from '@rumbo/route-spec';
+import type { Activity, PointCategory } from '@rumbo/route-spec';
 import {
   Binoculars,
   Castle,
@@ -14,7 +14,7 @@ import {
   Trees,
   Utensils,
 } from 'lucide';
-import type { MapZoneTone, MarkerState } from './types.ts';
+import type { MapLineEmphasis, MapLineStyle, MapZoneTone, MarkerState } from './types.ts';
 
 // Marker artwork of DESIGN §6.1, drawn as SVG so every state × category is
 // exact (and cached): a 36 px circle with a white ring, a white category
@@ -68,8 +68,72 @@ export const ZONE_LOOKS: Record<MapZoneTone, ZoneLook> = {
   },
 };
 
-/** Route colours on the Explore map (DESIGN §5.1), always shown with a legend. */
+/** One colour per route, in turn (DESIGN §5.1). The Explore map colours by activity now (ACTIVITY_LOOKS). */
 export const ROUTE_COLORS = ['#1E4FA3', '#0B7A75', '#C4491F', '#6D4AA8', '#1A7F45'] as const;
+
+export interface ActivityLook {
+  /** The colour of the routes' pins and lines. */
+  color: string;
+  /** How their lines are drawn: a second cue, so the activity never relies on colour alone. */
+  line: MapLineStyle;
+}
+
+/**
+ * How Explore draws a route by its activity (DESIGN §5.1 palette: Azulejo,
+ * Terracota and Atlántico for walk, run and bike). Any two of them stay told
+ * apart for colour-blind users (ΔE2000 of 12 or more under protan, deutan and
+ * tritan simulation; Azulejo with Uva, or Terracota with Pinar, don't), and
+ * each has 4.8:1 or more against the white ring of a pin and the white casing
+ * of a line, which is what separates them from the light and the dark basemap
+ * alike. The same in every theme and in "Sol", where the lines only get thicker.
+ */
+export const ACTIVITY_LOOKS: Record<Activity, ActivityLook> = {
+  walk: { color: MAP_COLORS.primary, line: 'solid' },
+  run: { color: MAP_COLORS.accent, line: 'long-dash' },
+  bike: { color: MAP_COLORS.secondary, line: 'dash' },
+};
+
+export interface LineLook {
+  /** Width of the coloured stroke in px. */
+  width: number;
+  /** Width of the white casing under it, which makes it read on any basemap. */
+  casing: number;
+  /** Opacity of the stroke and of the casing, 0..1. */
+  alpha: number;
+  casingAlpha: number;
+}
+
+const LINE_LOOKS: Record<
+  MapLineEmphasis,
+  { width: number; edge: number; alpha: number; casingAlpha: number }
+> = {
+  normal: { width: 4, edge: 1.5, alpha: 1, casingAlpha: 0.9 },
+  strong: { width: 7, edge: 2, alpha: 1, casingAlpha: 1 },
+  dim: { width: 3, edge: 1, alpha: 0.4, casingAlpha: 0.35 },
+};
+
+/** How a route's line looks: thicker when highlighted, faded when another one is, 25 % thicker in "Sol". */
+export function lineLook(emphasis: MapLineEmphasis = 'normal', large = false): LineLook {
+  const { width, edge, alpha, casingAlpha } = LINE_LOOKS[emphasis];
+  const scale = large ? 1.25 : 1;
+  return { width: width * scale, casing: (width + edge * 2) * scale, alpha, casingAlpha };
+}
+
+/**
+ * Width in px of the invisible strip drawn along every line so that a finger
+ * can tap it: the SDK only hits what is under the stroke, a few px at most.
+ */
+export const LINE_HIT_WIDTH = 28;
+
+/**
+ * Dash pattern (SVG `stroke-dasharray`) of each line style in the legend's
+ * little sample, in the same proportions as the SDK draws them on the map.
+ */
+export const LINE_SWATCH_DASH: Record<MapLineStyle, string | undefined> = {
+  solid: undefined,
+  'long-dash': '10 4',
+  dash: '5 4',
+};
 
 const CATEGORY_ICONS: Record<PointCategory, IconNode> = {
   monument: Castle,
@@ -122,7 +186,12 @@ export interface MarkerLook {
   dwell?: number;
   /** "Sol" high contrast: 20 % bigger markers with a thicker ring. */
   large?: boolean;
+  /** Faded, because another route is the highlighted one (Explore's routes view). */
+  dim?: boolean;
 }
+
+/** How much of a faded marker shows through. */
+const DIM_OPACITY = 0.45;
 
 function diameterOf(look: MarkerLook): number {
   if (look.state === 'locked' || look.state === 'poi') return 30;
@@ -245,7 +314,8 @@ export function markerSvg(look: MarkerLook): { svg: string; size: number } {
     );
   }
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${parts.join('')}</svg>`;
+  const body = parts.join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${look.dim ? `<g opacity="${DIM_OPACITY}">${body}</g>` : body}</svg>`;
   return { svg, size };
 }
 

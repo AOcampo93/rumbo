@@ -24,9 +24,18 @@ import { currentLocale, LOCALE_TAGS, onLocaleChange } from '../i18n/index.ts';
 import { createBasemap } from './basemap.ts';
 import './map.css';
 import { popupContent } from './popup.ts';
-import { MAP_COLORS, markerImage, userImage, ZONE_LOOKS } from './symbols.ts';
+import {
+  LINE_HIT_WIDTH,
+  lineLook,
+  MAP_COLORS,
+  markerImage,
+  rgba,
+  userImage,
+  ZONE_LOOKS,
+} from './symbols.ts';
 import type {
   BasemapKind,
+  MapLine,
   MapMarker,
   MapPadding,
   MapTheme,
@@ -47,6 +56,12 @@ const props = withDefaults(
     markers: MapMarker[];
     path?: LatLng[] | null;
     track?: LatLng[] | null;
+    /** Routes drawn as lines under the markers (Explore's routes view), kept in sync by id. */
+    lines?: MapLine[];
+    /** Name of the keyboard list of `lines`. */
+    linesLabel?: string;
+    /** Whether a marker opens its popup when tapped (and is on the keyboard list). The routes view turns it off. */
+    popups?: boolean;
     user?: MapUser | null;
     zone?: MapZone | null;
     /** Radius circles of many points (creator), kept in sync by id. */
@@ -67,6 +82,9 @@ const props = withDefaults(
   {
     path: null,
     track: null,
+    lines: () => [],
+    linesLabel: undefined,
+    popups: true,
     user: null,
     zone: null,
     zones: () => [],
@@ -85,6 +103,11 @@ const emit = defineEmits<{
   /** The view could not start (no WebGL, the SDK failed): the screen shows its fallback. */
   failed: [];
   action: [payload: { markerId: string; action: string }];
+  /** A marker was tapped (its popup opens by itself while `popups` is on). */
+  markerTap: [markerId: string];
+  /** A route's line was tapped, or picked from the keyboard list. */
+  lineTap: [lineId: string];
+  /** A tap off the markers and the lines. */
   mapClick: [position: LatLng];
   /** Long press off the markers (creator: add a point there). */
   mapHold: [position: LatLng];
@@ -98,17 +121,28 @@ const failed = ref(false);
 /** Data providers of the current basemap, shown in our own attribution strip. */
 const attribution = ref('');
 
-// Bottom to top. 'zones' holds the creator's circles, 'zone' the run's target.
+// Bottom to top. 'zones' holds the creator's circles, 'zone' the run's target
+// and 'lines' Explore's routes (under the markers, which stay on top).
 const zonesLayer = new GraphicsLayer({ title: 'zones' });
 const zoneLayer = new GraphicsLayer({ title: 'zone' });
 const pathLayer = new GraphicsLayer({ title: 'path' });
 const trackLayer = new GraphicsLayer({ title: 'track' });
+const linesLayer = new GraphicsLayer({ title: 'lines' });
 const pointsLayer = new GraphicsLayer({ title: 'points' });
 const labelsLayer = new GraphicsLayer({ title: 'labels', minScale: 6000 });
 const userLayer = new GraphicsLayer({ title: 'user' });
 const map = new Map({
   basemap: createBasemap(props.basemap, props.theme),
-  layers: [zonesLayer, zoneLayer, pathLayer, trackLayer, pointsLayer, labelsLayer, userLayer],
+  layers: [
+    zonesLayer,
+    zoneLayer,
+    pathLayer,
+    trackLayer,
+    linesLayer,
+    pointsLayer,
+    labelsLayer,
+    userLayer,
+  ],
 });
 
 const markerGraphics = new globalThis.Map<
@@ -116,6 +150,15 @@ const markerGraphics = new globalThis.Map<
   { graphic: Graphic; look: string; label: Graphic | null }
 >();
 const latest = new globalThis.Map<string, MapMarker>();
+/**
+ * A route's line is three graphics sharing its id: an invisible strip a finger
+ * can hit, a white casing and the coloured stroke on top. `shape` is what the
+ * geometry was built from, `look` what the symbols were.
+ */
+const lineGraphics = new globalThis.Map<
+  string,
+  { hit: Graphic; casing: Graphic; stroke: Graphic; shape: string; look: string; strong: boolean }
+>();
 /** The creator's circles by zone id; `shape` is what their geometry was built from. */
 const zoneGraphics = new globalThis.Map<
   string,
@@ -157,6 +200,8 @@ function markerSymbol(marker: MapMarker): { symbol: PictureMarkerSymbol; key: st
     warning: marker.warning ?? false,
     dwell: marker.dwell !== undefined ? Math.round(marker.dwell * 20) / 20 : undefined,
     large: props.large,
+    // Only a faded marker has the key, so the others keep the look they always had.
+    ...(marker.dim ? { dim: true } : {}),
   };
   const image = markerImage(look);
   return {
@@ -325,6 +370,121 @@ function syncZones(zones: readonly MapZoneItem[]): void {
     if (seen.has(id)) continue;
     zonesLayer.remove(entry.graphic);
     zoneGraphics.delete(id);
+  }
+}
+
+// ---------------------------------------------------------------- routes' lines
+
+/** The strip along a line that taps land on: invisible, but the SDK still hits it. */
+const hitSymbol = new SimpleLineSymbol({ color: [0, 0, 0, 0], width: `${LINE_HIT_WIDTH}px` });
+
+function lineSymbols(line: MapLine): {
+  key: string;
+  casing: SimpleLineSymbol;
+  stroke: SimpleLineSymbol;
+} {
+  const emphasis = line.emphasis ?? 'normal';
+  const look = lineLook(emphasis, props.large);
+  return {
+    key: [line.color, line.style, emphasis, props.large].join('|'),
+    // The white edge keeps a line apart from roads, parks and the dark basemap.
+    casing: new SimpleLineSymbol({
+      color: rgba(MAP_COLORS.white, look.casingAlpha),
+      width: `${look.casing}px`,
+      cap: 'round',
+      join: 'round',
+    }),
+    stroke: new SimpleLineSymbol({
+      color: rgba(line.color, look.alpha),
+      width: `${look.width}px`,
+      style: line.style,
+      // Flat ends keep every dash as long as its pattern says; round ones would run them together.
+      cap: line.style === 'solid' ? 'round' : 'butt',
+      join: 'round',
+    }),
+  };
+}
+
+function removeLine(id: string): void {
+  const entry = lineGraphics.get(id);
+  if (!entry) return;
+  for (const graphic of [entry.hit, entry.casing, entry.stroke]) linesLayer.remove(graphic);
+  lineGraphics.delete(id);
+}
+
+/**
+ * The routes' lines, three graphics per id (see lineGraphics). A changed
+ * emphasis only swaps symbols and a changed path only the geometry, so
+ * highlighting a route doesn't redraw the others. The highlighted one goes on
+ * top of the rest.
+ */
+function syncLines(lines: readonly MapLine[]): void {
+  const seen = new Set<string>();
+  const raised: string[] = [];
+  for (const line of lines) {
+    seen.add(line.id);
+    if (line.points.length < 2) {
+      removeLine(line.id);
+      continue;
+    }
+    const geometry = () =>
+      new Polyline({
+        paths: [line.points.map((p) => [p.lng, p.lat])],
+        spatialReference: { wkid: 4326 },
+      });
+    const shape = line.points.map((p) => `${p.lat},${p.lng}`).join(' ');
+    const { key, casing, stroke } = lineSymbols(line);
+    const strong = line.emphasis === 'strong';
+    const entry = lineGraphics.get(line.id);
+    if (!entry) {
+      // A tap on the strip alone is only a near miss: one on a stroke wins over it (see tappedOn).
+      const hit = new Graphic({
+        geometry: geometry(),
+        symbol: hitSymbol,
+        attributes: { line: line.id, hit: true },
+      });
+      const casingGraphic = new Graphic({
+        geometry: geometry(),
+        symbol: casing,
+        attributes: { line: line.id },
+      });
+      const strokeGraphic = new Graphic({
+        geometry: geometry(),
+        symbol: stroke,
+        attributes: { line: line.id },
+      });
+      linesLayer.addMany([hit, casingGraphic, strokeGraphic]);
+      lineGraphics.set(line.id, {
+        hit,
+        casing: casingGraphic,
+        stroke: strokeGraphic,
+        shape,
+        look: key,
+        strong,
+      });
+      if (strong) raised.push(line.id);
+      continue;
+    }
+    if (entry.shape !== shape) {
+      for (const graphic of [entry.hit, entry.casing, entry.stroke]) graphic.geometry = geometry();
+      entry.shape = shape;
+    }
+    if (entry.look !== key) {
+      entry.casing.symbol = casing;
+      entry.stroke.symbol = stroke;
+      entry.look = key;
+    }
+    if (strong && !entry.strong) raised.push(line.id);
+    entry.strong = strong;
+  }
+  for (const id of [...lineGraphics.keys()]) if (!seen.has(id)) removeLine(id);
+  // A layer draws in the order its graphics were added: add the highlighted route's again.
+  for (const id of raised) {
+    const entry = lineGraphics.get(id);
+    if (!entry) continue;
+    const parts = [entry.hit, entry.casing, entry.stroke];
+    for (const graphic of parts) linesLayer.remove(graphic);
+    linesLayer.addMany(parts);
   }
 }
 
@@ -550,9 +710,11 @@ onMounted(async () => {
       closeButton: true,
     },
   };
+  view.popupEnabled = props.popups;
   syncMarkers(props.markers);
   syncLine(pathLayer, props.path, pathSymbol);
   syncLine(trackLayer, props.track, trackSymbol);
+  syncLines(props.lines);
   syncZone(props.zone);
   syncZones(props.zones);
   syncUser(props.user);
@@ -563,6 +725,24 @@ onMounted(async () => {
     const hit = await view.hitTest(event, { include: [pointsLayer] });
     if (hit.results.length > 0 || !event.mapPoint) return null;
     return { lat: event.mapPoint.latitude ?? 0, lng: event.mapPoint.longitude ?? 0 };
+  };
+
+  /**
+   * What a tap landed on: a marker (they are on top, so they win), a route's
+   * line or nothing. Of the lines under a finger, one whose stroke was hit
+   * beats one whose invisible strip was.
+   */
+  const tappedOn = async (
+    event: ClickEvent,
+  ): Promise<{ marker: string | null } | { line: string } | null> => {
+    const { results } = await view.hitTest(event, { include: [pointsLayer, linesLayer] });
+    const hits = results.flatMap((result) =>
+      'graphic' in result ? [(result.graphic.attributes ?? {}) as Record<string, unknown>] : [],
+    );
+    const marker = hits.find((attributes) => attributes['line'] === undefined);
+    if (marker) return { marker: typeof marker['id'] === 'string' ? marker['id'] : null };
+    const line = hits.find((attributes) => !attributes['hit']) ?? hits[0];
+    return line ? { line: String(line['line']) } : null;
   };
 
   handles.push(
@@ -592,8 +772,14 @@ onMounted(async () => {
       if (event.action === 'start') emit('userPan');
     }),
     view.on('click', async (event) => {
-      const position = await offMarkers(event);
-      if (position) emit('mapClick', position);
+      const tapped = await tappedOn(event);
+      if (tapped && 'marker' in tapped) {
+        if (tapped.marker !== null) emit('markerTap', tapped.marker);
+      } else if (tapped) {
+        emit('lineTap', tapped.line);
+      } else if (event.mapPoint) {
+        emit('mapClick', { lat: event.mapPoint.latitude ?? 0, lng: event.mapPoint.longitude ?? 0 });
+      }
     }),
     // Long press (DESIGN C2: hold the map to add a point): 500 ms without
     // dragging, and the SDK sends no click after it. No check on `button`:
@@ -626,6 +812,20 @@ watch(
     if (!ready.value) return;
     for (const entry of markerGraphics.values()) entry.look = '';
     syncMarkers(props.markers);
+    syncLines(props.lines);
+  },
+);
+watch(
+  () => props.lines,
+  (lines) => ready.value && syncLines(lines),
+);
+watch(
+  () => props.popups,
+  (popups) => {
+    const view = mapEl.value?.view;
+    if (!ready.value || !view) return;
+    view.popupEnabled = popups;
+    if (!popups) view.closePopup();
   },
 );
 watch(
@@ -680,9 +880,15 @@ watch(
     <arcgis-map ref="mapEl" class="arcgis__map" />
     <!-- The markers as a list: keyboard and screen-reader users reach every
          popup (DESIGN §12). Hidden until it gets focus. -->
-    <ul class="arcgis__list" :aria-label="t('map.markers')">
+    <ul v-if="popups" class="arcgis__list" :aria-label="t('map.markers')">
       <li v-for="marker in markers" :key="marker.id">
         <button type="button" @click="openPopup(marker.id)">{{ marker.popup.title }}</button>
+      </li>
+    </ul>
+    <!-- The same for the routes drawn as lines: picking one is a tap on it. -->
+    <ul v-if="lines.length > 0" class="arcgis__list" :aria-label="linesLabel">
+      <li v-for="line in lines" :key="line.id">
+        <button type="button" @click="emit('lineTap', line.id)">{{ line.label }}</button>
       </li>
     </ul>
     <slot />

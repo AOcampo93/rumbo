@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ACTIVITY_LOOKS,
+  LINE_HIT_WIDTH,
+  LINE_SWATCH_DASH,
+  lineLook,
   MAP_COLORS,
   markerImage,
   markerSvg,
@@ -86,5 +90,112 @@ describe('zone circles', () => {
     expect(ZONE_LOOKS.warning.fill.slice(0, 3)).toEqual(amber);
     expect(ZONE_LOOKS.warning.outline.slice(0, 3)).toEqual(amber);
     expect(ZONE_LOOKS.warning.width).toBeGreaterThan(ZONE_LOOKS.default.width);
+  });
+});
+
+/** WCAG relative luminance of a "#RRGGBB" colour. */
+function luminance(hex: string): number {
+  const [r = 0, g = 0, b = 0] = rgba(hex, 1)
+    .slice(0, 3)
+    .map((channel) => {
+      const value = channel / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+const contrast = (a: string, b: string) => {
+  const [light = 0, dark = 0] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+};
+
+describe('the activities on the Explore map', () => {
+  const activities = ['walk', 'run', 'bike'] as const;
+
+  it('are palette colours that read against the white ring of a pin and the casing of a line', () => {
+    for (const activity of activities) {
+      const { color } = ACTIVITY_LOOKS[activity];
+      expect(color, activity).toMatch(/^#[0-9A-F]{6}$/);
+      expect(contrast(color, MAP_COLORS.white), activity).toBeGreaterThanOrEqual(4.5);
+    }
+    // Azulejo, Terracota and Atlántico (DESIGN §5.1), each its own.
+    expect(activities.map((activity) => ACTIVITY_LOOKS[activity].color)).toEqual([
+      '#1E4FA3',
+      '#C4491F',
+      '#0B7A75',
+    ]);
+  });
+
+  it('paint a pin with the activity colour and keep its category icon', () => {
+    const { svg } = markerSvg({
+      category: 'church',
+      state: 'explore',
+      color: ACTIVITY_LOOKS.bike.color,
+    });
+    expect(svg).toContain(`fill="${ACTIVITY_LOOKS.bike.color}"`);
+    // The icon is drawn in white over it.
+    expect(svg).toContain('stroke="#FFFFFF"');
+  });
+
+  it('draw the legend sample of a style with the dashes of the line', () => {
+    expect(LINE_SWATCH_DASH.solid).toBeUndefined();
+    expect(LINE_SWATCH_DASH['long-dash']).toBeDefined();
+    expect(LINE_SWATCH_DASH.dash).toBeDefined();
+    expect(LINE_SWATCH_DASH['long-dash']).not.toBe(LINE_SWATCH_DASH.dash);
+  });
+});
+
+describe('route lines', () => {
+  it('are thicker when highlighted and thinner and fainter when another one is', () => {
+    const normal = lineLook('normal');
+    const strong = lineLook('strong');
+    const dim = lineLook('dim');
+    expect(lineLook()).toEqual(normal);
+    expect(strong.width).toBeGreaterThan(normal.width);
+    expect(normal.width).toBeGreaterThan(dim.width);
+    expect(normal.alpha).toBe(1);
+    expect(strong.alpha).toBe(1);
+    expect(dim.alpha).toBeLessThan(0.5);
+    expect(dim.casingAlpha).toBeLessThan(normal.casingAlpha);
+  });
+
+  it('keep a casing wider than the stroke, on every emphasis', () => {
+    for (const emphasis of ['normal', 'strong', 'dim'] as const) {
+      const look = lineLook(emphasis);
+      expect(look.casing, emphasis).toBeGreaterThan(look.width);
+    }
+  });
+
+  it('are 25 % thicker in "Sol", casing included', () => {
+    for (const emphasis of ['normal', 'strong', 'dim'] as const) {
+      const small = lineLook(emphasis);
+      const large = lineLook(emphasis, true);
+      expect(large.width).toBeCloseTo(small.width * 1.25);
+      expect(large.casing).toBeCloseTo(small.casing * 1.25);
+      expect(large.alpha).toBe(small.alpha);
+    }
+  });
+
+  it('get a strip to tap that is wider than any stroke, even a highlighted one in "Sol"', () => {
+    expect(LINE_HIT_WIDTH).toBeGreaterThan(lineLook('strong', true).casing * 2);
+  });
+});
+
+describe('faded markers', () => {
+  it('keep their shape and size but let the map show through', () => {
+    const plain = markerSvg({ category: 'museum', state: 'explore', color: '#1E4FA3' });
+    const faded = markerSvg({ category: 'museum', state: 'explore', color: '#1E4FA3', dim: true });
+    expect(faded.size).toBe(plain.size);
+    expect(plain.svg).not.toContain('<g opacity=');
+    expect(faded.svg).toMatch(/<g opacity="0\.\d+">/);
+    expect(faded.svg).toContain('fill="#1E4FA3"');
+    expect(
+      markerSvg({ category: 'museum', state: 'explore', color: '#1E4FA3', dim: false }).svg,
+    ).toBe(plain.svg);
+  });
+
+  it('are cached under their own look', () => {
+    const look = { category: 'museum', state: 'explore', color: '#1E4FA3' } as const;
+    expect(markerImage({ ...look, dim: true })).not.toBe(markerImage(look));
+    expect(markerImage({ ...look, dim: true })).toBe(markerImage({ ...look, dim: true }));
   });
 });

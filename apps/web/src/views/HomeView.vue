@@ -1,23 +1,51 @@
 <script setup lang="ts">
-import { List, ListFilter, LocateFixed, Map as MapIcon, Plus, WifiOff } from '@lucide/vue';
-import { COMMUNITY_ROUTES } from '@rumbo/api-contract';
+import {
+  List,
+  ListFilter,
+  LocateFixed,
+  Map as MapIcon,
+  MapPin,
+  Plus,
+  Route as RouteIcon,
+  WifiOff,
+  X,
+} from '@lucide/vue';
+import { COMMUNITY_ROUTES, type Interest } from '@rumbo/api-contract';
 import { distance, type LatLng } from '@rumbo/geo-utils';
 import type { Locale, PointCategory } from '@rumbo/route-spec';
 import { computed, defineAsyncComponent, onMounted, ref, shallowRef, useId, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import ActivityBadge from '../components/ActivityBadge.vue';
 import AppButton from '../components/AppButton.vue';
 import ChipGroup from '../components/ChipGroup.vue';
 import EmptyState from '../components/EmptyState.vue';
+import FilterChips from '../components/FilterChips.vue';
+import LineSwatch from '../components/LineSwatch.vue';
 import MapFab from '../components/MapFab.vue';
 import RouteCard from '../components/RouteCard.vue';
 import SegmentedControl from '../components/SegmentedControl.vue';
 import SheetFrame from '../components/SheetFrame.vue';
 import ToggleSwitch from '../components/ToggleSwitch.vue';
 import WordMark from '../components/WordMark.vue';
+import { useFormat } from '../i18n/useFormat.ts';
 import { useTexts } from '../i18n/text.ts';
-import { filterMarkers, poiMarkers, routeMarkers } from '../map/explore.ts';
-import type { MapUser, RouteMapApi } from '../map/types.ts';
+import {
+  dimMarkers,
+  filterMarkers,
+  filterRoutes,
+  legendEntries,
+  type MapMode,
+  markerRouteId,
+  poiMarkers,
+  presentInterests,
+  presentOrigins,
+  routeLines,
+  routeMarkers,
+  type RouteOrigin,
+} from '../map/explore.ts';
+import { ACTIVITY_LOOKS } from '../map/symbols.ts';
+import type { MapMarker, MapUser, RouteMapApi } from '../map/types.ts';
 import type { CatalogRoute } from '../services/catalog.ts';
 import { useOnline } from '../services/network.ts';
 import { resolvedTheme as theme } from '../services/theme.ts';
@@ -26,10 +54,12 @@ import { useCatalogStore } from '../stores/catalog.ts';
 import { useSettingsStore } from '../stores/settings.ts';
 import { useUiStore } from '../stores/ui.ts';
 
-// S01 · Explore: routes as a list or on a map with every curated point and
-// the points of interest (the course's 20+ markers, popups and filter). Where
-// the user is known (phase 7.2), the routes the community published around
-// them come after the curated ones, in the list and on the map.
+// S01 · Explore: routes as a list or on a map. The map has two views (ADR
+// 0005): the points, with every route's pins coloured by activity and the
+// points of interest (the course's 20+ markers, popups and filter), and the
+// routes, each drawn as a line in its activity's colour and style. Where the
+// user is known (phase 7.2), the routes the community published around them
+// come after the curated ones, in the list and on the map.
 const RouteMap = defineAsyncComponent(() => import('../map/RouteMap.vue'));
 
 const { t, locale } = useI18n();
@@ -38,18 +68,25 @@ const catalog = useCatalogStore();
 const settings = useSettingsStore();
 const ui = useUiStore();
 const texts = useTexts();
+const format = useFormat();
 const online = useOnline();
 
 type View = 'list' | 'map';
 type Filter = 'all' | 'free' | 'challenge' | 'walk' | 'bike';
 const VIEW_KEY = 'rumbo.explore.view';
+const MODE_KEY = 'rumbo.explore.mapMode';
 const view = ref<View>(local.read(VIEW_KEY) === 'map' ? 'map' : 'list');
 watch(view, (value) => local.write(VIEW_KEY, value));
+const mapMode = ref<MapMode>(local.read(MODE_KEY) === 'routes' ? 'routes' : 'points');
 const filter = ref<Filter>('all');
 
 const viewOptions = computed(() => [
   { value: 'list' as View, label: t('home.view.list'), icon: List },
   { value: 'map' as View, label: t('home.view.map'), icon: MapIcon },
+]);
+const mapModeOptions = computed(() => [
+  { value: 'points' as MapMode, label: t('explore.map.points'), icon: MapPin },
+  { value: 'routes' as MapMode, label: t('explore.map.routes'), icon: RouteIcon },
 ]);
 const filterOptions = computed(() => [
   { value: 'all' as Filter, label: t('home.filters.all') },
@@ -67,32 +104,100 @@ const matchesFilter = ({ bundle: { spec } }: CatalogRoute): boolean => {
 const routes = computed(() => catalog.routes.filter(matchesFilter));
 /** The community's routes around the user, under the same filter. */
 const communityRoutes = computed(() => catalog.community.filter(matchesFilter));
-/** Everything the map draws and its legend and filter panel list. */
+/** The routes the map can draw: the ones under the chips above it, before the sheet's filter. */
 const mapRoutes = computed(() => [...routes.value, ...communityRoutes.value]);
 const communityId = useId();
 
 // ---- map
-const hiddenRoutes = ref<Set<string>>(new Set());
+// The sheet's filter: by origin and by interest (never by route name: the
+// routes are content, not part of the app), the points of interest and the
+// categories. Choosing none of a kind means all of that kind.
+const origins = ref<Set<RouteOrigin>>(new Set());
+const interests = ref<Set<Interest>>(new Set());
 const showPois = ref(true);
 const categories = ref<Set<PointCategory>>(new Set());
 const filterOpen = ref(false);
+/** The route highlighted in the routes view: its card is shown and the others fade. */
+const selectedId = ref<string | null>(null);
+
+watch(mapMode, (mode) => {
+  local.write(MODE_KEY, mode);
+  selectedId.value = null;
+});
+
+const lang = computed(() => locale.value as Locale);
+/** The routes that pass the sheet's filter. */
+const shownRoutes = computed(() =>
+  filterRoutes(mapRoutes.value, { origins: origins.value, interests: interests.value }),
+);
+const hiddenRoutes = computed(() => {
+  const shown = new Set(shownRoutes.value.map((route) => route.id));
+  return new Set(mapRoutes.value.filter((route) => !shown.has(route.id)).map((route) => route.id));
+});
+/** The highlighted route, while it is still on the map. */
+const selected = computed(() =>
+  mapMode.value === 'routes'
+    ? (shownRoutes.value.find((route) => route.id === selectedId.value) ?? null)
+    : null,
+);
+watch(selected, (route) => {
+  if (route === null) selectedId.value = null;
+});
 
 const allMarkers = computed(() => {
-  const lang = locale.value as Locale;
   const translate = t as unknown as (key: string, params?: Record<string, unknown>) => string;
   return [
-    ...routeMarkers(mapRoutes.value, lang, translate),
-    ...poiMarkers(catalog.pois, lang, translate),
+    ...routeMarkers(mapRoutes.value, lang.value, translate),
+    ...poiMarkers(catalog.pois, lang.value, translate),
   ];
 });
+/** The routes view has no points of interest: only the route pins are in it. */
+const inMode = (list: readonly MapMarker[]): MapMarker[] =>
+  mapMode.value === 'routes' ? list.filter((marker) => marker.state === 'explore') : [...list];
+/** The markers the filter lets through in the current view. */
 const markers = computed(() =>
-  filterMarkers(allMarkers.value, {
-    hiddenRoutes: hiddenRoutes.value,
-    showPois: showPois.value,
-    categories: categories.value,
-  }),
+  inMode(
+    filterMarkers(allMarkers.value, {
+      hiddenRoutes: hiddenRoutes.value,
+      showPois: showPois.value,
+      categories: categories.value,
+    }),
+  ),
 );
-const usedCategories = computed(() => [...new Set(allMarkers.value.map((m) => m.category))].sort());
+/** What the map is handed: in the routes view, the pins of the other routes fade while one is highlighted. */
+const mapMarkers = computed(() =>
+  mapMode.value === 'routes'
+    ? dimMarkers(markers.value, selected.value?.id ?? null)
+    : markers.value,
+);
+const lines = computed(() =>
+  mapMode.value === 'routes'
+    ? routeLines(shownRoutes.value, lang.value, selected.value?.id ?? null)
+    : [],
+);
+const legend = computed(() => legendEntries(mapMode.value, shownRoutes.value, markers.value));
+const markerTotal = computed(() => inMode(allMarkers.value).length);
+
+const categoryOptions = computed(() =>
+  [...new Set(inMode(allMarkers.value).map((marker) => marker.category))]
+    .sort()
+    .map((category) => ({ value: category, label: t(`category.${category}`) })),
+);
+const originOptions = computed(() =>
+  presentOrigins(mapRoutes.value).map((origin) => ({
+    value: origin,
+    label: t(`filter.origins.${origin}`),
+  })),
+);
+const interestOptions = computed(() =>
+  presentInterests(mapRoutes.value).map((interest) => ({
+    value: interest,
+    label: t(`create.interests.${interest}`),
+  })),
+);
+const originHeadingId = useId();
+const interestHeadingId = useId();
+const categoryHeadingId = useId();
 
 const mapRef = ref<RouteMapApi | null>(null);
 
@@ -221,27 +326,33 @@ watch(online, (isOnline) => {
   if (isOnline && me.value) void catalog.loadCommunity(me.value.position);
 });
 
-function toggleRoute(id: string, on: boolean): void {
-  const next = new Set(hiddenRoutes.value);
-  if (on) next.delete(id);
-  else next.add(id);
-  hiddenRoutes.value = next;
-}
-function toggleCategory(category: PointCategory): void {
-  const next = new Set(categories.value);
-  if (next.has(category)) next.delete(category);
-  else next.add(category);
-  categories.value = next;
+/** A copy of the set with `value` in it if it wasn't, and out of it if it was. */
+function toggled<T>(set: ReadonlySet<T>, value: T): Set<T> {
+  const next = new Set(set);
+  if (!next.delete(value)) next.add(value);
+  return next;
 }
 function showAll(): void {
-  hiddenRoutes.value = new Set();
+  origins.value = new Set();
+  interests.value = new Set();
   showPois.value = true;
   categories.value = new Set();
 }
 
+function openRoute(routeId: string): void {
+  void router.push({ name: 'route', params: { routeId } });
+}
 function onMarkerAction({ markerId, action }: { markerId: string; action: string }): void {
-  if (action === 'viewRoute')
-    void router.push({ name: 'route', params: { routeId: markerId.split('/')[0] } });
+  if (action === 'viewRoute') openRoute(markerRouteId(markerId));
+}
+
+// The routes view: a tap on a route's line or on one of its pins (or its entry
+// in the keyboard list) highlights it; a tap anywhere else lets it go.
+function onLineTap(routeId: string): void {
+  if (mapMode.value === 'routes') selectedId.value = routeId;
+}
+function onMarkerTap(markerId: string): void {
+  if (mapMode.value === 'routes') selectedId.value = markerRouteId(markerId);
 }
 
 onMounted(() => {
@@ -336,7 +447,10 @@ onMounted(() => {
     <section v-else class="home__map">
       <RouteMap
         ref="mapRef"
-        :markers="markers"
+        :markers="mapMarkers"
+        :lines="lines"
+        :lines-label="t('explore.map.routesList')"
+        :popups="mapMode === 'points'"
         :fit="fit"
         :fit-zoom="fitZoom"
         :user="me"
@@ -344,7 +458,17 @@ onMounted(() => {
         :large="settings.sol"
         :label="t('home.view.map')"
         @action="onMarkerAction"
+        @marker-tap="onMarkerTap"
+        @line-tap="onLineTap"
+        @map-click="selectedId = null"
       >
+        <div class="home__mode">
+          <SegmentedControl
+            v-model="mapMode"
+            :options="mapModeOptions"
+            :label="t('explore.map.mode')"
+          />
+        </div>
         <div class="home__fabs">
           <MapFab :icon="ListFilter" :label="t('filter.open')" @click="filterOpen = true" />
           <MapFab
@@ -356,17 +480,53 @@ onMounted(() => {
             @click="locateMe"
           />
         </div>
-        <div class="legend" :aria-label="t('filter.legend')">
-          <span v-for="route in mapRoutes" :key="route.id" class="legend__item">
-            <span
-              class="legend__dot"
-              :style="{ background: route.color, boxShadow: `0 0 0 1px ${route.color}` }"
-            />
-            {{ texts.text(route.bundle.spec.name, route.bundle.spec.locale) }}
-          </span>
-          <span v-if="catalog.pois.length" class="legend__item">
-            <span class="legend__dot legend__dot--poi" />{{ t('filter.places') }}
-          </span>
+        <div class="dock">
+          <!-- Always there, so a screen reader announces the route when it is picked. -->
+          <div class="dock__live" role="status">
+            <div v-if="selected" class="pick">
+              <div class="pick__body">
+                <p class="pick__name">
+                  {{ texts.text(selected.bundle.spec.name, selected.bundle.spec.locale) }}
+                </p>
+                <p class="pick__meta">
+                  <LineSwatch :activity="selected.bundle.spec.activity" />
+                  <ActivityBadge :activity="selected.bundle.spec.activity" plain />
+                  <span class="tabular">{{
+                    format.distance(selected.summary.distanceMeters)
+                  }}</span>
+                </p>
+              </div>
+              <AppButton size="m" @click="openRoute(selected.id)">{{
+                t('popup.viewRoute')
+              }}</AppButton>
+              <button
+                type="button"
+                class="pick__close"
+                :aria-label="t('common.close')"
+                @click="selectedId = null"
+              >
+                <X :size="20" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+          <ul
+            v-if="legend.activities.length > 0 || legend.places"
+            class="legend"
+            :aria-label="t('filter.legend')"
+          >
+            <li v-for="activity in legend.activities" :key="activity" class="legend__item">
+              <LineSwatch v-if="mapMode === 'routes'" :activity="activity" />
+              <span
+                v-else
+                class="legend__dot"
+                :style="{ background: ACTIVITY_LOOKS[activity].color }"
+              />
+              {{ t(`activity.${activity}`) }}
+            </li>
+            <li v-if="legend.places" class="legend__item">
+              <span class="legend__dot legend__dot--poi" />{{ t('filter.places') }}
+            </li>
+          </ul>
         </div>
       </RouteMap>
     </section>
@@ -375,39 +535,42 @@ onMounted(() => {
       <div class="panel">
         <h2 class="t-h2">{{ t('filter.title') }}</h2>
         <p class="t-small t-muted">
-          {{ t('filter.count', { shown: markers.length, total: allMarkers.length }) }}
+          {{ t('filter.count', { shown: markers.length, total: markerTotal }) }}
         </p>
-        <h3 class="t-caption t-muted">{{ t('filter.routes') }}</h3>
-        <div v-for="route in mapRoutes" :key="route.id" class="panel__row">
-          <span class="legend__dot" :style="{ background: route.color }" />
-          <span class="panel__label">{{
-            texts.text(route.bundle.spec.name, route.bundle.spec.locale)
-          }}</span>
-          <ToggleSwitch
-            :model-value="!hiddenRoutes.has(route.id)"
-            :label="texts.text(route.bundle.spec.name, route.bundle.spec.locale)"
-            @update:model-value="toggleRoute(route.id, $event)"
+        <!-- With a single origin there is nothing to choose between. -->
+        <template v-if="originOptions.length > 1">
+          <h3 :id="originHeadingId" class="t-caption t-muted">{{ t('filter.origin') }}</h3>
+          <FilterChips
+            :options="originOptions"
+            :selected="origins"
+            :labelledby="originHeadingId"
+            @toggle="origins = toggled(origins, $event)"
           />
-        </div>
-        <div class="panel__row">
+        </template>
+        <template v-if="interestOptions.length > 0">
+          <h3 :id="interestHeadingId" class="t-caption t-muted">{{ t('filter.interests') }}</h3>
+          <FilterChips
+            :options="interestOptions"
+            :selected="interests"
+            :labelledby="interestHeadingId"
+            @toggle="interests = toggled(interests, $event)"
+          />
+        </template>
+        <!-- The routes view has no points of interest to switch. -->
+        <div v-if="mapMode === 'points'" class="panel__row">
           <span class="legend__dot legend__dot--poi" />
           <span class="panel__label">{{ t('filter.places') }}</span>
           <ToggleSwitch v-model="showPois" :label="t('filter.places')" />
         </div>
-        <h3 class="t-caption t-muted">{{ t('filter.categories') }}</h3>
-        <div class="panel__chips">
-          <button
-            v-for="category in usedCategories"
-            :key="category"
-            type="button"
-            class="panel__chip"
-            :class="{ 'is-on': categories.has(category) }"
-            :aria-pressed="categories.has(category)"
-            @click="toggleCategory(category)"
-          >
-            {{ t(`category.${category}`) }}
-          </button>
-        </div>
+        <template v-if="categoryOptions.length > 0">
+          <h3 :id="categoryHeadingId" class="t-caption t-muted">{{ t('filter.categories') }}</h3>
+          <FilterChips
+            :options="categoryOptions"
+            :selected="categories"
+            :labelledby="categoryHeadingId"
+            @toggle="categories = toggled(categories, $event)"
+          />
+        </template>
         <div class="panel__actions">
           <AppButton variant="secondary" size="m" @click="showAll">{{
             t('filter.showAll')
@@ -503,21 +666,91 @@ onMounted(() => {
   flex-direction: column;
   gap: 12px;
 }
-.legend {
+/* The map's own switch: Puntos | Rutas, floating at the top left. */
+.home__mode {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 208px;
+  max-width: calc(100% - 96px);
+  border: var(--control-border) solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-e2);
+}
+/* The bottom strip: the highlighted route's card over the legend. It lets taps through where it is empty. */
+.dock {
   position: absolute;
   left: 12px;
+  right: 12px;
   bottom: 28px;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+.dock__live,
+.legend {
+  pointer-events: auto;
+}
+.dock__live {
+  width: 100%;
+  max-width: 480px;
+}
+/* The name and the button share a row while they fit, else the button goes under the name; the close button stays at the right edge. */
+.pick {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 52px 10px 14px;
+  border: var(--control-border) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-e2);
+}
+.pick__body {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.pick__name {
+  font: 600 17px/22px var(--font-display);
+  overflow-wrap: anywhere;
+}
+.pick__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  color: var(--color-text-muted);
+  font: 500 13px/18px var(--font-ui);
+}
+.pick__close {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  transform: translateY(-50%);
+}
+.legend {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  max-width: calc(100% - 96px);
-  /* Up to 20 community routes join the curated ones: the legend scrolls instead of leaving the map. */
-  max-height: 40%;
-  overflow-y: auto;
+  margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
   background: var(--color-surface);
   box-shadow: var(--shadow-e2);
+  list-style: none;
 }
 .legend__item {
   display: flex;
@@ -525,17 +758,19 @@ onMounted(() => {
   gap: 8px;
   font: 600 13px/16px var(--font-ui);
 }
+/* A little pin, like the ones on the map: its colour, a white ring and a soft shadow. */
 .legend__dot {
   flex: none;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border: 2px solid #fff;
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgb(22 25 29 / 45%);
 }
 .legend__dot--poi {
   background: #fff;
-  border-color: #16191d;
-  border-width: 1.5px;
+  border: 1.5px solid #16191d;
+  box-shadow: none;
 }
 .skeleton {
   overflow: hidden;
@@ -576,24 +811,6 @@ onMounted(() => {
 .panel__label {
   flex: 1;
   font: 500 16px/22px var(--font-ui);
-}
-.panel__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.panel__chip {
-  height: 36px;
-  padding: 0 14px;
-  border: var(--control-border) solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  font: 600 14px var(--font-ui);
-}
-.panel__chip.is-on {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
 }
 .panel__actions {
   display: flex;

@@ -87,6 +87,12 @@
       "invite": "Toca em «A minha localização» para veres as rotas da comunidade que há perto de ti.",
       "empty": "Ainda não há rotas da comunidade perto de ti.",
       "error": "Não conseguimos carregar as rotas da comunidade."
+    },
+    "map": {
+      "mode": "Mostrar no mapa",
+      "points": "Pontos",
+      "routes": "Rotas",
+      "routesList": "Rotas do mapa"
     }
   },
   "mode": {
@@ -194,10 +200,15 @@
   "filter": {
     "open": "Filtrar o mapa",
     "title": "Filtrar o mapa",
-    "routes": "Rotas",
+    "origin": "Origem",
+    "origins": {
+      "curated": "Oficiais",
+      "community": "Da comunidade",
+      "mine": "Tuas"
+    },
+    "interests": "Interesses",
     "places": "Pontos de interesse",
     "categories": "Categorias",
-    "modes": "Modo",
     "showAll": "Mostrar tudo",
     "done": "Concluído",
     "legend": "Legenda",

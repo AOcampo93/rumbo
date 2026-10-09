@@ -32,6 +32,8 @@ export interface MapMarker {
   dwell?: number;
   /** Name shown under the target marker. */
   label?: string;
+  /** Faded: another route is highlighted (Explore's routes view). */
+  dim?: boolean;
   /** Popup content (already in the active language). */
   popup: MarkerPopup;
 }
@@ -44,6 +46,25 @@ export interface MarkerPopup {
   distance?: string;
   image?: { url: string; alt: string; credit?: string };
   actions: Array<{ id: string; label: string; primary?: boolean; href?: string }>;
+}
+
+/** How a route's line is drawn: the SDK's own names for solid, long dashes and dashes. */
+export type MapLineStyle = 'solid' | 'long-dash' | 'dash';
+
+/** 'strong': the highlighted route; 'dim': the others while one is highlighted. */
+export type MapLineEmphasis = 'normal' | 'strong' | 'dim';
+
+/** A route drawn as a line under the markers (Explore's routes view), kept in sync by `id`. */
+export interface MapLine {
+  /** Unique among the lines, e.g. the route's id. */
+  id: string;
+  /** The vertices in order. Fewer than two draw nothing, but the line still has its entry in the keyboard list. */
+  points: LatLng[];
+  color: string;
+  style: MapLineStyle;
+  emphasis?: MapLineEmphasis;
+  /** Name in the keyboard list of lines (already in the active language). */
+  label: string;
 }
 
 export interface MapUser {
