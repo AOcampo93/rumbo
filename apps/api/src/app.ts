@@ -17,6 +17,7 @@ import { deviceIdFrom } from './device.js';
 import { installErrorHandling } from './errors.js';
 import type { GeocodingProvider } from './geo/provider.js';
 import { trustProxyHop } from './limits.js';
+import { adminGuard } from './push/admin.js';
 import { createPush } from './push/index.js';
 import type { PushTransport } from './push/send.js';
 import { analyticsRoutes } from './routes/analytics.js';
@@ -24,7 +25,9 @@ import { contentRoutes } from './routes/content.js';
 import { suggestRoutes } from './routes/suggest.js';
 import { geoRoutes } from './routes/geo.js';
 import { healthRoutes } from './routes/health.js';
+import { moderationRoutes } from './routes/moderation.js';
 import { pushRoutes } from './routes/push.js';
+import { reportRoutes } from './routes/reports.js';
 import { routeRoutes } from './routes/routes.js';
 import { runRoutes } from './routes/runs.js';
 import { VERSION } from './version.js';
@@ -120,6 +123,10 @@ export async function buildApp(
     writeRateLimitPerDay: config.writeRateLimitPerDay,
     userRoutesMax: config.userRoutesMax,
   });
+  await app.register(reportRoutes, {
+    database: deps.data,
+    rateLimitPerMinute: config.reportRateLimitPerMinute,
+  });
   await app.register(runRoutes, { database: deps.data });
   await app.register(analyticsRoutes, { database: deps.data, enabled: config.analyticsEnabled });
   await app.register(geoRoutes, {
@@ -145,6 +152,14 @@ export async function buildApp(
     model: config.aiModel,
   });
 
+  // The operator's token guards the announcements and the moderation of
+  // community routes alike, under one budget per address.
+  const admin = adminGuard(app, {
+    adminToken: config.adminToken,
+    rateLimitPerMinute: config.adminRateLimitPerMinute,
+  });
+  await app.register(moderationRoutes, { database: deps.data, admin });
+
   // Web Push: off (503 push_unavailable) unless the VAPID settings are all there and valid.
   const push = createPush(config, {
     database: deps.data,
@@ -154,9 +169,8 @@ export async function buildApp(
   await app.register(pushRoutes, {
     database: deps.data,
     push,
-    adminToken: config.adminToken,
+    admin,
     rateLimitPerMinute: config.pushRateLimitPerMinute,
-    adminRateLimitPerMinute: config.adminRateLimitPerMinute,
   });
   return app;
 }

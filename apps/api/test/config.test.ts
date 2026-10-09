@@ -133,3 +133,20 @@ describe('the AI settings read leniently', () => {
     });
   });
 });
+
+describe('the community routes settings', () => {
+  it('allow 10 reports a minute per address unless the environment says otherwise', () => {
+    expect(loadConfig({}).reportRateLimitPerMinute).toBe(10);
+    // The empty value of a copied .env.example is the default too.
+    expect(loadConfig({ REPORT_RATE_LIMIT_PER_MINUTE: '' }).reportRateLimitPerMinute).toBe(10);
+    expect(loadConfig({ REPORT_RATE_LIMIT_PER_MINUTE: '3' }).reportRateLimitPerMinute).toBe(3);
+  });
+
+  it('fall back on the default for a number that is not a positive whole one', () => {
+    for (const bad of ['many', '0', '-3', '2.5', 'Infinity', 'NaN']) {
+      expect(loadConfig({ REPORT_RATE_LIMIT_PER_MINUTE: bad }).reportRateLimitPerMinute, bad).toBe(
+        10,
+      );
+    }
+  });
+});

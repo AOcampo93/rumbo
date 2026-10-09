@@ -5,7 +5,7 @@ import { pushSubscriptions } from '../db/schema.js';
 import { requireDeviceId, touchDevice } from '../device.js';
 import { fail } from '../errors.js';
 import { addressLimit } from '../limits.js';
-import { bearerMatches, usableAdminToken } from '../push/admin.js';
+import type { AdminGuard } from '../push/admin.js';
 import type { Push } from '../push/index.js';
 import { announcementMessage } from '../push/messages.js';
 import {
@@ -28,12 +28,10 @@ import { type DataOptions, requireDatabase } from './routes.js';
 export interface PushRoutesOptions extends DataOptions {
   /** Null: push is off (no or malformed VAPID settings) and every endpoint answers 503 push_unavailable. */
   push: Push | null;
-  /** ADMIN_TOKEN; null, or too short to trust: the announcement endpoint answers 404. */
-  adminToken: string | null;
+  /** The hooks the announcement endpoint is guarded with (the operator's token, shared with moderation). */
+  admin: AdminGuard;
   /** Subscribing and unsubscribing per minute per client address. */
   rateLimitPerMinute: number;
-  /** Announcements, and wrong tokens, per minute per client address. */
-  adminRateLimitPerMinute: number;
 }
 
 /** A subscription is an address and two keys: well under 4 KB. */
@@ -44,12 +42,8 @@ const ANNOUNCEMENT_BODY_LIMIT = 16 * 1024;
 const PAGE = 500;
 
 export const pushRoutes: FastifyPluginAsyncZod<PushRoutesOptions> = async (app, options) => {
-  const adminToken = usableAdminToken(options.adminToken);
   const subscriptionLimit = addressLimit(app, [
     { max: options.rateLimitPerMinute, timeWindow: '1 minute' },
-  ]);
-  const adminLimit = addressLimit(app, [
-    { max: options.adminRateLimitPerMinute, timeWindow: '1 minute' },
   ]);
 
   const pushOrFail = (): Push => {
@@ -136,19 +130,7 @@ export const pushRoutes: FastifyPluginAsyncZod<PushRoutesOptions> = async (app, 
   app.post(
     '/v1/admin/push',
     {
-      onRequest: [
-        // Without a token the endpoint doesn't exist.
-        async () => {
-          if (!adminToken) throw fail(404, 'not_found');
-        },
-        adminLimit,
-        async (request) => {
-          if (!adminToken || !bearerMatches(request.headers.authorization, adminToken)) {
-            throw fail(403, 'forbidden');
-          }
-        },
-        pushOn,
-      ],
+      onRequest: [...options.admin, pushOn],
       bodyLimit: ANNOUNCEMENT_BODY_LIMIT,
       schema: {
         tags: ['admin'],

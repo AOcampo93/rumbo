@@ -1,34 +1,39 @@
 import { createHash } from 'node:crypto';
 import {
   checkUserRoute,
+  COMMUNITY_ROUTES,
   contentHashInput,
   EDIT_TOKEN_HEADER,
+  type ModerationState,
   RouteBundleBodySchema,
   RouteIdParamsSchema,
   RouteListQuerySchema,
+  RouteOwnerStatusSchema,
   type RouteSummary,
   RouteSummarySchema,
+  type RouteVisibility,
   type RouteWriteResponse,
   RouteWriteResponseSchema,
 } from '@rumbo/api-contract';
-import { distance } from '@rumbo/geo-utils';
+import { distance, type LatLng } from '@rumbo/geo-utils';
 import {
   type LocalizedText,
   type RouteBundle,
   type RouteSpec,
   validateRouteBundle,
 } from '@rumbo/route-spec';
-import { and, asc, count, eq, inArray, ne, type SQL } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, ne, or, type SQL } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { centroidNear, communityFilter, isCommunityRoute } from '../community.js';
 import type { Database, Db } from '../db/index.js';
 import { aiContents, pointContents, routes } from '../db/schema.js';
 import { requireDeviceId, touchDevice } from '../device.js';
 import { editTokenFrom, editTokenMatches, hashEditToken, requireEditToken } from '../edit-token.js';
 import { fail, isDataException } from '../errors.js';
 import { addressLimit } from '../limits.js';
-import { contentRows, routeRow, toSummary } from '../summary.js';
+import { contentRows, routeRow, summaryColumns, toSummary } from '../summary.js';
 
 export interface DataOptions {
   /** Null until migrations ran (or without DATABASE_URL). */
@@ -56,6 +61,7 @@ export const ROUTES_PER_DEVICE = 50;
 const ROUTE_BODY_LIMIT = 128 * 1024;
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+type RouteInsert = typeof routes.$inferInsert;
 
 /** Lowercase, without accents: "Sé" and "se" match. */
 const fold = (text: string) =>
@@ -72,6 +78,29 @@ function matches(route: RouteSummary, query: string): boolean {
   return [...allLanguages(route.name), ...allLanguages(route.summary)].some((text) =>
     fold(text).includes(wanted),
   );
+}
+
+interface Measured {
+  route: RouteSummary;
+  meters: number;
+}
+const byDistance = (a: Measured, b: Measured) => a.meters - b.meters;
+
+/**
+ * The list around `near`: every curated route, and the nearest community
+ * routes within the radius (the 20 nearest, however many there are), all by
+ * distance. The query only narrowed the community routes to a box.
+ */
+function around(list: RouteSummary[], near: LatLng): RouteSummary[] {
+  const measured = list.map((route) => ({ route, meters: distance(near, route.centroid) }));
+  const curated = measured.filter(({ route }) => route.source === 'curated');
+  const community = measured
+    .filter(
+      ({ route, meters }) => route.source !== 'curated' && meters <= COMMUNITY_ROUTES.radiusMeters,
+    )
+    .sort(byDistance)
+    .slice(0, COMMUNITY_ROUTES.maxListed);
+  return [...curated, ...community].sort(byDistance).map(({ route }) => route);
 }
 
 /**
@@ -160,21 +189,73 @@ async function checkQuotas(db: Db, owner: string, id: string, max: number): Prom
   if ((all?.n ?? 0) >= max) throw fail(503, 'unavailable');
 }
 
-const WRITTEN = { id: routes.id, updatedAt: routes.updatedAt };
+const WRITTEN = {
+  id: routes.id,
+  updatedAt: routes.updatedAt,
+  visibility: routes.visibility,
+  moderation: routes.moderation,
+};
 
-const writeResponse = (written: { id: string; updatedAt: Date }): RouteWriteResponse => ({
+type Written = Pick<typeof routes.$inferSelect, 'id' | 'updatedAt' | 'visibility' | 'moderation'>;
+
+const writeResponse = (written: Written): RouteWriteResponse => ({
   id: written.id,
   updatedAt: written.updatedAt.toISOString(),
+  visibility: written.visibility as RouteVisibility,
+  moderation: written.moderation as ModerationState,
 });
+
+/**
+ * The visibility columns a write sets: none when it doesn't say (a PUT
+ * without `visibility`), otherwise what it wants. Going public from anything
+ * else (private, or a route that doesn't exist yet) stamps `published_at`;
+ * going private keeps the stamp of the last time. Moderation is never here:
+ * a hidden or blocked route stays so however its owner publishes it.
+ */
+function visibilityColumns(
+  current: string | undefined,
+  wanted: RouteVisibility | undefined,
+  now: Date,
+): Pick<RouteInsert, 'visibility' | 'publishedAt'> {
+  if (!wanted) return {};
+  return wanted === 'public' && current !== 'public'
+    ? { visibility: wanted, publishedAt: now }
+    : { visibility: wanted };
+}
+
+/** A stored route as the app reads it: the spec and its cards in every language. */
+export async function bundleOf(
+  db: Db,
+  row: { id: string; spec: unknown },
+): Promise<{ spec: unknown; contents: Record<string, Record<string, unknown>> }> {
+  const cards = await db.select().from(pointContents).where(eq(pointContents.routeId, row.id));
+  const contents: Record<string, Record<string, unknown>> = {};
+  for (const card of cards) (contents[card.contentRef] ??= {})[card.locale] = card.content;
+  return { spec: row.spec, contents };
+}
+
+/** Whether the request carries the edit token of this user route. */
+function isOwner(
+  request: FastifyRequest,
+  row: { source: string; editTokenHash: string | null },
+): boolean {
+  const token = editTokenFrom(request);
+  return row.source === 'user' && token !== undefined && editTokenMatches(token, row.editTokenHash);
+}
 
 /**
  * Locks a route for a write by its owner until the transaction ends, so no
  * other write slips between this check and ours: 404 when it doesn't exist,
- * 403 when it is curated or the token is another one.
+ * 403 when it is curated or the token is another one. Answers how visible it
+ * is now.
  */
-async function authorizeWrite(tx: Tx, id: string, token: string): Promise<void> {
+async function authorizeWrite(tx: Tx, id: string, token: string): Promise<{ visibility: string }> {
   const [row] = await tx
-    .select({ source: routes.source, editTokenHash: routes.editTokenHash })
+    .select({
+      source: routes.source,
+      editTokenHash: routes.editTokenHash,
+      visibility: routes.visibility,
+    })
     .from(routes)
     .where(eq(routes.id, id))
     .for('update');
@@ -182,6 +263,7 @@ async function authorizeWrite(tx: Tx, id: string, token: string): Promise<void> 
   if (row.source !== 'user' || !editTokenMatches(token, row.editTokenHash)) {
     throw fail(403, 'forbidden');
   }
+  return row;
 }
 
 /** PUT, or a POST repeated by the owner: new spec and listing columns, cards replaced. */
@@ -190,10 +272,12 @@ async function replaceRoute(
   id: string,
   row: ReturnType<typeof routeRow>,
   contents: RouteBundle['contents'],
-): Promise<{ id: string; updatedAt: Date }> {
+  visibility: Pick<RouteInsert, 'visibility' | 'publishedAt'>,
+  now: Date,
+): Promise<Written> {
   const [written] = await tx
     .update(routes)
-    .set({ ...row, updatedAt: new Date() })
+    .set({ ...row, ...visibility, updatedAt: now })
     .where(eq(routes.id, id))
     .returning(WRITTEN);
   if (!written) throw fail(404, 'route_not_found');
@@ -230,7 +314,8 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
     {
       schema: {
         tags: ['routes'],
-        summary: 'Curated routes, filtered and optionally sorted by distance',
+        summary:
+          'Curated routes, filtered; with `near`, also the community routes around it (public ones within 30 km, the 20 nearest) and all sorted by distance',
         querystring: RouteListQuerySchema,
         response: { 200: z.array(RouteSummarySchema) },
       },
@@ -238,18 +323,26 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
     async (request, reply) => {
       const { db } = requireDatabase(options);
       const { mode, activity, q, near } = request.query;
-      // User routes are private to their owner: never listed.
-      const conditions: SQL[] = [eq(routes.status, 'published'), eq(routes.source, 'curated')];
-      if (mode) conditions.push(eq(routes.mode, mode));
-      if (activity) conditions.push(eq(routes.activity, activity));
+      const filters: SQL[] = [eq(routes.status, 'published')];
+      if (mode) filters.push(eq(routes.mode, mode));
+      if (activity) filters.push(eq(routes.activity, activity));
+      const curated = and(eq(routes.source, 'curated'), ...filters);
+      // Private, hidden and blocked user routes are never listed. Without
+      // `near` neither are the community's: they are found by where they are.
+      const wanted = near
+        ? or(
+            curated,
+            and(communityFilter, centroidNear(near, COMMUNITY_ROUTES.radiusMeters), ...filters),
+          )
+        : curated;
       const rows = await db
-        .select()
+        .select(summaryColumns)
         .from(routes)
-        .where(and(...conditions))
+        .where(wanted)
         .orderBy(asc(routes.id));
       let list = rows.map(toSummary);
       if (q) list = list.filter((route) => matches(route, q));
-      if (near) list.sort((a, b) => distance(near, a.centroid) - distance(near, b.centroid));
+      if (near) list = around(list, near);
       reply.header('cache-control', 'public, max-age=60');
       return list;
     },
@@ -262,7 +355,7 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       schema: {
         tags: ['routes'],
         summary:
-          'A route bundle: the spec and its cards in every language (a user route only with its X-Edit-Token)',
+          'A route bundle: the spec and its cards in every language (a user route that is not public and visible only with its X-Edit-Token)',
         params: RouteIdParamsSchema,
       },
     },
@@ -274,28 +367,58 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
         .where(and(eq(routes.id, request.params.id), eq(routes.status, 'published')));
       if (!row) throw fail(404, 'route_not_found');
 
-      // A user route answers only its owner; for anyone else it doesn't exist
-      // (same answer as a missing id). Checked before the 304, which would
-      // otherwise confirm the route exists.
-      const isPrivate = row.source !== 'curated';
-      if (isPrivate) {
-        const token = editTokenFrom(request);
-        if (!token || !editTokenMatches(token, row.editTokenHash)) {
-          throw fail(404, 'route_not_found');
-        }
+      // A curated route, and a user route that is public and visible, answer
+      // anyone. Any other user route answers only its owner; for everyone else
+      // it doesn't exist (same answer as a missing id). Checked before the
+      // 304, which would otherwise confirm the route exists.
+      const owned = isOwner(request, row);
+      if (row.source !== 'curated' && !isCommunityRoute(row) && !owned) {
+        throw fail(404, 'route_not_found');
       }
 
       // Unchanged since the client's copy: no body (the bundle can be large).
       const etag = `"${row.specHash.slice(0, 16)}-${row.updatedAt.getTime()}"`;
       reply
         .header('etag', etag)
-        .header('cache-control', isPrivate ? 'private, no-store' : 'public, max-age=60');
+        .header('cache-control', owned ? 'private, no-store' : 'public, max-age=60');
       if (request.headers['if-none-match'] === etag) return reply.status(304).send();
 
-      const cards = await db.select().from(pointContents).where(eq(pointContents.routeId, row.id));
-      const contents: Record<string, Record<string, unknown>> = {};
-      for (const card of cards) (contents[card.contentRef] ??= {})[card.locale] = card.content;
-      return { spec: row.spec, contents };
+      return bundleOf(db, row);
+    },
+  );
+
+  app.get(
+    '/v1/routes/:id/status',
+    {
+      onRequest: [ownerReadLimit],
+      schema: {
+        tags: ['routes'],
+        summary:
+          'What others can see of a user route: its visibility, moderation and when it was published (only with its X-Edit-Token)',
+        params: RouteIdParamsSchema,
+        response: { 200: RouteOwnerStatusSchema },
+      },
+    },
+    async (request, reply) => {
+      const { db } = requireDatabase(options);
+      const [row] = await db
+        .select({
+          source: routes.source,
+          editTokenHash: routes.editTokenHash,
+          visibility: routes.visibility,
+          moderation: routes.moderation,
+          publishedAt: routes.publishedAt,
+        })
+        .from(routes)
+        .where(and(eq(routes.id, request.params.id), eq(routes.status, 'published')));
+      // The same answer as the read of a route that isn't the caller's.
+      if (!row || !isOwner(request, row)) throw fail(404, 'route_not_found');
+      reply.header('cache-control', 'private, no-store');
+      return {
+        visibility: row.visibility as RouteVisibility,
+        moderation: row.moderation as ModerationState,
+        publishedAt: row.publishedAt?.toISOString() ?? null,
+      };
     },
   );
 
@@ -307,7 +430,7 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       schema: {
         tags: ['routes'],
         summary:
-          'Stores a new user route (needs X-Device-Id and X-Edit-Token); repeated by its owner, it updates it (200)',
+          'Stores a new user route, private unless its `visibility` says public (needs X-Device-Id and X-Edit-Token); repeated by its owner, it updates it (200)',
         body: RouteBundleBodySchema,
         response: { 200: RouteWriteResponseSchema, 201: RouteWriteResponseSchema },
       },
@@ -316,18 +439,26 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       const token = requireEditToken(request);
       const owner = requireDeviceId(request);
       const { db } = requireDatabase(options);
-      const { authored, bundle } = userRouteFrom(request.body);
+      // `visibility` isn't part of the bundle the route is validated as.
+      const { visibility = 'private', ...envelope } = request.body;
+      const { authored, bundle } = userRouteFrom(envelope);
       await verifyCards(db, bundle.contents);
       const { id } = bundle.spec;
       await checkQuotas(db, owner, id, options.userRoutesMax);
       await touchDevice(db, owner, request.headers['user-agent']);
 
       const row = routeRow(authored, bundle.spec);
+      const now = new Date();
       const { created, written } = await storing(() =>
         db.transaction(async (tx) => {
           const [inserted] = await tx
             .insert(routes)
-            .values({ ...row, ownerDeviceId: owner, editTokenHash: hashEditToken(token) })
+            .values({
+              ...row,
+              ownerDeviceId: owner,
+              editTokenHash: hashEditToken(token),
+              ...visibilityColumns(undefined, visibility, now),
+            })
             .onConflictDoNothing({ target: routes.id })
             .returning(WRITTEN);
           if (inserted) {
@@ -338,16 +469,21 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
           // The id is taken. Its owner repeating the POST (a lost 201) updates
           // the route; anyone else, or a curated route, gets a conflict.
           const [existing] = await tx
-            .select({ source: routes.source, editTokenHash: routes.editTokenHash })
+            .select({
+              source: routes.source,
+              editTokenHash: routes.editTokenHash,
+              visibility: routes.visibility,
+            })
             .from(routes)
             .where(eq(routes.id, id))
             .for('update');
           if (existing?.source !== 'user' || !editTokenMatches(token, existing.editTokenHash)) {
             throw fail(409, 'route_exists');
           }
+          const columns = visibilityColumns(existing.visibility, visibility, now);
           return {
             created: false,
-            written: await replaceRoute(tx, id, row, bundle.contents),
+            written: await replaceRoute(tx, id, row, bundle.contents, columns, now),
           };
         }),
       );
@@ -362,7 +498,8 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       bodyLimit: ROUTE_BODY_LIMIT,
       schema: {
         tags: ['routes'],
-        summary: 'Replaces a user route (needs its X-Edit-Token)',
+        summary:
+          'Replaces a user route, and its visibility when the body says (needs its X-Edit-Token)',
         params: RouteIdParamsSchema,
         body: RouteBundleBodySchema,
         response: { 200: RouteWriteResponseSchema },
@@ -371,14 +508,18 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
     async (request) => {
       const token = requireEditToken(request);
       const { db } = requireDatabase(options);
-      const { authored, bundle } = userRouteFrom(request.body);
+      const { visibility, ...envelope } = request.body;
+      const { authored, bundle } = userRouteFrom(envelope);
       await verifyCards(db, bundle.contents);
       const { id } = request.params;
+      const now = new Date();
       const written = await storing(() =>
         db.transaction(async (tx) => {
-          await authorizeWrite(tx, id, token);
+          const current = await authorizeWrite(tx, id, token);
           if (bundle.spec.id !== id) throw fail(400, 'route_id_mismatch');
-          return replaceRoute(tx, id, routeRow(authored, bundle.spec), bundle.contents);
+          const columns = visibilityColumns(current.visibility, visibility, now);
+          const row = routeRow(authored, bundle.spec);
+          return replaceRoute(tx, id, row, bundle.contents, columns, now);
         }),
       );
       return writeResponse(written);
@@ -391,7 +532,7 @@ export const routeRoutes: FastifyPluginAsyncZod<RoutesOptions> = async (app, opt
       onRequest: [writeLimit, authenticate],
       schema: {
         tags: ['routes'],
-        summary: 'Deletes a user route with its cards and runs (needs its X-Edit-Token)',
+        summary: 'Deletes a user route with its cards, runs and reports (needs its X-Edit-Token)',
         params: RouteIdParamsSchema,
       },
     },

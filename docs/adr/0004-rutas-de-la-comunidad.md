@@ -50,6 +50,7 @@ Las tres decisiones las tomó el responsable del proyecto el 2026-10-09.
   - Límite: 10 por minuto y por IP (`REPORT_RATE_LIMIT_PER_MINUTE`).
 - **Moderación del responsable** (`ADMIN_TOKEN`), con las reglas de `POST /admin/push`: sin un token válido el endpoint no existe (`404`), con otro token responde `403`, y admite 5 intentos por minuto y por IP. Funciona aunque el push esté apagado.
   - `GET /admin/moderation`: las rutas ocultas, las bloqueadas y las que tienen reportes abiertos, con los reportes por motivo.
+  - `GET /admin/routes/:id`: el bundle de una ruta de usuario, para revisarla antes de decidir. Solo si es pública o si alguna vez se reportó o se moderó: una ruta privada que nadie pudo ver sigue siendo solo de su dueño.
   - `POST /admin/routes/:id/moderation` `{ action }`:
     - `block` la retira (`blocked`) y cierra sus reportes abiertos;
     - `restore` la devuelve a `visible` y cierra sus reportes abiertos.

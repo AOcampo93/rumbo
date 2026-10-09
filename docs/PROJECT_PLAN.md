@@ -1279,11 +1279,13 @@ Al probar la fase 7 en un iPhone se concretaron estos puntos. La elección «Al 
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/health` | Estado y versión |
-| GET | `/routes?mode=&activity=&q=&near=lat,lng` | Lista de `RouteSummary` de las rutas **curadas**. Las de usuario no se listan nunca |
-| GET | `/routes/:id` | `RouteBundle` (spec + contents). Una ruta de usuario solo responde con su `X-Edit-Token`; sin él, `404 route_not_found` |
-| POST | `/routes` | Crea una ruta de usuario a partir de un `RouteBundle` (cabeceras `X-Edit-Token` y `X-Device-Id`) → `201 { id, updatedAt }`. Es idempotente para su dueño: repetido con el mismo token, la actualiza y responde `200` |
-| PUT | `/routes/:id` | Reemplaza la ruta (cabecera `X-Edit-Token`) → `200 { id, updatedAt }` |
-| DELETE | `/routes/:id` | Borra la ruta con sus fichas y recorridos (cabecera `X-Edit-Token`) → `204` |
+| GET | `/routes?mode=&activity=&q=&near=lat,lng` | Lista de `RouteSummary`: las rutas **curadas** y, con `near`, las **de la comunidad** (rutas de usuario públicas y visibles) a 30 km o menos, las 20 más cercanas (fase 7.2). Las privadas no se listan nunca |
+| GET | `/routes/:id` | `RouteBundle` (spec + contents). Una ruta de usuario pública y visible la lee cualquiera; una privada, oculta o bloqueada solo responde con su `X-Edit-Token` (sin él, `404 route_not_found`) |
+| GET | `/routes/:id/status` | Para el dueño (`X-Edit-Token`): `{ visibility, moderation, publishedAt }` (fase 7.2). Sin el token correcto, `404 route_not_found` |
+| POST | `/routes` | Crea una ruta de usuario a partir de un `RouteBundle` (cabeceras `X-Edit-Token` y `X-Device-Id`) → `201 { id, updatedAt, visibility, moderation }`. El cuerpo admite `visibility` (`private` si falta; fase 7.2). Es idempotente para su dueño: repetido con el mismo token, la actualiza y responde `200` |
+| PUT | `/routes/:id` | Reemplaza la ruta (cabecera `X-Edit-Token`) → `200 { id, updatedAt, visibility, moderation }`. Sin `visibility`, no la cambia |
+| DELETE | `/routes/:id` | Borra la ruta con sus fichas, recorridos y reportes (cabecera `X-Edit-Token`) → `204` |
+| POST | `/routes/:id/reports` | Reporta una ruta de la comunidad `{ reason }` (fase 7.2). Necesita `X-Device-Id` → `{ received: true }` (`201` nuevo, `200` repetido o propio). Con reportes abiertos de 3 dispositivos, la ruta se oculta |
 | GET | `/geo/suggest?q=&near=&kind=&limit=` | Sugerencias de lugares (`kind=place`, por defecto) o de ciudades y zonas (`kind=area`) mientras se escribe |
 | GET | `/geo/resolve?key=` | Lugar resuelto de una sugerencia, con su dirección |
 | POST | `/content/generate` | Genera con IA la ficha de un lugar (un `PointContent` sin `id`), en el `locale` pedido (obligatorio). Necesita `X-Device-Id` |
@@ -1295,6 +1297,9 @@ Al probar la fase 7 en un iPhone se concretaron estos puntos. La elección «Al 
 | POST | `/push/subscriptions` | Registra (o refresca) la suscripción push del navegador y su idioma. Necesita `X-Device-Id` → `201` |
 | DELETE | `/push/subscriptions` | Olvida una suscripción por su `endpoint` → `204`, también si no existe |
 | POST | `/admin/push` | Anuncia algo a todas las suscripciones, cada una en su idioma (`Authorization: Bearer ADMIN_TOKEN`). Sin un `ADMIN_TOKEN` válido no existe (`404`) |
+| GET | `/admin/moderation` | Cola de moderación (`ADMIN_TOKEN`, fase 7.2): las rutas ocultas, las bloqueadas y las que tienen reportes abiertos, con los reportes por motivo |
+| GET | `/admin/routes/:id` | El bundle de una ruta de usuario para revisarla (`ADMIN_TOKEN`, fase 7.2): solo si es pública o si alguna vez se reportó o se moderó |
+| POST | `/admin/routes/:id/moderation` | `{ action: 'block' \| 'restore' }` (`ADMIN_TOKEN`, fase 7.2): retira la ruta o la devuelve a visible; las dos cierran sus reportes abiertos |
 
 ```ts
 // @rumbo/api-contract
@@ -1427,11 +1432,28 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
 - **La respuesta del servicio push:** `2xx` es una entrega (y perdona los fallos anteriores); `404` y `410` borran la suscripción; cualquier otra cosa cuenta como un fallo, y a los 10 seguidos se descarta.
 - **Errores:** `503 push_unavailable` (código nuevo), `400 missing_device_id`, `403 forbidden`, `404 not_found` y `429 rate_limited`.
 
+**Rutas de la comunidad (fase 7.2, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)).** Una ruta de usuario es **de la comunidad** cuando su dueño la hizo pública (`visibility: 'public'`) y nadie la retiró (`moderation: 'visible'`). Las curadas nunca se moderan.
+
+- **Publicar:** el `POST` y el `PUT` de rutas aceptan `visibility`. Sin ella, el `POST` crea la ruta privada (también cuando lo repite su dueño) y el `PUT` no la cambia, así que para retirarla hay que mandar `'private'`. Pasar a pública fija `published_at`. Publicar o retirar no toca `moderation`: una ruta oculta o bloqueada sigue así aunque su dueño la vuelva a publicar. `visibility` no forma parte del bundle: el servidor la separa antes de `validateRouteBundle`.
+- **`GET /routes?near=`:** añade a las curadas las rutas de la comunidad cuyo centroide está a 30 km o menos de `near` (`COMMUNITY_ROUTES`): las 20 más cercanas, con todo ordenado por distancia. La consulta filtra primero por una caja alrededor de `near` (columnas `centroid_lat` y `centroid_lng`, sin PostGIS) y después mide la distancia exacta. Los resúmenes no leen el spec, el dueño ni el hash del token. Sin `near`, solo las curadas.
+- **`GET /routes/:id`:** una ruta de la comunidad la lee cualquiera (`public, max-age=60`). Su dueño la lee con su token como siempre (`private, no-store`, para que una edición reciente no salga de una caché).
+- **`GET /routes/:id/status`:** solo para el dueño. Cuenta contra el límite de escrituras, como sus lecturas.
+- **`POST /routes/:id/reports`:** `{ reason }` (`spam`, `offensive`, `dangerous`, `privacy`, `wrong` u `other`; sin texto libre), con `X-Device-Id` y un cuerpo de hasta 1 KB.
+  - Solo admite rutas de la comunidad. Una curada, privada, oculta, bloqueada o inexistente responde `404 route_not_found`, y un reporte que llega después de ocultarse también.
+  - La fila de la ruta se bloquea (`FOR UPDATE`) mientras se cuenta: los reportes de una ruta van uno tras otro, y el tercer dispositivo distinto con un reporte abierto es siempre el que la oculta (`hidden`; el log dice `route hidden by reports` con el id).
+  - Un dispositivo tiene como mucho un reporte abierto por ruta (índice único parcial; repetirlo responde `200`). El del dueño no se guarda.
+  - La respuesta es siempre `{ received: true }` y no dice cuántos reportes hay ni si la ruta se ocultó.
+- **Moderación** (`GET /admin/moderation`, `GET /admin/routes/:id` y `POST /admin/routes/:id/moderation`): las mismas reglas que `POST /admin/push` (`ADMIN_TOKEN`; sin un token válido no existen, con otro responden `403`). Funcionan con el push apagado.
+  - `GET /admin/routes/:id` da el bundle de una ruta para revisarla antes de decidir (`no-store`). Solo el de una ruta pública, o el de una que alguna vez se reportó o se moderó: una ruta privada que nadie pudo ver sigue siendo solo de su dueño (`404 route_not_found`, como una curada o una que no existe).
+  - La cola lista las rutas de usuario ocultas, las bloqueadas y las que tienen reportes abiertos: primero las ocultas, luego las bloqueadas, y el resto por reportes abiertos. Lleva los reportes por motivo y no se pagina.
+  - `block` retira la ruta (`blocked`) y `restore` la devuelve a `visible`. Las dos cierran sus reportes abiertos (`resolved_at`), así que los reportes nuevos cuentan desde cero. El log dice `route moderated` con el id y la acción.
+- **Borrar** una ruta borra sus reportes (en cascada).
+
 ### 11.2 Base de datos (Drizzle, PostgreSQL)
 
 | Tabla | Columnas principales |
 |---|---|
-| `routes` | `id` (slug, pk), `spec` jsonb, `spec_version`, `spec_hash`, `name`, `mode`, `activity`, `source`, `locale`, `point_count`, `distance_m`, `est_minutes`, `centroid_lat`, `centroid_lng`, `bbox` jsonb, `status` (`published`\|`draft`\|`archived`), `owner_device_id`, `owner_user_id` (futuro, null), `edit_token_hash`, `created_at`, `updated_at` |
+| `routes` | `id` (slug, pk), `spec` jsonb, `spec_version`, `spec_hash`, `name`, `mode`, `activity`, `source`, `locale`, `point_count`, `distance_m`, `est_minutes`, `centroid_lat`, `centroid_lng`, `bbox` jsonb, `status` (`published`\|`draft`\|`archived`), `owner_device_id`, `owner_user_id` (futuro, null), `edit_token_hash`, `visibility` (`private`\|`public`; fase 7.2), `moderation` (`visible`\|`hidden`\|`blocked`), `published_at`, `moderated_at`, `created_at`, `updated_at` |
 | `point_contents` | `id` (pk), `route_id` (fk), `point_id`, `locale`, `content` jsonb, `status`, timestamps. Único (`route_id`, `point_id`, `locale`) |
 | `ai_contents` | `cache_key` (pk), `content` jsonb (la ficha sin `id`), `content_hash` (SHA-256 de su JSON canónico, único), `grounding` (`wikipedia`\|`web`\|`none`), `hits`, `created_at` |
 | `ai_generations` | `id` bigserial, `device_id` (uuid, sin clave foránea), `kind` (`card`\|`suggest`), `cache_key` (null en las sugerencias), `locale`, `model`, `prompt_version`, `input_tokens`, `output_tokens`, `web_searches`, `cost_usd`, `status` (`ok`\|`failed`), `latency_ms`, `created_at`. Índices (`created_at`) y (`device_id`, `created_at`) |
@@ -1440,6 +1462,7 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
 | `devices` | `id`, `first_seen`, `last_seen`, `platform` (aproximada), `pwa_installed` |
 | `push_subscriptions` | `id` bigserial, `device_id` (uuid, sin clave foránea), `endpoint` (único), `p256dh`, `auth`, `locale` (`es`\|`en`\|`pt`), `created_at`, `last_success_at`, `failures` (rechazos seguidos). Índice (`device_id`) |
 | `push_log` | `id` bigserial, `device_id` (uuid, sin clave foránea), `kind` (`run_reminder`), `ref` (el id del recorrido), `sent_at`. Único (`kind`, `ref`) cuando `ref` no es nulo |
+| `route_reports` | `id` bigserial, `route_id` (fk, borrado en cascada), `device_id` (uuid), `reason` (`spam`\|`offensive`\|`dangerous`\|`privacy`\|`wrong`\|`other`), `created_at`, `resolved_at` (al revisarla el responsable). Índice (`route_id`); único (`route_id`, `device_id`) entre los abiertos (fase 7.2) |
 
 - El `spec` en jsonb es la **fuente de verdad**. Las columnas extraídas (nombre, modo, métricas, centroide) sirven para listar y filtrar sin abrir el JSON.
 - Las rutas de usuario llevan `owner_device_id` (el `X-Device-Id` del POST) y `edit_token_hash` (el SHA-256, en hexadecimal, del token que generó el cliente). Las curadas no llevan ninguno de los dos.
@@ -1459,7 +1482,8 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
   - fichas (`/content/generate`): 30 por minuto (`CONTENT_RATE_LIMIT_PER_MINUTE`);
   - sugerencias (`/suggest/places`): 20 por minuto (`SUGGEST_RATE_LIMIT_PER_MINUTE`);
   - suscribir y cancelar notificaciones push: 20 por minuto (`PUSH_RATE_LIMIT_PER_MINUTE`);
-  - anuncios (`/admin/push`): 5 por minuto (`ADMIN_RATE_LIMIT_PER_MINUTE`), con los intentos de token equivocados incluidos.
+  - reportes de rutas de la comunidad: 10 por minuto (`REPORT_RATE_LIMIT_PER_MINUTE`);
+  - endpoints del responsable (anuncios y moderación, juntos): 5 por minuto (`ADMIN_RATE_LIMIT_PER_MINUTE`), con los intentos de token equivocados incluidos.
 
   La IP es la última entrada de `X-Forwarded-For`, la que añade Traefik: la API confía en un solo salto y solo si la conexión viene de una red privada (§11.7). Al superar un límite, `429 rate_limited` con `Retry-After`.
 - **Cuotas de rutas de usuario:** 50 por dispositivo (`409 quota_exceeded`) y, en todo el servidor, `USER_ROUTES_MAX` (5.000 por defecto; pasado el tope, `503 unavailable`). La ruta que se repite no cuenta contra sus propias cuotas.
@@ -1475,7 +1499,8 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
     - un tipo desconocido da un error que ahora lista los siete tipos permitidos.
   - Que Postgres pueda guardarla: anidación de 8 niveles como mucho, sin caracteres de control ni sustitutos Unicode sueltos en ningún texto ni clave, y hasta 500 km entre los puntos en orden.
   - Un problema es `422 invalid_route` con hasta 20 `details`. Así nadie guarda imágenes, enlaces o datos pesados a través de la API, salvo las fichas que generó el servidor.
-- **Rutas de usuario privadas:** `GET /routes` solo lista las curadas, y una ruta de usuario solo la lee quien tiene su `X-Edit-Token` (§11.1).
+- **Rutas de usuario privadas por defecto:** una ruta de usuario solo la lista y la lee su dueño (con su `X-Edit-Token`), salvo que la haga pública. Desde la fase 7.2, `GET /routes?near=` lista las rutas de la comunidad cercanas y cualquiera las lee, pero nunca una privada, oculta o bloqueada (§11.1).
+- **Rutas de la comunidad (fase 7.2).** Lo publicado lo ven desconocidos: [SECURITY.md](SECURITY.md) explica qué es público, los reportes, la moderación y los riesgos conocidos. Ninguna respuesta pública lleva el dispositivo del dueño ni su token.
 - **Fichas verificadas por el servidor (fase 7).** `checkUserRoute` abre `contents` solo para fichas de IA: una por cada clave que referencie una acción `ai_template` (y al revés), en el idioma de la ruta (`spec.locale`), con `generated.by === 'ai'`, con imágenes solo de `https://upload.wikimedia.org/…` y hasta 30 fichas.
   - Además, el POST y el PUT calculan el SHA-256 de cada ficha (`contentHashInput`: su JSON canónico sin el `id`) y exigen que esté en `ai_contents.content_hash`. Si no, `422 unverified_content`, con `details` en `contents.<clave>.<idioma>`.
   - Sin eso, cualquiera podría guardar una ficha que dijera «Generado con IA a partir de Wikipedia» con el texto, los enlaces o las imágenes que quisiera. Las fichas las escribe el servidor con fuentes y fotos de Wikimedia, y el cliente solo las transporta, sin tocarlas.
@@ -1532,8 +1557,9 @@ VAPID_PRIVATE_KEY=              # SECRETO (fase 7.1): su mitad privada. Sin las 
 VAPID_SUBJECT=                  # fase 7.1: contacto para los servicios push, una URL https: o una dirección mailto:
 PUSH_REMINDER_HOURS=6           # fase 7.1: horas tras el inicio de un recorrido sin terminar a las que se manda su recordatorio
 PUSH_RATE_LIMIT_PER_MINUTE=20   # fase 7.1: suscribir y cancelar, por IP
-ADMIN_RATE_LIMIT_PER_MINUTE=5   # fase 7.1: anuncios (los tokens equivocados también cuentan), por IP
-ADMIN_TOKEN=                    # SECRETO (fase 7.1, opcional): al menos 32 caracteres. Sin él, POST /admin/push no existe (404)
+ADMIN_RATE_LIMIT_PER_MINUTE=5   # fase 7.1: anuncios y, desde la 7.2, moderación (los tokens equivocados también cuentan), por IP
+ADMIN_TOKEN=                    # SECRETO (fase 7.1, opcional): al menos 32 caracteres. Sin él, los anuncios y la moderación no existen (404)
+REPORT_RATE_LIMIT_PER_MINUTE=10 # fase 7.2: reportes de rutas de la comunidad, por IP
 ANALYTICS_ENABLED=true
 ```
 
@@ -2035,7 +2061,7 @@ Con el tiempo combinará acciones `info_sheet`, al menos un `quiz`, un `video` y
   - El asistente tuvo tres pasos hasta la fase 7, que añadió «Fichas», los intereses y la línea «Las fichas se generarán en…».
   - Queda para después: el último recorrido de cada ruta en Mis rutas, la búsqueda de direcciones con ArcGIS (necesita `ARCGIS_API_KEY_SERVER`) y compartir rutas.
 
-### Fase 7: Guía con IA (P1 → P2) · construida el 2026-10-08, pendiente de verificar en producción
+### Fase 7: Guía con IA (P1 → P2) · completada el 2026-10-08
 
 - [x] Contratos: `PointContent.quiz`, `RouteDraft.summary`, los esquemas de `/content/generate` y `/suggest/places` (con `INTERESTS`), los cinco códigos de error nuevos, `contentHashInput` y `checkUserRoute` abierto a las fichas que genera el servidor. `ai_template` puntúa la trivia (10 puntos).
 - [x] API: proveedor de IA (Anthropic, con `fetch` inyectable), presupuestos y límites, acceso a Wikidata, Wikipedia y Commons, `POST /content/generate` (artículo → web → ficha honesta), `POST /suggest/places`, tablas `ai_contents` y `ai_generations` (migración 0001) y verificación de las fichas en `POST` y `PUT /routes`.

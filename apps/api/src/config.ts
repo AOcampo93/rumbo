@@ -65,10 +65,12 @@ export interface AppConfig {
   pushReminderHours: number;
   /** Subscribing and unsubscribing per minute per client address. */
   pushRateLimitPerMinute: number;
-  /** Bearer token of POST /v1/admin/push (secret); null: that endpoint answers 404. */
+  /** Bearer token of the admin endpoints (secret); null: they answer 404. */
   adminToken: string | null;
-  /** Announcements per minute per client address. */
+  /** Admin requests (announcements, moderation) per minute per client address. */
   adminRateLimitPerMinute: number;
+  /** Reports of community routes per minute per client address. */
+  reportRateLimitPerMinute: number;
 }
 
 /** A positive integer from the environment, or the default when unset or invalid. */
@@ -144,5 +146,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     pushRateLimitPerMinute: positiveInteger(env.PUSH_RATE_LIMIT_PER_MINUTE, 20),
     adminToken: env.ADMIN_TOKEN?.trim() || null,
     adminRateLimitPerMinute: positiveInteger(env.ADMIN_RATE_LIMIT_PER_MINUTE, 5),
+    reportRateLimitPerMinute: positiveInteger(env.REPORT_RATE_LIMIT_PER_MINUTE, 10),
   };
 }

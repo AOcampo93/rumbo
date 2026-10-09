@@ -30,6 +30,11 @@ describe('the API', () => {
         '/v1/push/key',
         '/v1/push/subscriptions',
         '/v1/admin/push',
+        '/v1/routes/{id}/status',
+        '/v1/routes/{id}/reports',
+        '/v1/admin/moderation',
+        '/v1/admin/routes/{id}',
+        '/v1/admin/routes/{id}/moderation',
       ]),
     );
     expect(Object.keys(doc.paths['/v1/routes'])).toEqual(expect.arrayContaining(['get', 'post']));
@@ -42,6 +47,60 @@ describe('the API', () => {
     );
     expect(Object.keys(doc.paths['/v1/admin/push'])).toEqual(['post']);
     expect(doc.servers).toEqual([{ url: '/api' }]);
+  });
+
+  it('describes the community routes’ endpoints with their schemas', async () => {
+    const res = await api.app.inject({ method: 'GET', url: '/api/v1/docs/json' });
+    const { paths } = res.json();
+    interface Schema {
+      properties: Record<string, unknown>;
+      required: string[];
+    }
+    const schemaOf = (
+      operation: {
+        responses: Record<string, { content: { 'application/json': { schema: Schema } } }>;
+      },
+      status: string,
+    ) => operation.responses[status]!.content['application/json'].schema;
+
+    const status = paths['/v1/routes/{id}/status'];
+    expect(Object.keys(status)).toEqual(['get']);
+    expect(Object.keys(schemaOf(status.get, '200').properties)).toEqual([
+      'visibility',
+      'moderation',
+      'publishedAt',
+    ]);
+
+    const reports = paths['/v1/routes/{id}/reports'];
+    expect(Object.keys(reports)).toEqual(['post']);
+    expect(
+      reports.post.requestBody.content['application/json'].schema.properties.reason.enum,
+    ).toEqual(['spam', 'offensive', 'dangerous', 'privacy', 'wrong', 'other']);
+    expect(Object.keys(reports.post.responses).sort()).toEqual(['200', '201']);
+    expect(schemaOf(reports.post, '201').required).toEqual(['received']);
+
+    const queue = paths['/v1/admin/moderation'];
+    expect(Object.keys(queue)).toEqual(['get']);
+    expect(Object.keys(schemaOf(queue.get, '200').properties)).toEqual(['routes']);
+
+    const action = paths['/v1/admin/routes/{id}/moderation'];
+    expect(Object.keys(action)).toEqual(['post']);
+    expect(
+      action.post.requestBody.content['application/json'].schema.properties.action.enum,
+    ).toEqual(['block', 'restore']);
+    expect(schemaOf(action.post, '200').required).toEqual(['id', 'moderation']);
+
+    // POST and PUT /routes take a visibility and answer with it.
+    const body = (verb: 'post' | 'put', path: string) =>
+      paths[path][verb].requestBody.content['application/json'].schema.properties;
+    expect(body('post', '/v1/routes').visibility.enum).toEqual(['private', 'public']);
+    expect(body('put', '/v1/routes/{id}').visibility.enum).toEqual(['private', 'public']);
+    expect(Object.keys(schemaOf(paths['/v1/routes'].post, '201').properties)).toEqual([
+      'id',
+      'updatedAt',
+      'visibility',
+      'moderation',
+    ]);
   });
 
   it('sends security headers', async () => {

@@ -28,6 +28,7 @@ const ROOMY_LIMITS: Partial<AppConfig> = {
   suggestRateLimitPerMinute: 10_000,
   pushRateLimitPerMinute: 10_000,
   adminRateLimitPerMinute: 10_000,
+  reportRateLimitPerMinute: 10_000,
 };
 
 /** The API on the test database, with everything empty. */
@@ -56,7 +57,7 @@ export async function setupApi(
 
 export async function resetDatabase(database: Database): Promise<void> {
   await database.db.execute(
-    sql`truncate analytics_events, runs, point_contents, routes, devices, ai_contents, ai_generations, push_subscriptions, push_log restart identity cascade`,
+    sql`truncate analytics_events, runs, point_contents, route_reports, routes, devices, ai_contents, ai_generations, push_subscriptions, push_log restart identity cascade`,
   );
 }
 

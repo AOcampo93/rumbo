@@ -1,6 +1,7 @@
 // Writes the server's Web Push identity into apps/api/.env without printing it:
 // a new VAPID key pair (RFC 8292) and its contact, and with --admin-token also
-// the ADMIN_TOKEN that guards POST /v1/admin/push.
+// the ADMIN_TOKEN that guards the admin endpoints (the push announcements and
+// the moderation of community routes).
 //
 //   pnpm --filter @rumbo/api run push:keys                  make the key pair, once
 //   pnpm --filter @rumbo/api run push:keys --admin-token    also make an ADMIN_TOKEN, if there is none

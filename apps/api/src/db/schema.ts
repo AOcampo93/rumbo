@@ -18,7 +18,8 @@ import {
 // without opening the JSON. The AI tables (ai_contents, ai_generations) are
 // phase 7's: the cards the server wrote, and what each AI call used. The push
 // tables belong to Web Push: the browsers that asked for reminders, and what
-// was already sent to them.
+// was already sent to them. route_reports belongs to the community routes
+// (phase 7.2): who reported a public route, and why.
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -57,6 +58,14 @@ export const routes = pgTable(
     ownerDeviceId: uuid('owner_device_id'),
     ownerUserId: text('owner_user_id'),
     editTokenHash: text('edit_token_hash'),
+    /** private | public (phase 7.2): who sees a user route. Curated routes are public. */
+    visibility: text('visibility').notNull().default('private'),
+    /** visible | hidden | blocked: hidden and blocked routes are served to their owner only. */
+    moderation: text('moderation').notNull().default('visible'),
+    /** The last time the route went public; null if it never did. */
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    /** The last change of `moderation`; null if it never changed. */
+    moderatedAt: timestamp('moderated_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [index('routes_listing_idx').on(t.status, t.source, t.mode)],
@@ -78,6 +87,33 @@ export const pointContents = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex('point_contents_ref_locale_idx').on(t.routeId, t.contentRef, t.locale)],
+);
+
+/**
+ * A device's report of a public user route. A device has at most one open
+ * report per route (the partial unique index), so the open reports of a route
+ * are as many as the devices that reported it; closing them (`resolved_at`) is
+ * what the operator's decision does.
+ */
+export const routeReports = pgTable(
+  'route_reports',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    routeId: text('route_id')
+      .notNull()
+      .references(() => routes.id, { onDelete: 'cascade' }),
+    deviceId: uuid('device_id').notNull(),
+    /** One of REPORT_REASONS. */
+    reason: text('reason').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('route_reports_route_idx').on(t.routeId),
+    uniqueIndex('route_reports_open_idx')
+      .on(t.routeId, t.deviceId)
+      .where(sql`${t.resolvedAt} is null`),
+  ],
 );
 
 /** Anonymous devices (§10.8): a random id, never personal data. */

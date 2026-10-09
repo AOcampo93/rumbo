@@ -51,9 +51,11 @@ if (!vapid.ok) {
       : `Web Push is off: the VAPID settings are ${vapid.reason}`,
   );
 }
-if (config.adminToken && !usableAdminToken(config.adminToken)) {
+if (!usableAdminToken(config.adminToken)) {
   app.log.warn(
-    `ADMIN_TOKEN has fewer than ${MIN_ADMIN_TOKEN_LENGTH} characters: announcements are off`,
+    config.adminToken
+      ? `ADMIN_TOKEN has fewer than ${MIN_ADMIN_TOKEN_LENGTH} characters: announcements and moderation are off`
+      : 'ADMIN_TOKEN is not set: announcements and the moderation of community routes are off',
   );
 }
 const push = createPush(config, { database: () => ready, log: app.log });

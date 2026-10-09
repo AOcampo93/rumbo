@@ -62,7 +62,12 @@ describe('POST /api/v1/routes', () => {
     const res = await post(bundle(spec), { ...owner, 'user-agent': 'Mozilla/5.0 (Android 15)' });
     expect(res.statusCode).toBe(201);
     const body = res.json();
-    expect(body).toEqual({ id: ID, updatedAt: expect.any(String) });
+    expect(body).toEqual({
+      id: ID,
+      updatedAt: expect.any(String),
+      visibility: 'private',
+      moderation: 'visible',
+    });
     expect(Date.parse(body.updatedAt)).not.toBeNaN();
     const stored = await row();
     expect(stored).toMatchObject({
@@ -308,7 +313,12 @@ describe('PUT /api/v1/routes/:id', () => {
     two.points = two.points.slice(0, 2);
     const res = await put(ID, bundle(two));
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ id: ID, updatedAt: expect.any(String) });
+    expect(res.json()).toEqual({
+      id: ID,
+      updatedAt: expect.any(String),
+      visibility: 'private',
+      moderation: 'visible',
+    });
     expect(Date.parse(res.json().updatedAt)).toBeGreaterThanOrEqual(Date.parse(created.updatedAt));
     expect(await row()).toMatchObject({
       spec: two,

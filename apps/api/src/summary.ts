@@ -12,7 +12,7 @@ import {
   type RouteBundle,
   type RouteSpec,
 } from '@rumbo/route-spec';
-import type { pointContents, routes } from './db/schema.js';
+import { type pointContents, routes } from './db/schema.js';
 
 type RouteRow = typeof routes.$inferSelect;
 type RouteInsert = typeof routes.$inferInsert;
@@ -69,8 +69,33 @@ export function contentRows(routeId: string, contents: RouteBundle['contents']):
   );
 }
 
+/**
+ * The columns of a route's summary: GET /routes reads only these, so neither
+ * the spec (the heavy one) nor anything about the owner leaves the database.
+ */
+export const summaryColumns = {
+  id: routes.id,
+  name: routes.name,
+  summary: routes.summary,
+  mode: routes.mode,
+  activity: routes.activity,
+  source: routes.source,
+  locale: routes.locale,
+  locales: routes.locales,
+  coverImage: routes.coverImage,
+  pointCount: routes.pointCount,
+  distanceM: routes.distanceM,
+  estMinutes: routes.estMinutes,
+  centroidLat: routes.centroidLat,
+  centroidLng: routes.centroidLng,
+  bbox: routes.bbox,
+  updatedAt: routes.updatedAt,
+};
+
+type SummaryRow = Pick<RouteRow, keyof typeof summaryColumns>;
+
 /** What GET /routes lists for each route. */
-export function toSummary(row: RouteRow): RouteSummary {
+export function toSummary(row: SummaryRow): RouteSummary {
   return {
     id: row.id,
     name: row.name as LocalizedText,

@@ -106,8 +106,9 @@ Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto,
 | `VAPID_SUBJECT` | vacía | Contacto para los servicios push: una URL `https:` o una dirección `mailto:`. `push:keys` pone `https://rumbo.arturoocampo.com` |
 | `PUSH_REMINDER_HOURS` | `6` | Horas tras el inicio de un recorrido sin terminar a las que su dispositivo recibe un recordatorio (acepta decimales). Nunca de 22:00 a 08:00 en Europa/Lisboa |
 | `PUSH_RATE_LIMIT_PER_MINUTE` | `20` | Suscribir y cancelar notificaciones push por minuto y por IP |
-| `ADMIN_RATE_LIMIT_PER_MINUTE` | `5` | Anuncios (`POST /admin/push`) por minuto y por IP; los tokens equivocados también cuentan |
-| `ADMIN_TOKEN` | vacía | **Secreto** (solo de ejecución), opcional. Token `Bearer` de los anuncios: al menos 32 caracteres. Sin él, o más corto, `POST /admin/push` responde `404` |
+| `ADMIN_RATE_LIMIT_PER_MINUTE` | `5` | Peticiones a los endpoints del responsable (anuncios y moderación, juntos) por minuto y por IP; los tokens equivocados también cuentan |
+| `ADMIN_TOKEN` | vacía | **Secreto** (solo de ejecución). Token `Bearer` de los anuncios y de la moderación de las rutas de la comunidad: al menos 32 caracteres. Sin él, o más corto, esos endpoints responden `404` y la API lo avisa al arrancar |
+| `REPORT_RATE_LIMIT_PER_MINUTE` | `10` | Reportes de rutas de la comunidad (`POST /routes/:id/reports`) por minuto y por IP |
 
 - Una variable numérica con un valor que no sea un entero positivo (un número positivo, en el presupuesto y los precios) se ignora y se usa el de por defecto.
 - El límite de 50 rutas por dispositivo no es una variable: es una constante del código (`ROUTES_PER_DEVICE`).
@@ -210,6 +211,52 @@ La API registra solo el estado que contestó el servicio push o un código de re
 
 **Probarlo tras desplegar.** En un Android real y en un iPhone con la app añadida a la pantalla de inicio (iOS 16.4 o más): Ajustes → Avisos → Notificaciones push → activar, mandar un anuncio y tocarlo. Es lo que los e2e no cubren: el Chrome de Playwright rechaza `subscribe()`.
 
+## Rutas de la comunidad (fase 7.2)
+
+Los usuarios pueden publicar sus rutas para quienes estén a 30 km o menos, y cualquiera puede reportar una ruta ajena. Con reportes de 3 dispositivos distintos la ruta se oculta hasta que la revise el responsable del proyecto. Cómo funciona: [`docs/PROJECT_PLAN.md`](PROJECT_PLAN.md) §11.1 y el [ADR 0004](adr/0004-rutas-de-la-comunidad.md). Qué es público y los riesgos: [`docs/SECURITY.md`](SECURITY.md).
+
+**Activarlo**
+
+1. Desplegar `rumbo-api` y `rumbo-web`. La **migración 0003** (`0003_community_routes`) se aplica sola al arrancar: añade a `routes` las columnas `visibility`, `moderation`, `published_at` y `moderated_at`, pone `public` en las curadas y crea `route_reports`. Las rutas de usuario que ya existían quedan **privadas**: nadie las publicó.
+2. Para poder moderar hace falta `ADMIN_TOKEN` en `rumbo-api` (solo de ejecución): generarlo con `pnpm --filter @rumbo/api run push:keys --admin-token` y cargarlo en Coolify como las claves VAPID (sección «Notificaciones push»). Sin él, la API avisa al arrancar (`ADMIN_TOKEN is not set: announcements and the moderation of community routes are off`) y nadie puede revisar las rutas ocultas.
+
+**Revisar la cola**
+
+```bash
+TOKEN=$(sed -n 's/^ADMIN_TOKEN=//p' apps/api/.env)   # leído del .env, sin imprimirlo
+curl -sS https://rumbo.arturoocampo.com/api/v1/admin/moderation -H "Authorization: Bearer $TOKEN"
+```
+
+Responde `{ routes: [...] }`: primero las ocultas por reportes, luego las retiradas, y el resto por reportes abiertos, cada una con sus reportes por motivo (`spam`, `offensive`, `dangerous`, `privacy`, `wrong` y `other`).
+
+Para revisar una antes de decidir, su contenido (el mismo bundle que lee la app):
+
+```bash
+curl -sS https://rumbo.arturoocampo.com/api/v1/admin/routes/<id> -H "Authorization: Bearer $TOKEN"
+```
+
+Solo responde con rutas públicas o que alguna vez se reportaron o se moderaron. Una ruta privada que nadie pudo ver no la lee ni el responsable (`404`).
+
+**Decidir**
+
+```bash
+curl -sS -X POST https://rumbo.arturoocampo.com/api/v1/admin/routes/<id>/moderation \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"action":"restore"}'
+```
+
+- `restore` la devuelve a visible; `block` la retira para siempre. Las dos cierran sus reportes abiertos, así que los reportes nuevos cuentan desde cero.
+- El dueño ve el estado en el detalle de su ruta («Oculta por reportes» o «Retirada por moderación»), y volver a publicarla no la desoculta.
+- Los anuncios y la moderación comparten un límite de 5 peticiones por minuto y por IP (`ADMIN_RATE_LIMIT_PER_MINUTE`): una revisión larga puede toparse con un `429` y esperar un minuto.
+
+**Si algo falla**
+
+| En el log o en la respuesta | Qué significa | Qué mirar |
+|---|---|---|
+| `404` en `/admin/moderation` | No hay un `ADMIN_TOKEN` válido en `rumbo-api` | Generarlo y cargarlo (arriba) |
+| `403 forbidden` | El token no coincide | Que el de Coolify sea el del `.env` |
+| `route hidden by reports` (con el id) | Una ruta llegó a 3 dispositivos con reportes | Revisar la cola y decidir |
+| `route moderated` (con el id y la acción) | Se aplicó una decisión | Nada: es el registro |
+
 ## Base de datos: migraciones y datos iniciales
 
 Al arrancar, la API aplica las migraciones pendientes (`apps/api/drizzle`, generadas con `pnpm --filter @rumbo/api db:generate`). Después carga las rutas curadas de `data/routes`: inserta las nuevas, reemplaza las que cambiaron y deja igual el resto.
@@ -250,7 +297,7 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 
 - **Rápido:** en Coolify, app → *Deployments* → volver a la imagen anterior.
 - **Por código:** `git revert` en `main` y desplegar con normalidad. Nunca reescribir `production`.
-- **Migraciones:** la 0001 (fase 7) y la 0002 (fase 7.1) solo añaden tablas, así que volver a una imagen anterior de la API es seguro.
+- **Migraciones:** la 0001 (fase 7) y la 0002 (fase 7.1) solo añaden tablas, y la 0003 (fase 7.2), una tabla y columnas con valor por defecto, así que volver a una imagen anterior de la API es seguro. Una API anterior a la 7.2 trata todas las rutas de usuario como privadas.
 
 ## Pendiente
 
@@ -266,3 +313,5 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] Despliegue de la fase 7, la guía con IA (2026-10-08, commit `3898958`): `AI_PROVIDER`, `AI_MODEL` y `AI_API_KEY` en Coolify como variables solo de ejecución; la migración `0001` (`ai_contents`, `ai_generations`) se aplicó al arrancar. Comprobado con la IA real: sugerencias, tres fichas sin spoilers y la trivia al llegar.
 - [x] Despliegue de la fase 7.1, ajustes tras las pruebas en un iPhone y notificaciones push (2026-10-08, commit `e76be01`): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` en Coolify como variables solo de ejecución; la migración `0002` (`push_subscriptions`, `push_log`) se aplicó al arrancar y el log dice `Web Push is on`. Comprobado en producción: `GET /push/key` da la clave pública, una suscripción de un servicio no permitido o con claves falsas da `400`, y en un iPhone emulado el detalle de una ruta propia muestra «Editar ruta» y «Eliminar ruta», y Ajustes, el interruptor de push.
 - [ ] Fase 7.1: probar el push en un Android real y en un iPhone con la app instalada. Para mandar un anuncio de prueba hace falta antes un `ADMIN_TOKEN` (`push:keys --admin-token`) cargado en `rumbo-api`, solo de ejecución.
+- [x] Sin «Leiria» fijo en Inicio y «Mi ubicación» que centra el mapa en el usuario (2026-10-09, commit `3c40933`, solo la web). Comprobado en producción con un iPhone emulado situado en Oporto.
+- [ ] Fase 7.2, rutas de la comunidad: generar y cargar `ADMIN_TOKEN`, desplegar (migración 0003) y comprobar en producción publicar, ver la ruta desde otro dispositivo cercano, reportarla y moderarla.

@@ -1,4 +1,4 @@
-# Seguridad: secretos, repositorio público, rutas de usuario, IA y notificaciones push
+# Seguridad: secretos, repositorio público, rutas de usuario y de la comunidad, IA y notificaciones push
 
 El repositorio es **público**: cualquiera puede leer todo lo que se sube a git y todo lo que termina en el bundle de la web.
 
@@ -7,6 +7,8 @@ Además, desde la fase 6 los usuarios crean rutas, y una ruta puede contener su 
 Desde la fase 7 la API también llama a un proveedor de IA, y cada llamada cuesta dinero. Qué se le envía, qué fichas se aceptan y cuánto se puede gastar está en «IA generativa».
 
 Desde la fase 7.1 la API también manda notificaciones push y guarda las direcciones que le dan los navegadores para ello. Qué guarda, qué manda y cómo se protege está en «Notificaciones push».
+
+Desde la fase 7.2 un usuario puede publicar una ruta para que la vean desconocidos que estén cerca. Qué se publica, cómo se reporta y cómo se modera está en «Rutas de la comunidad».
 
 ## Dónde vive cada secreto
 
@@ -35,14 +37,14 @@ Desde la fase 7.1 la API también manda notificaciones push y guarda las direcci
 
 ## Rutas de usuario: privadas y con dueño
 
-Las rutas que crea un usuario son **privadas**: solo las lee quien las creó. Las curadas, que hacemos nosotros, son públicas.
+Las rutas que crea un usuario son **privadas** mientras su dueño no las publique: solo las lee quien las creó. Las curadas, que hacemos nosotros, son públicas. Las publicadas (fase 7.2) están en «Rutas de la comunidad».
 
-- `GET /routes` lista únicamente las curadas.
-- `GET /routes/:id` de una ruta de usuario solo responde con su `X-Edit-Token`. Sin él, o con otro, devuelve un `404 route_not_found` idéntico al de un id que no existe.
+- `GET /routes` no lista nunca una ruta privada.
+- `GET /routes/:id` de una ruta privada solo responde con su `X-Edit-Token`. Sin él, o con otro, devuelve un `404 route_not_found` idéntico al de un id que no existe.
   - Se decide antes del `ETag` y del `304`: un `304` confirmaría que la ruta existe.
   - La respuesta lleva `cache-control: private, no-store`.
 - El id de la ruta (un slug del nombre y 10 caracteres aleatorios) **no es un secreto**: aparece en direcciones y en el historial del navegador. Lo que protege la ruta es el token.
-- Compartir rutas, cuando llegue, usará un token de lectura aparte. El de edición no se comparte nunca.
+- Compartir una ruta privada por enlace, cuando llegue, usará un token de lectura aparte. El de edición no se comparte nunca.
 - Qué guarda el servidor de la propiedad: el hash SHA-256 del token (nunca el token) y el `X-Device-Id` del dispositivo que creó la ruta, que cuenta para su cuota.
 
 El razonamiento completo está en el [ADR 0002](adr/0002-rutas-de-usuario.md).
@@ -72,7 +74,8 @@ Todo lo que entra se valida (Zod) y se limita. Los límites estrictos cuentan po
 | Fichas con IA (`POST /content/generate`) | 30 por minuto, por IP | `429 rate_limited` |
 | Sugerencias de lugares (`POST /suggest/places`) | 20 por minuto, por IP | `429 rate_limited` |
 | Suscribir y cancelar notificaciones push (`/push/subscriptions`) | 20 por minuto, por IP (`PUSH_RATE_LIMIT_PER_MINUTE`) | `429 rate_limited` |
-| Anuncios push (`POST /admin/push`), tokens equivocados incluidos | 5 por minuto, por IP (`ADMIN_RATE_LIMIT_PER_MINUTE`) | `429 rate_limited` |
+| Reportes de rutas de la comunidad (`POST /routes/:id/reports`) | 10 por minuto, por IP (`REPORT_RATE_LIMIT_PER_MINUTE`) | `429 rate_limited` |
+| Endpoints del responsable (anuncios y moderación, juntos), tokens equivocados incluidos | 5 por minuto, por IP (`ADMIN_RATE_LIMIT_PER_MINUTE`) | `429 rate_limited` |
 | Gasto de IA | 5 USD estimados por día UTC (`AI_DAILY_BUDGET_USD`), en todo el servidor | `429 ai_budget_exceeded` |
 | Generaciones de IA por dispositivo | 40 por día UTC (`AI_MAX_GENERATIONS_PER_DEVICE_PER_DAY`) | `429 ai_device_limit` |
 | Rutas de usuario por dispositivo | 50 | `409 quota_exceeded` |
@@ -153,6 +156,41 @@ La guía con IA (sugerencias, fichas y trivia) llama a un proveedor externo desd
 - `ai_generations`: una fila por llamada, con el `X-Device-Id`, el tipo (`card` o `suggest`), el idioma, el modelo, los tokens, el coste estimado y la latencia. En las fichas lleva la `cache_key` (el QID del lugar o, en un punto propio, un hash del nombre, el tipo y la posición a 4 decimales); en las sugerencias es nula a propósito, porque llevaría la posición.
 - Ninguna de las dos se poda, y «Borrar mis datos locales» no borra las filas de `ai_generations`: la IA no usa token de edición, y el `X-Device-Id` es un UUID aleatorio que se pierde al borrar los datos locales.
 
+## Rutas de la comunidad: qué se publica, reportes y moderación
+
+Desde la fase 7.2 el dueño de una ruta puede publicarla: la verán y la podrán recorrer quienes usen Rumbo a 30 km o menos. El razonamiento está en el [ADR 0004](adr/0004-rutas-de-la-comunidad.md).
+
+**Qué se publica y qué no**
+
+- Publicar es **a elección** y se puede deshacer: el interruptor «Publicar para la comunidad» empieza apagado. La app avisa, antes de publicar, de que no se incluya la casa ni datos personales.
+- Lo publicado es la ruta tal como se creó: el nombre, los lugares con su posición, las fichas con IA (las escribe el servidor, con fuentes) y lo que cada lugar muestra al llegar (una pregunta, un video, un enlace o un aviso).
+- **Anónima:** ninguna respuesta pública lleva el `X-Device-Id` del dueño, su token ni su hash. La lista ni siquiera lee esas columnas.
+- Retirar una ruta (volverla privada) la quita de la lista y de las lecturas al momento. Una caché compartida puede servirla aún hasta 60 s (`max-age=60`), y quien ya la había descargado conserva su copia.
+
+**Reportes**
+
+- Cualquiera puede reportar una ruta de la comunidad con un motivo de una lista cerrada. No hay texto libre: no queda nada personal que guardar ni que moderar.
+- El servidor guarda el `X-Device-Id` del que reporta y el motivo. Un dispositivo tiene como mucho un reporte abierto por ruta, y el del dueño no se guarda.
+- Con reportes abiertos de 3 dispositivos distintos, la ruta se **oculta** hasta que el responsable la revise. No se borra.
+- La respuesta es siempre la misma (`{ received: true }`): no dice cuántos reportes hay ni si la ruta se ocultó, para no ayudar a quien quiera tumbar una.
+
+**Moderación**
+
+- Solo el responsable del proyecto, con `ADMIN_TOKEN` (las mismas reglas que los anuncios, más abajo), ve la cola (`GET /admin/moderation`), lee la ruta para revisarla (`GET /admin/routes/:id`) y decide: retirar la ruta (`block`) o devolverla (`restore`). Cómo se hace: [DEPLOY.md](DEPLOY.md).
+- El responsable solo puede leer una ruta pública o una que alguna vez se reportó o se moderó. Una ruta privada que nadie pudo ver sigue siendo solo de su dueño, también para él.
+- Una ruta oculta o retirada no la ve nadie más que su dueño, que la sigue viendo en su app con el estado («Oculta por reportes» o «Retirada por moderación»). Volver a publicarla no la desoculta.
+
+**Riesgos conocidos**
+
+- **Reportes inventados:** el `X-Device-Id` lo elige el cliente, así que alguien podría inventarse 3 dispositivos y ocultar una ruta ajena. Solo la oculta hasta la revisión, y el límite por IP (10 por minuto) lo frena. Con cuentas, contarían las cuentas.
+- **Contenido de terceros a desconocidos:**
+  - el enlace se abre siempre tras un diálogo que enseña su dominio;
+  - el video de YouTube no carga nada de YouTube hasta pulsar play (`youtube-nocookie.com`), aunque la miniatura sí se pide a `i.ytimg.com` al abrir la hoja;
+  - lo demás lo frena el reporte.
+- **Privacidad del creador:** una ruta publicada enseña los lugares que eligió. Si incluye su casa, cualquiera que pase cerca la verá: por eso el aviso al publicar y el motivo de reporte «expone datos personales o una vivienda».
+- **Sin aviso de reportes:** el responsable no recibe ninguna notificación cuando se oculta una ruta. Tiene que mirar la cola.
+- `POST /runs` acepta el id de cualquier ruta que exista, también privada u oculta: un recorrido no devuelve nada de la ruta, así que no la expone.
+
 ## Notificaciones push: suscripciones, claves y qué se manda
 
 Desde la fase 7.1 la API manda recordatorios y anuncios con Web Push (RFC 8030, 8291 y 8292), con la librería `web-push` (MPL-2.0, sin modificar). **El servidor nunca sabe dónde está nadie**: el push no informa de llegadas. Cómo funciona está en [PROJECT_PLAN.md](PROJECT_PLAN.md) §11.1.
@@ -182,13 +220,14 @@ Desde la fase 7.1 la API manda recordatorios y anuncios con Web Push (RFC 8030, 
 - Un host que solo se le parece (`fcm.googleapis.com.example.org`) se rechaza. Las claves también se validan: `p256dh` ha de ser un punto real de la curva P-256 (65 bytes) y `auth`, 16 bytes.
 - Cada envío tiene 10 s de plazo y no hay más de 10 a la vez.
 
-**Los anuncios (`ADMIN_TOKEN`)**
+**Los anuncios y la moderación (`ADMIN_TOKEN`)**
 
 - `POST /admin/push` manda un aviso a todos los suscritos. Lo protege `ADMIN_TOKEN`, un secreto de al menos 32 caracteres que va en `Authorization: Bearer` y se compara en tiempo constante (sobre dos SHA-256, así que ni el tiempo ni una salida temprana dicen cuánto coincide).
 - Sin `ADMIN_TOKEN`, o con uno de menos de 32 caracteres, el endpoint no existe (`404`): no se protege con un secreto fácil de adivinar. Un token equivocado es `403`.
 - Los intentos cuentan contra un límite estricto por IP, 5 por minuto con los equivocados incluidos, que se aplica antes de mirar el token: fallar a ráfagas no ayuda a adivinarlo.
 - El cuerpo se valida solo para quien tiene el token: textos simples, hasta 80 caracteres el título y 240 el texto, en los tres idiomas, y `url` solo como una ruta de esta web (sin esquema, sin `//`), para que un anuncio no mande a nadie a otro sitio.
-- Quien tenga el token puede escribir en las pantallas de bloqueo de todos los suscritos: no se pega en un chat ni en la terminal (se lee del `.env`, [DEPLOY.md](DEPLOY.md)).
+- Desde la fase 7.2 el mismo token guarda la moderación de las rutas de la comunidad (`GET /admin/moderation` y `POST /admin/routes/:id/moderation`), con las mismas reglas y el mismo límite por IP, compartido con los anuncios. Funciona aunque el push esté apagado.
+- Quien tenga el token puede escribir en las pantallas de bloqueo de todos los suscritos y retirar o restaurar cualquier ruta de usuario: no se pega en un chat ni en la terminal (se lee del `.env`, [DEPLOY.md](DEPLOY.md)).
 
 **Qué lleva un aviso**
 

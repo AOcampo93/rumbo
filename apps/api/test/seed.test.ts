@@ -123,3 +123,63 @@ describe('seeding the curated routes', () => {
     expect(after).toEqual(mine);
   });
 });
+
+describe('seeding the curated routes as public ones', () => {
+  const stored = async () =>
+    (await api.db.select().from(routes).where(eq(routes.id, 'leiria-historica')))[0];
+
+  it('writes a new curated route as public and visible', async () => {
+    await resetDatabase(api.database);
+    const dir = await routesFolder({ 'leiria-historica.json': leiria });
+    expect(await seedCuratedRoutes(api.db, dir)).toMatchObject({ inserted: ['leiria-historica'] });
+    expect(await stored()).toMatchObject({
+      visibility: 'public',
+      moderation: 'visible',
+      publishedAt: null,
+      moderatedAt: null,
+    });
+  });
+
+  it('keeps it public when a change in the file replaces the route', async () => {
+    // Say an older release stored it without the visibility, as private.
+    await api.db
+      .update(routes)
+      .set({ visibility: 'private' })
+      .where(eq(routes.id, 'leiria-historica'));
+    const edited = {
+      ...leiria,
+      spec: { ...leiria.spec, summary: { es: 'Otro', en: 'Other', pt: 'Outro' } },
+    };
+    const dir = await routesFolder({ 'leiria-historica.json': edited });
+    expect(await seedCuratedRoutes(api.db, dir)).toMatchObject({ updated: ['leiria-historica'] });
+    expect(await stored()).toMatchObject({ visibility: 'public', moderation: 'visible' });
+  });
+
+  it('replaces a user route that was public and moderated with a clean curated one', async () => {
+    await resetDatabase(api.database);
+    const create = await api.app.inject({
+      method: 'POST',
+      url: '/api/v1/routes',
+      headers: { 'x-edit-token': TOKEN, 'x-device-id': DEVICE },
+      payload: {
+        spec: userRoute('leiria-historica', 'Mi Leiria'),
+        contents: {},
+        visibility: 'public',
+      },
+    });
+    expect(create.statusCode).toBe(201);
+    await api.db
+      .update(routes)
+      .set({ moderation: 'blocked', moderatedAt: new Date() })
+      .where(eq(routes.id, 'leiria-historica'));
+    const dir = await routesFolder({ 'leiria-historica.json': leiria });
+    expect(await seedCuratedRoutes(api.db, dir)).toMatchObject({ inserted: ['leiria-historica'] });
+    expect(await stored()).toMatchObject({
+      source: 'curated',
+      visibility: 'public',
+      moderation: 'visible',
+      publishedAt: null,
+      moderatedAt: null,
+    });
+  });
+});
