@@ -1973,7 +1973,7 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - `community.spec.ts` (2):
     - una ruta creada con «Publicar para la comunidad» se sube pública (`visibility: 'public'` en el POST), su detalle lo dice y «Dejar de publicar» manda el PUT con `'private'`;
     - con el permiso concedido cerca de Leiria, Explorar pide `?near=39.744,-8.807`, lista la ruta de la comunidad bajo «De la comunidad, cerca de ti», su detalle tiene la etiqueta, «Esta ruta está en portugués.» y «Reportar ruta», y el reporte sale con su motivo y `X-Device-Id`, y no se vuelve a ofrecer, tampoco tras recargar.
-- **CI:** todo lo anterior en cada PR.
+- **CI:** todo lo anterior en cada PR. Los tests de cada paquete van uno tras otro (`pnpm -r --workspace-concurrency=1 test`), y un test de la web tiene hasta 15 s: con los dos a la vez en una máquina de 2 núcleos, la suite de la API (Postgres en Docker y escrituras concurrentes) dejaba sin CPU a la de la web, y un test que tarda 8 ms llegó a pasar de 5 s (2026-10-09).
 
 ### 14.3 Definition of Done global
 
