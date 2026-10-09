@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está construida y pendiente del despliegue.
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está en producción desde el 2026-10-09.
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -2146,7 +2146,7 @@ Salieron de la primera prueba de la fase 7 en un iPhone, hecha por el responsabl
   - Una migración nueva (0002, `push_subscriptions` y `push_log`), una dependencia nueva de la API (`web-push`, MPL-2.0, sin modificar) y variables nuevas (`VAPID_*`, `PUSH_*` y `ADMIN_*`, §11.4). Sin las claves VAPID la API arranca y el push queda apagado.
   - Queda para después: los avisos de llegada con la pantalla apagada (app nativa), una insignia monocromo para las notificaciones y un manejador de `pushsubscriptionchange`.
 
-### Fase 7.2: rutas de la comunidad · construida el 2026-10-09, pendiente del despliegue
+### Fase 7.2: rutas de la comunidad · completada el 2026-10-09
 
 La pidió el responsable del proyecto tras probar la 7.1 en un iPhone: que Rumbo sirva en cualquier ciudad y que las rutas de la gente las vean otros que estén cerca ([ADR 0004](adr/0004-rutas-de-la-comunidad.md)).
 
@@ -2162,9 +2162,10 @@ La pidió el responsable del proyecto tras probar la 7.1 en un iPhone: que Rumbo
   - «De la comunidad, cerca de ti» en Explorar, en la lista y en el mapa;
   - el detalle de una ruta de la comunidad, con su idioma y «Reportar ruta».
 - [x] `deploy-prod.sh` despliega la API antes que la web.
-- **DoD:** pendiente del despliegue.
-  - Generar `ADMIN_TOKEN`, cargarlo en `rumbo-api` (solo de ejecución) y desplegar (migración 0003).
-  - En producción: publicar una ruta, verla desde otro dispositivo cerca (o desde otro navegador con esa ubicación), reportarla, revisarla en la cola y restaurarla.
+- **DoD:** desplegada el 2026-10-09 (commit `adcb26c`); falta la prueba con dos dispositivos reales.
+  - [x] `ADMIN_TOKEN` en `rumbo-api` (solo de ejecución) y la migración 0003 aplicada al arrancar. Las rutas de usuario que ya existían siguen privadas.
+  - [x] Comprobado en producción con una ruta temporal, borrada al terminar: publicarla, verla cerca (y no lejos ni sin posición), leerla sin token, ocultarla con 3 reportes, verla oculta como dueño, la cola y la lectura del responsable, restaurarla y un token equivocado (`403`). En un iPhone emulado, la sección de la comunidad en Explorar y el detalle de una ruta propia.
+  - [ ] El responsable del proyecto: publicar una ruta en un dispositivo y verla, recorrerla y reportarla en otro.
 - **Notas de implementación:**
   - Precisiones en el §10.12 (web) y el §11.1 (API).
   - Tests: 1.458 en total (1.229 en la fase 7.1). La API pasa de 393 a 482, la web de 414 a 549, `api-contract` de 48 a 53 y los e2e de 22 a 27.
