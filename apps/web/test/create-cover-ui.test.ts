@@ -58,7 +58,7 @@ const SCALED = new Blob([new Uint8Array(32)], { type: 'image/jpeg' });
 const picked = () => new File([new Uint8Array(64)], 'IMG_0001.JPG', { type: 'image/jpeg' });
 
 let wrapper: VueWrapper | null = null;
-/** The test's creator: its pending autosave is written before the next test clears the storage. */
+/** The test's creator, disposed after it: a pending autosave or card request must not outlive the test. */
 let creatorInUse: ReturnType<typeof useCreatorStore> | null = null;
 let media: Mock<(init: RequestInit) => Response | Promise<Response>>;
 let mediaBodies: Array<{ headers: Record<string, string>; body: unknown }> = [];
@@ -155,9 +155,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  // A debounced autosave left running would write this test's draft (its
-  // cover included) after the next test cleared the storage.
-  await creatorInUse?.flush();
+  creatorInUse?.$dispose();
   creatorInUse = null;
   wrapper?.unmount();
   wrapper = null;

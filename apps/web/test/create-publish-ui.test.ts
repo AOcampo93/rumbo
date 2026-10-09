@@ -58,6 +58,8 @@ function stubUploads() {
 }
 
 let wrapper: VueWrapper | null = null;
+/** The test's creator, disposed after it: a pending autosave or card request must not outlive the test. */
+let creatorInUse: ReturnType<typeof useCreatorStore> | null = null;
 
 /** The creator with a route ready to save: two places, a name, and the app around it. */
 async function prepare() {
@@ -80,6 +82,7 @@ async function prepare() {
   });
   await router.push('/create/review');
   const creator = useCreatorStore();
+  creatorInUse = creator;
   await creator.ensureDraft();
   await creator.update({ name: 'Leiria numa manhã' });
   await creator.addPlace({ ...castle, tempId: 'castle' });
@@ -112,6 +115,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  creatorInUse?.$dispose();
+  creatorInUse = null;
   wrapper?.unmount();
   wrapper = null;
   document.body.innerHTML = '';

@@ -30,6 +30,8 @@ vi.mock('../src/map/RouteMap.vue', async () => {
 const Empty = { render: () => null };
 
 let wrapper: VueWrapper | null = null;
+/** The test's creator, disposed after it: a pending autosave or card request must not outlive the test. */
+let creatorInUse: ReturnType<typeof useCreatorStore> | null = null;
 
 function setOnline(online: boolean): void {
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(online);
@@ -67,6 +69,7 @@ async function mountStep(component: typeof ContentStep | typeof DetailsStep) {
   });
   await router.push('/create/content');
   const creator = useCreatorStore();
+  creatorInUse = creator;
   await creator.ensureDraft();
   await creator.update({ name: 'Leiria numa manhã' });
   await creator.addPlace({ ...castle, tempId: 'castle' });
@@ -108,6 +111,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   Reflect.deleteProperty(navigator, 'geolocation');
+  creatorInUse?.$dispose();
+  creatorInUse = null;
   wrapper?.unmount();
   wrapper = null;
   document.body.innerHTML = '';
