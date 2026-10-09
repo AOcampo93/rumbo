@@ -1,4 +1,4 @@
-# Seguridad: secretos, repositorio público, rutas de usuario y de la comunidad, IA y notificaciones push
+# Seguridad: secretos, repositorio público, rutas de usuario y de la comunidad, fotos, IA y notificaciones push
 
 El repositorio es **público**: cualquiera puede leer todo lo que se sube a git y todo lo que termina en el bundle de la web.
 
@@ -9,6 +9,8 @@ Desde la fase 7 la API también llama a un proveedor de IA, y cada llamada cuest
 Desde la fase 7.1 la API también manda notificaciones push y guarda las direcciones que le dan los navegadores para ello. Qué guarda, qué manda y cómo se protege está en «Notificaciones push».
 
 Desde la fase 7.2 un usuario puede publicar una ruta para que la vean desconocidos que estén cerca. Qué se publica, cómo se reporta y cómo se modera está en «Rutas de la comunidad».
+
+Desde la fase 7.3 un usuario puede subir una foto como portada de su ruta. Qué se guarda, qué se le quita y cómo se modera está en «Fotos de los usuarios».
 
 ## Dónde vive cada secreto
 
@@ -196,6 +198,42 @@ Desde la fase 7.2 el dueño de una ruta puede publicarla: la verán y la podrán
 - **Privacidad del creador:** una ruta publicada enseña los lugares que eligió. Si incluye su casa, cualquiera que pase cerca la verá: por eso el aviso al publicar y el motivo de reporte «expone datos personales o una vivienda».
 - **Sin aviso de reportes:** el responsable no recibe ninguna notificación cuando se oculta una ruta. Tiene que mirar la cola.
 - `POST /runs` acepta el id de cualquier ruta que exista, también privada u oculta: un recorrido no devuelve nada de la ruta, así que no la expone.
+
+## Fotos de los usuarios: portadas de las rutas
+
+Desde la fase 7.3 la portada de una ruta puede ser una foto que sube su creador ([ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)).
+
+**Qué se guarda y qué se le quita**
+
+- El móvil reduce la foto antes de subirla (1600 px, JPEG), lo que ya quita su EXIF. El servidor no se fía: la decodifica con `sharp`, la endereza y la vuelve a codificar como JPEG **sin ningún metadato** (ni EXIF, con la posición GPS y el modelo del móvil, ni XMP, IPTC o perfil ICC).
+- Solo acepta JPEG, PNG y WebP (`sharp.block` cierra los demás cargadores de `libvips`: GIF, TIFF, SVG, AVIF…), con un tope de 50 megapíxeles contra las bombas de descompresión y 4 MB de cuerpo. Lo que no es una foto legible es `415`.
+- Se guarda en Postgres (`media`) con el `X-Device-Id` que la subió, su tamaño y la ruta que la usa. El log solo registra el id y los tamaños.
+
+**Quién la ve**
+
+- Se sirve en `/api/v1/media/<id>.jpg`, con un id aleatorio de 128 bits imposible de adivinar. Quien tenga la dirección la ve sin token: la de una ruta privada solo aparece en su bundle, que solo lee su dueño.
+- Las cabeceras impiden que se use para otra cosa: `nosniff`, una CSP que no deja ejecutar nada (`sandbox`) y `cross-origin-resource-policy: same-origin`, para que otras webs no la incrusten.
+- Solo el dispositivo que la subió puede ponerla de portada, y en una sola ruta: nadie puede «quedarse» con la foto de una ruta ajena copiando su dirección.
+
+**Moderación y limpieza**
+
+- Una portada ofensiva se reporta con su ruta. El responsable puede borrar la foto con `DELETE /admin/media/:id` (`ADMIN_TOKEN`; cómo: [DEPLOY.md](DEPLOY.md)), y la app muestra entonces la ilustración de la ruta.
+- Una foto borrada deja de verse en cuanto el dispositivo tiene conexión: el navegador la guarda un día como mucho (`max-age=86400`) y el service worker pregunta primero a la red. Sin conexión puede seguir viéndose la copia guardada.
+- Las fotos que ninguna ruta usa se borran a la semana.
+
+**Límites**
+
+| Qué | Límite | Si se supera |
+|---|---|---|
+| Subidas por IP | 10 por minuto (`MEDIA_RATE_LIMIT_PER_MINUTE`) | `429 rate_limited` |
+| Subidas por dispositivo | 30 en 24 horas (`MEDIA_UPLOADS_PER_DEVICE_PER_DAY`) | `429 rate_limited` |
+| Espacio total | 300 MB (`MEDIA_MAX_TOTAL_MB`) | `503 unavailable` |
+
+**Riesgos conocidos**
+
+- **Fotos de desconocidos en rutas públicas:** no hay revisión previa (ADR 0004 y 0005). La red es el reporte y el borrado del responsable.
+- **El dispositivo lo elige el cliente,** así que el límite por dispositivo se esquiva con identificadores nuevos. Frenan el límite por IP y el espacio total, y las fotos sin ruta desaparecen a la semana.
+- **Copias de seguridad:** las fotos van en la base de datos y entran en las copias diarias (máximo 2 GB). Con muchas fotos, las copias guardarían menos días.
 
 ## Notificaciones push: suscripciones, claves y qué se manda
 

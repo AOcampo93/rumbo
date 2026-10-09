@@ -109,6 +109,10 @@ Variables opcionales de la API, con su valor por defecto. Ninguna es un secreto,
 | `ADMIN_RATE_LIMIT_PER_MINUTE` | `5` | Peticiones a los endpoints del responsable (anuncios y moderación, juntos) por minuto y por IP; los tokens equivocados también cuentan |
 | `ADMIN_TOKEN` | vacía | **Secreto** (solo de ejecución). Token `Bearer` de los anuncios y de la moderación de las rutas de la comunidad: al menos 32 caracteres. Sin él, o más corto, esos endpoints responden `404` y la API lo avisa al arrancar |
 | `REPORT_RATE_LIMIT_PER_MINUTE` | `10` | Reportes de rutas de la comunidad (`POST /routes/:id/reports`) por minuto y por IP |
+| `PUBLIC_ORIGIN` | `https://rumbo.arturoocampo.com` | El origen de las direcciones de las fotos y el que se exige a una portada propia. En producción no hace falta ponerla; en local, el de la web (`http://localhost:5173`) |
+| `MEDIA_RATE_LIMIT_PER_MINUTE` | `10` | Subidas de fotos (`POST /media`) por minuto y por IP |
+| `MEDIA_UPLOADS_PER_DEVICE_PER_DAY` | `30` | Subidas por dispositivo en 24 horas |
+| `MEDIA_MAX_TOTAL_MB` | `300` | Espacio total de las fotos; pasado, `503 unavailable` |
 
 - Una variable numérica con un valor que no sea un entero positivo (un número positivo, en el presupuesto y los precios) se ignora y se usa el de por defecto.
 - El límite de 50 rutas por dispositivo no es una variable: es una constante del código (`ROUTES_PER_DEVICE`).
@@ -257,6 +261,23 @@ curl -sS -X POST https://rumbo.arturoocampo.com/api/v1/admin/routes/<id>/moderat
 | `route hidden by reports` (con el id) | Una ruta llegó a 3 dispositivos con reportes | Revisar la cola y decidir |
 | `route moderated` (con el id y la acción) | Se aplicó una decisión | Nada: es el registro |
 
+## Portadas de las rutas (fase 7.3)
+
+Los usuarios pueden subir una foto como portada de su ruta. Cómo funciona: [`docs/PROJECT_PLAN.md`](PROJECT_PLAN.md) §11.1 y el [ADR 0005](adr/0005-portadas-y-vista-de-rutas.md). Qué se guarda y los riesgos: [`docs/SECURITY.md`](SECURITY.md).
+
+- **Despliegue:** primero la API (la web nueva sube fotos a `POST /media`). La **migración 0004** (`0004_media_covers`, la tabla `media`) se aplica sola al arrancar. La imagen de la API lleva `sharp` (con `libvips`): unos 29 MB más.
+- **Variables:** ninguna obligatoria. `PUBLIC_ORIGIN` ya vale el de producción, y los límites `MEDIA_*` tienen sus valores por defecto.
+- **Borrar una foto** (por ejemplo, una portada ofensiva reportada): su id son los 22 caracteres antes de `.jpg` en la `url` de la portada, que se ve con `GET /admin/routes/:id`.
+
+  ```bash
+  TOKEN=$(sed -n 's/^ADMIN_TOKEN=//p' apps/api/.env)   # leído del .env, sin imprimirlo
+  curl -sS -X DELETE https://rumbo.arturoocampo.com/api/v1/admin/media/<id> -H "Authorization: Bearer $TOKEN"
+  ```
+
+  Responde `204` (o `404` si ya no existe). La ruta conserva la dirección y la app muestra su ilustración; su dueño puede seguir guardándola.
+- **Espacio:** `select pg_size_pretty(sum(bytes)) from media;` en `rumbo-db` (solo lectura). Las fotos entran en las copias diarias: si se acercan al tope, toca sacarlas a un volumen o a un almacenamiento de objetos.
+- **En el log:** `photo stored` (id y tamaños), `unused photos deleted` (cuántas, cada hora si hay) y `media deleted by the operator` (id).
+
 ## Base de datos: migraciones y datos iniciales
 
 Al arrancar, la API aplica las migraciones pendientes (`apps/api/drizzle`, generadas con `pnpm --filter @rumbo/api db:generate`). Después carga las rutas curadas de `data/routes`: inserta las nuevas, reemplaza las que cambiaron y deja igual el resto.
@@ -297,7 +318,7 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 
 - **Rápido:** en Coolify, app → *Deployments* → volver a la imagen anterior.
 - **Por código:** `git revert` en `main` y desplegar con normalidad. Nunca reescribir `production`.
-- **Migraciones:** la 0001 (fase 7) y la 0002 (fase 7.1) solo añaden tablas, y la 0003 (fase 7.2), una tabla y columnas con valor por defecto, así que volver a una imagen anterior de la API es seguro. Una API anterior a la 7.2 trata todas las rutas de usuario como privadas.
+- **Migraciones:** la 0001 (fase 7), la 0002 (fase 7.1) y la 0004 (fase 7.3) solo añaden tablas, y la 0003 (fase 7.2), una tabla y columnas con valor por defecto, así que volver a una imagen anterior de la API es seguro. Una API anterior a la 7.2 trata todas las rutas de usuario como privadas, y una anterior a la 7.3 rechaza las rutas con portada.
 
 ## Pendiente
 
@@ -316,3 +337,4 @@ El contenedor de la base se llama como el UUID de `rumbo-db` en Coolify. Antes d
 - [x] Sin «Leiria» fijo en Inicio y «Mi ubicación» que centra el mapa en el usuario (2026-10-09, commit `3c40933`, solo la web). Comprobado en producción con un iPhone emulado situado en Oporto.
 - [x] Despliegue de la fase 7.2, rutas de la comunidad (2026-10-09, commit `adcb26c`), el primero con la API antes que la web. `ADMIN_TOKEN` en Coolify como variable solo de ejecución (los anuncios también quedan activos); la migración `0003` se aplicó al arrancar y las rutas de usuario existentes quedaron privadas. Comprobado en producción con una ruta temporal, borrada al terminar junto con sus dispositivos de prueba: publicarla, verla en la lista cercana (y no sin posición ni desde Oporto), leerla sin token, 3 reportes que la ocultan, el estado del dueño, la cola y la lectura del responsable, restaurarla y un token equivocado (`403`). En un iPhone emulado, Explorar muestra la sección de la comunidad y el detalle de una ruta propia, «Privada» con «Publicar».
 - [ ] Fase 7.2: la prueba del responsable con dos dispositivos reales (publicar en uno y verla, recorrerla y reportarla en otro).
+- [ ] Fase 7.3, portadas y vista de rutas: desplegar (API primero: migración 0004 y `sharp`) y comprobar en producción subir una portada (sin GPS en la foto guardada), elegir la de un lugar y la vista Rutas de Explorar.

@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está en producción desde el 2026-10-09.
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está en producción desde el 2026-10-09, y la 7.3 (portadas y vista de rutas, [ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)) está construida y pendiente del despliegue.
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -1297,6 +1297,25 @@ Las rutas de la comunidad ([ADR 0004](adr/0004-rutas-de-la-comunidad.md)). El se
 - **Despliegue:** la web nueva manda `visibility`, que una API anterior rechaza, así que `deploy-prod.sh` despliega primero la API ([DEPLOY.md](DEPLOY.md)).
 - **Tests:** en el §14.2.
 
+### 10.13 Precisiones de la implementación (fase 7.3)
+
+Las portadas y la vista de rutas del mapa ([ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)). Las pantallas están en DESIGN (§5.1, §6, §7, S01 y C4), y el servidor, en el §11.1.
+
+- **Portada en el creador** (`views/create/CoverCard.vue`, `stores/creator.ts` y `services/media.ts`):
+  - El borrador guarda `cover`: `{ type: 'own', url }` o `{ type: 'card', image }`, validado al leerlo (uno roto se descarta y el borrador queda reparado). `loadForEdit` lo toma de `spec.coverImage`.
+  - Al construir la ruta, una foto propia se convierte en `{ url, alt: { [idioma]: nombre } }` (el texto alternativo sigue al nombre) y una de ficha se copia tal cual. Si esa foto ya no está entre las fichas listas (se regeneró la ficha o se quitó el lugar), la portada no se envía: el servidor la rechazaría. La elección se queda en el borrador por si la ficha vuelve a tenerla.
+  - **Subir:** `scalePhoto` decodifica el archivo (`createImageBitmap` con la orientación del EXIF; si no, `<img>`), lo pinta sobre blanco en un canvas de 1600 px como mucho y lo exporta como JPEG 0,85, lo que también quita el EXIF. `uploadPhoto` hace `POST /media` con el dispositivo y traduce los errores (`offline`, `unsupported`, `failed`). Mientras sube, Guardar ruta y Probar ruta esperan.
+- **RouteCover** (`components/RouteCover.vue`): la foto, la ilustración del primer interés con ilustración (los de las rutas de la comunidad pueden traer textos libres) o el patrón. Si la foto no carga, cae a la ilustración. La usan RouteCard (Explorar, Mis rutas y C5) y C4.
+- **Sin conexión:** la portada se descarga con la ruta (`catalog.ts` ya listaba `spec.coverImage`). El service worker pide las fotos propias primero a la red (`rumbo-covers`): si el responsable borró una, deja de verse en cuanto hay conexión; sin conexión sirve la última copia. Las fotos de Wikimedia siguen con caché primero.
+- **La ruta curada** lleva como portada la foto del castillo de Wikimedia Commons (JMFH4778, CC BY-SA 3.0) e intereses (historia y arquitectura).
+- **Mapa de Explorar** (`views/HomeView.vue`, `map/RouteMap.vue`, `map/explore.ts` y `map/symbols.ts`):
+  - **Colores por actividad** (`ACTIVITY_LOOKS`): a pie Azulejo `#1E4FA3` con línea continua, corriendo Terracota `#C4491F` con trazos largos y en bici Atlántico `#0B7A75` con trazos cortos. Los pines de las rutas usan el color de su actividad en las dos vistas. `CatalogRoute.color`, `ROUTE_COLORS` y `--route-1..5` ya no se usan en Explorar (quedan para limpiar).
+  - **Puntos | Rutas:** un `SegmentedControl` sobre el mapa, guardado en `localStorage` (`rumbo.explore.mapMode`).
+  - **`RouteMap`:** la prop `lines` (id, puntos, color, estilo, énfasis y nombre) en su propia capa bajo los pines, sincronizada por id como los marcadores. Cada línea lleva un borde blanco y una franja invisible de 28 px para tocarla. Los eventos `lineTap` y `markerTap`; `mapClick` es ya un toque fuera de marcadores y líneas. `popups` desactiva los popups de los pines (vista Rutas). La lista accesible «Rutas del mapa» funciona como la de marcadores.
+  - **Resaltar:** la línea elegida pasa a 7 px (4 normal, 3 atenuada, con un 40 % de opacidad las demás y sus pines), y en «Sol», un 25 % más gruesas. La tarjeta de abajo se anuncia por una región `role=status`; el foco se queda en la lista si se eligió desde ella.
+  - **Filtro:** `filterRoutes` por origen (curada, propia o de la comunidad) e intereses (alguno de los elegidos). El grupo Origen solo sale con dos orígenes o más, y una elección que ya no tiene ninguna ruta no filtra.
+- **Tests:** en el §14.2.
+
 ---
 
 ## 11. Backend (`apps/api`) en el VPS
@@ -1331,6 +1350,9 @@ Las rutas de la comunidad ([ADR 0004](adr/0004-rutas-de-la-comunidad.md)). El se
 | GET | `/admin/moderation` | Cola de moderación (`ADMIN_TOKEN`, fase 7.2): las rutas ocultas, las bloqueadas y las que tienen reportes abiertos, con los reportes por motivo |
 | GET | `/admin/routes/:id` | El bundle de una ruta de usuario para revisarla (`ADMIN_TOKEN`, fase 7.2): solo si es pública o si alguna vez se reportó o se moderó |
 | POST | `/admin/routes/:id/moderation` | `{ action: 'block' \| 'restore' }` (`ADMIN_TOKEN`, fase 7.2): retira la ruta o la devuelve a visible; las dos cierran sus reportes abiertos |
+| POST | `/media` | Sube una foto para la portada (fase 7.3): el cuerpo es la foto (`image/jpeg`, `image/png` o `image/webp`, hasta 4 MB), con `X-Device-Id` → `201 { id, url, width, height, bytes }` |
+| GET | `/media/:file` | La foto guardada, `<id>.jpg` (JPEG sin metadatos), con caché de un día |
+| DELETE | `/admin/media/:id` | Borra una foto (`ADMIN_TOKEN`, fase 7.3) → `204` |
 
 ```ts
 // @rumbo/api-contract
@@ -1480,6 +1502,17 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
   - `block` retira la ruta (`blocked`) y `restore` la devuelve a `visible`. Las dos cierran sus reportes abiertos (`resolved_at`), así que los reportes nuevos cuentan desde cero. El log dice `route moderated` con el id y la acción.
 - **Borrar** una ruta borra sus reportes (en cascada).
 
+**Portadas (fase 7.3, [ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)).** La portada de una ruta de usuario (`spec.coverImage`) es una foto propia, subida a este servidor, o una de las fotos de sus fichas.
+
+- **`POST /media`:** el orden de las comprobaciones es el límite por IP (10 por minuto), `X-Device-Id` (`400`), el tipo (`415 unsupported_media`), el número de subidas del dispositivo en 24 horas móviles (30, `429` con `Retry-After`) y el espacio total (300 MB, `503 unavailable`), todo antes de leer el cuerpo; un cuerpo de más de 4 MB es `413`.
+  - Con `sharp` (en la imagen Docker, unos 29 MB más): solo los cargadores de JPEG, PNG y WebP (`sharp.block` para los demás, en todo el proceso), un tope de 50 megapíxeles, la orientación del EXIF, 1600 px como mucho sin agrandar, la transparencia sobre blanco y un JPEG mozjpeg de calidad 82 **sin ningún metadato** (ni EXIF ni GPS ni XMP ni IPTC ni ICC). Lo que no se puede leer es `415 unsupported_media`.
+  - El id son 16 bytes aleatorios en base64url (22 caracteres). La `url` es absoluta, con `PUBLIC_ORIGIN`. El log solo dice `photo stored` con el id y los tamaños.
+- **`GET /media/:file`:** `image/jpeg`, `cache-control: public, max-age=86400` (un día: el responsable puede borrar una foto), un ETag con el id (`304`), `nosniff`, `content-security-policy: default-src 'none'; sandbox` y `cross-origin-resource-policy: same-origin`. Sin `X-Device-Id`.
+- **La portada en el `POST` y el `PUT` de rutas:** una foto propia tiene que ser del origen `PUBLIC_ORIGIN`, existir, haberla subido el dispositivo dueño de la ruta y no ser la portada de otra ruta (`422 unverified_content` en `spec.coverImage` si no). En la misma transacción se ata a la ruta y se sueltan las demás fotos de esa ruta. La fila de la foto se bloquea: dos rutas que la piden a la vez dan un `201` y un `422`.
+  - Una ruta que guarda **la misma** portada que ya tenía se acepta aunque su foto ya no exista (la borró el responsable): la app muestra su ilustración, y su dueño no se queda sin poder guardar por algo que no hizo.
+- **Limpieza:** cada hora se borran las fotos que ninguna ruta usa desde hace **una semana** (subidas abandonadas, portadas cambiadas, rutas borradas). La semana deja subir una ruta guardada sin conexión días después. El log dice `unused photos deleted` con cuántas.
+- **`DELETE /admin/media/:id`:** con las reglas y el límite compartido de los demás endpoints del responsable. El log dice `media deleted by the operator` con el id.
+
 ### 11.2 Base de datos (Drizzle, PostgreSQL)
 
 | Tabla | Columnas principales |
@@ -1494,6 +1527,7 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
 | `push_subscriptions` | `id` bigserial, `device_id` (uuid, sin clave foránea), `endpoint` (único), `p256dh`, `auth`, `locale` (`es`\|`en`\|`pt`), `created_at`, `last_success_at`, `failures` (rechazos seguidos). Índice (`device_id`) |
 | `push_log` | `id` bigserial, `device_id` (uuid, sin clave foránea), `kind` (`run_reminder`), `ref` (el id del recorrido), `sent_at`. Único (`kind`, `ref`) cuando `ref` no es nulo |
 | `route_reports` | `id` bigserial, `route_id` (fk, borrado en cascada), `device_id` (uuid), `reason` (`spam`\|`offensive`\|`dangerous`\|`privacy`\|`wrong`\|`other`), `created_at`, `resolved_at` (al revisarla el responsable). Índice (`route_id`); único (`route_id`, `device_id`) entre los abiertos (fase 7.2) |
+| `media` | `id` (22 caracteres aleatorios, pk), `device_id` (uuid), `data` bytea (el JPEG), `bytes`, `width`, `height`, `route_id` (fk, `set null` al borrar la ruta), `created_at`, `unused_since`. Índices: el parcial de la limpieza (sin ruta, por `coalesce(unused_since, created_at)`) y (`device_id`, `created_at`) (fase 7.3) |
 
 - El `spec` en jsonb es la **fuente de verdad**. Las columnas extraídas (nombre, modo, métricas, centroide) sirven para listar y filtrar sin abrir el JSON.
 - Las rutas de usuario llevan `owner_device_id` (el `X-Device-Id` del POST) y `edit_token_hash` (el SHA-256, en hexadecimal, del token que generó el cliente). Las curadas no llevan ninguno de los dos.
@@ -1519,7 +1553,7 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
   La IP es la última entrada de `X-Forwarded-For`, la que añade Traefik: la API confía en un solo salto y solo si la conexión viene de una red privada (§11.7). Al superar un límite, `429 rate_limited` con `Retry-After`.
 - **Cuotas de rutas de usuario:** 50 por dispositivo (`409 quota_exceeded`) y, en todo el servidor, `USER_ROUTES_MAX` (5.000 por defecto; pasado el tope, `503 unavailable`). La ruta que se repite no cuenta contra sus propias cuotas.
 - Validación Zod de todo lo que entra; nunca se confía en el cliente. El POST y el PUT de rutas pasan por `validateRouteBundle` (sin exigir los tres idiomas) y por `checkUserRoute`, una lista cerrada de lo que puede tener una ruta de usuario: la que produce el creador y nada más.
-  - Sin `path`, `coverImage` ni `description`. `summary` solo como texto simple de hasta 280 caracteres (la idea de ruta que sugiere la IA).
+  - Sin `path` ni `description`. `coverImage` (fase 7.3) solo como una foto propia (`url` y `alt`, en la dirección de `/media`) o una de las fotos de sus fichas tal cual la tiene la ficha; el servidor comprueba además la foto propia (§11.1). `summary` solo como texto simple de hasta 280 caracteres (la idea de ruta que sugiere la IA).
   - Fichas (`contents`) solo las que generó este servidor, con las reglas de «Fichas verificadas por el servidor» (más abajo).
   - Metadatos de la ruta: solo `interests` (hasta 10 textos de 40 caracteres). Metadatos de un punto: solo `address` (hasta 200) y `externalId` (un QID de Wikidata).
   - Acciones: una por punto más 8, como mucho, y solo `info_sheet` (sin imagen), `ai_template`, `decision` y, desde la fase 7.1, las que produce «Al llegar» (§7.3), sin `presentation` ni `feedback`. Triggers: `onEnter` en los puntos y `onDeviation`, `onIdle`, `onOutOfOrder` y `onTimeout` en la ruta. Las de «Al llegar» son más estrictas que las de las rutas curadas:
@@ -1532,6 +1566,7 @@ Códigos de error de la fase 7 (el cliente decide por `code`; los dos `429` de l
   - Un problema es `422 invalid_route` con hasta 20 `details`. Así nadie guarda imágenes, enlaces o datos pesados a través de la API, salvo las fichas que generó el servidor.
 - **Rutas de usuario privadas por defecto:** una ruta de usuario solo la lista y la lee su dueño (con su `X-Edit-Token`), salvo que la haga pública. Desde la fase 7.2, `GET /routes?near=` lista las rutas de la comunidad cercanas y cualquiera las lee, pero nunca una privada, oculta o bloqueada (§11.1).
 - **Rutas de la comunidad (fase 7.2).** Lo publicado lo ven desconocidos: [SECURITY.md](SECURITY.md) explica qué es público, los reportes, la moderación y los riesgos conocidos. Ninguna respuesta pública lleva el dispositivo del dueño ni su token.
+- **Fotos de los usuarios (fase 7.3).** Qué se guarda, cómo se limpia y los riesgos: [SECURITY.md](SECURITY.md). Las reglas de la API están en el §11.1.
 - **Fichas verificadas por el servidor (fase 7).** `checkUserRoute` abre `contents` solo para fichas de IA: una por cada clave que referencie una acción `ai_template` (y al revés), en el idioma de la ruta (`spec.locale`), con `generated.by === 'ai'`, con imágenes solo de `https://upload.wikimedia.org/…` y hasta 30 fichas.
   - Además, el POST y el PUT calculan el SHA-256 de cada ficha (`contentHashInput`: su JSON canónico sin el `id`) y exigen que esté en `ai_contents.content_hash`. Si no, `422 unverified_content`, con `details` en `contents.<clave>.<idioma>`.
   - Sin eso, cualquiera podría guardar una ficha que dijera «Generado con IA a partir de Wikipedia» con el texto, los enlaces o las imágenes que quisiera. Las fichas las escribe el servidor con fuentes y fotos de Wikimedia, y el cliente solo las transporta, sin tocarlas.
@@ -1591,6 +1626,10 @@ PUSH_RATE_LIMIT_PER_MINUTE=20   # fase 7.1: suscribir y cancelar, por IP
 ADMIN_RATE_LIMIT_PER_MINUTE=5   # fase 7.1: anuncios y, desde la 7.2, moderación (los tokens equivocados también cuentan), por IP
 ADMIN_TOKEN=                    # SECRETO (fase 7.1, opcional): al menos 32 caracteres. Sin él, los anuncios y la moderación no existen (404)
 REPORT_RATE_LIMIT_PER_MINUTE=10 # fase 7.2: reportes de rutas de la comunidad, por IP
+PUBLIC_ORIGIN=https://rumbo.arturoocampo.com  # fase 7.3: el origen de las fotos (en local, el de la web, p. ej. http://localhost:5173)
+MEDIA_RATE_LIMIT_PER_MINUTE=10  # fase 7.3: subidas de fotos, por IP
+MEDIA_UPLOADS_PER_DEVICE_PER_DAY=30  # fase 7.3: subidas por dispositivo en 24 horas
+MEDIA_MAX_TOTAL_MB=300          # fase 7.3: espacio total de las fotos; pasado, 503
 ANALYTICS_ENABLED=true
 ```
 
@@ -1926,6 +1965,7 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
     - la migración 0003 sobre una base con la ruta curada (pasa a pública), la siembra y el borrado en cascada de los reportes.
 
     El agente que la construyó rompió el código a propósito de 24 maneras (sin el bloqueo, sin el corte de 30 km, sin el tope de 20, contando al dueño…) y los tests cazaron todas.
+  - Desde la fase 7.3 (107 tests nuevos), las fotos, con imágenes reales hechas con `sharp`: JPEG, PNG y WebP guardados como JPEG, el tamaño máximo, la orientación del EXIF, el EXIF con GPS borrado (y ni XMP ni IPTC ni ICC en lo guardado), lo que no es una foto (texto, SVG, bytes rotos, una bomba de 56 megapíxeles), los límites, las cabeceras al servirla, la portada en el POST y el PUT (otro origen, un id que no existe, la foto de otro dispositivo o de otra ruta, cambiarla, la misma portada tras borrarla el responsable), la limpieza (el borde de la semana, y a la vez que una ruta la reclama) y el borrado del responsable. Rompiendo nueve comportamientos a propósito, los tests cazaron todos.
 - Web, capa de datos del creador: tests unitarios del registro de «Mis rutas» y su sincronización (IndexedDB falso, `fetch` simulado), del borrador, de la prueba aislada, del router y de que cada clave i18n que usa el código existe.
 - Web, fase 7: servicios de IA (errores por código y plazos), cola y borrador de fichas, la interfaz sin spoilers, la trivia de la llegada (con el `ai_template` real: 10, 0 o nada) y las fotos para uso sin conexión. Se comprobó con mutaciones que fallan si se quita el reinicio al cambiar de idioma, la región `aria-live` o el cableado de `PrepareView`.
 - Web, fase 7.1 (174 tests nuevos):
@@ -1934,6 +1974,7 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - «Al llegar» en el editor y el borrador (27) y las acciones del detalle y de Mis rutas (19), más `confirm` con señal (1).
 
   Se comprobó con mutaciones: de 17 roturas hechas a propósito en el push, los tests cazaron 16 (la otra no cambia el comportamiento), y quitar la protección de «No encontramos esta ruta.» al eliminar rompe su test.
+- Web, fase 7.3 (223 tests nuevos): la portada (el escalado, la subida y sus errores, el borrador, la construcción con foto propia y de ficha y la regla que la quita, la tarjeta de C4), RouteCover, las reglas de caché del service worker, y el mapa (colores y estilos por actividad, las líneas de `RouteMap`, la vista Rutas y su resaltado, la leyenda y el filtro por origen e intereses).
 - Web, fase 7.2 (135 tests nuevos): la visibilidad en el registro (registros antiguos, el cuerpo de la subida, publicar y retirar como ediciones), el interruptor de C4 y la línea de C5, el detalle (los estados, la confirmación al publicar, una sola petición de `/status`), la sección de Explorar (con y sin posición, sin las rutas propias, fallos, un `404` descartado), `catalog.resolve` y el recorrido de una ruta de la comunidad, la hoja de reporte y las reglas de caché del service worker.
 - **e2e (Playwright, Chromium):**
   - Recorrer "Leiria histórica" en simulación.
@@ -1973,6 +2014,9 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - `community.spec.ts` (2):
     - una ruta creada con «Publicar para la comunidad» se sube pública (`visibility: 'public'` en el POST), su detalle lo dice y «Dejar de publicar» manda el PUT con `'private'`;
     - con el permiso concedido cerca de Leiria, Explorar pide `?near=39.744,-8.807`, lista la ruta de la comunidad bajo «De la comunidad, cerca de ti», su detalle tiene la etiqueta, «Esta ruta está en portugués.» y «Reportar ruta», y el reporte sale con su motivo y `X-Device-Id`, y no se vuelve a ofrecer, tampoco tras recargar.
+- **e2e de la fase 7.3**, con la API simulada:
+  - `cover.spec.ts` (4): subir una foto (se reduce a 1600 px, va como JPEG con el dispositivo, una foto vertical con orientación EXIF 6 llega derecha y sin EXIF), elegir la foto de una ficha (el POST lleva esa misma imagen), una ruta sin portada con la ilustración de su primer interés y la curada con su foto;
+  - `explore.spec.ts`: el filtro sin nombres de rutas, la vista Rutas con la ruta curada como línea que se resalta al elegirla, y un toque a un dedo de la línea que la elige.
 - **CI:** todo lo anterior en cada PR. Los tests de cada paquete van uno tras otro (`pnpm -r --workspace-concurrency=1 test`), y un test de la web tiene hasta 15 s: con los dos a la vez en una máquina de 2 núcleos, la suite de la API (Postgres en Docker y escrituras concurrentes) dejaba sin CPU a la de la web, y un test que tarda 8 ms llegó a pasar de 5 s (2026-10-09).
 
 ### 14.3 Definition of Done global
@@ -2175,6 +2219,20 @@ La pidió el responsable del proyecto tras probar la 7.1 en un iPhone: que Rumbo
     - traducir las fichas;
     - avisar al responsable cuando se oculta una ruta.
 
+### Fase 7.3: portadas y vista de rutas · construida el 2026-10-09, pendiente del despliegue
+
+La pidió el responsable del proyecto tras probar la 7.2: una foto de portada para cada ruta (o una imagen según su tema), una vista del mapa con las rutas unidas por actividad y un filtro sin nombres de rutas ([ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)).
+
+- [x] Contrato y creador: la portada en `checkUserRoute` (foto propia o de sus fichas), `MEDIA_LIMITS` y `RouteDraft.coverImage`.
+- [x] API (§11.1): `POST /media` con `sharp` (sin metadatos), `GET /media/:file`, la portada en las escrituras de rutas, la limpieza semanal, `DELETE /admin/media/:id` y la migración 0004.
+- [x] Web (§10.13): la tarjeta «Portada» en C4 (subir o elegir de los lugares), RouteCover con las ilustraciones por interés, las fotos propias sin conexión, la vista Puntos | Rutas con colores por actividad, la leyenda y el filtro por origen e intereses.
+- [x] La ruta curada con su foto de portada y sus intereses.
+- **DoD:** pendiente del despliegue (API primero: migración 0004 y `sharp`).
+  - En producción: subir una portada desde el móvil y ver que la foto guardada no tiene GPS, elegir la de un lugar, ver una ruta sin foto con su ilustración y la vista Rutas en Explorar.
+- **Notas de implementación:**
+  - Tests: 1.797 en total (1.458 en la fase 7.2). La API pasa de 482 a 589, la web de 549 a 772, `api-contract` de 53 a 59, `route-builder` de 90 a 93 y los e2e de 27 a 34.
+  - Queda para después: sacar las fotos de la base de datos (a un volumen o un almacenamiento de objetos) si el uso crece, y quitar los colores por ruta que ya no se usan.
+
 ### Fase 8: Futuro (P2)
 
 - [ ] Cuentas de usuario y propiedad real de las rutas.
@@ -2242,6 +2300,9 @@ La pidió el responsable del proyecto tras probar la 7.1 en un iPhone: que Rumbo
 | Con reportes de 3 dispositivos, una ruta se oculta hasta revisarla | Lo decidió el responsable del proyecto: la comunidad avisa y el responsable decide si la retira o la restaura. Ocultar no borra nada |
 | Rutas de la comunidad a 30 km o menos, las 20 más cercanas | Lo que se recorre a pie o en bici en una visita, sin pedir más bundles de los que caben en la lista |
 | Primero la API y después la web al desplegar | La web nueva puede llamar a lo que solo responde la API nueva; al revés no pasa |
+| La portada es una foto propia o la de un lugar; si no, la ilustración de su interés | Lo decidió el responsable del proyecto (ADR 0005). La foto propia se reduce en el móvil y el servidor la vuelve a codificar sin metadatos (sin GPS) |
+| En el mapa, las rutas se distinguen por actividad, no por ruta | Lo decidió el responsable del proyecto: la leyenda no nombra rutas, y el tipo de línea acompaña al color |
+| Las fotos, en Postgres con un tope de 300 MB | Entran en las copias de la base de datos sin tocar la configuración del servidor compartido. Si el uso crece, a un volumen o a un almacenamiento de objetos |
 
 **Preguntas abiertas:**
 
@@ -2254,6 +2315,7 @@ La pidió el responsable del proyecto tras probar la 7.1 en un iPhone: que Rumbo
 - Cuándo hacer la app nativa (Capacitor) para los avisos de llegada con la pantalla apagada.
 - Cuándo llegan las cuentas: los reportes contarían por cuenta y el creador podría tener un nombre.
 - Cómo avisar al responsable de que una ruta se ocultó por reportes (hoy tiene que mirar la cola).
+- Una pantalla de moderación para el responsable (hoy, la cola, las rutas y las fotos se revisan con `curl` y `ADMIN_TOKEN`).
 
 ---
 

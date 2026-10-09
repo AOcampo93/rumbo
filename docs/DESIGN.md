@@ -191,7 +191,7 @@ La paleta toma referencias de Portugal (punto de partida en Leiria) pero sirve p
 - HUD dos pasos más grande.
 - Marcadores un 20 % más grandes y con contorno más grueso.
 
-**Colores por ruta en el mapa Explorar** (cuando conviven varias rutas): Azulejo `#1E4FA3`, Atlántico `#0B7A75`, Terracota `#C4491F`, Uva `#6D4AA8`, Pinar `#1A7F45`. El color de una ruta va siempre acompañado de la leyenda.
+**Colores por actividad en el mapa Explorar** (fase 7.3, [ADR 0005](adr/0005-portadas-y-vista-de-rutas.md)): **a pie** Azulejo `#1E4FA3` con línea continua, **corriendo** Terracota `#C4491F` con trazos largos y **en bici** Atlántico `#0B7A75` con trazos cortos. El tipo de línea acompaña siempre al color, para no depender solo de él, y cada línea lleva un borde blanco debajo para leerse sobre el mapa claro y el oscuro. Los tres colores siguen distinguiéndose con protanopia, deuteranopia y tritanopia (ΔE2000 ≥ 12). Antes (hasta la fase 7.2) cada ruta tenía su color: Azulejo, Atlántico, Terracota, Uva `#6D4AA8` y Pinar `#1A7F45`.
 
 ### 5.2 Tipografía
 
@@ -282,7 +282,7 @@ Base común:
 | **Meta** | `category: 'finish'` | Relleno Tinta, bandera a cuadros, 44 px |
 
 - **Zona del objetivo:** cuando faltan ≤ 150 m, se dibuja el círculo del radio en Terracota al 10 % con borde del 40 %. Comunica "entra aquí".
-- **Mapa Explorar:** el relleno es el **color de la ruta** (no el estado), con el icono de categoría.
+- **Mapa Explorar:** el relleno es el **color de la actividad** de la ruta (no el estado ni la ruta; fase 7.3), con el icono de categoría. Los lugares de interés siguen en blanco.
 - **Solapamiento (creador):** un lugar cuya zona se solapa con la de otro lleva un **aro ámbar** alrededor del marcador y una **insignia triangular «!»** arriba a la izquierda, frente a la insignia de orden, así que no depende solo del color (§12). Su círculo de radio se dibuja en el mismo ámbar (relleno al 20 %, borde al 90 %, 2 px). Los demás círculos del creador usan el estilo de la zona del objetivo (Terracota al 10 %, borde al 40 %).
   - El ámbar del mapa es `#B07400`, no `--color-warning` (`#8A5A00`). Los símbolos del mapa son imágenes y no leen variables CSS, y `#8A5A00` queda por debajo de 3:1 sobre un gris oscuro como el del mapa base oscuro. `#B07400` da 3,9:1 con blanco y se distingue sobre el mapa claro y el oscuro.
 
@@ -304,7 +304,7 @@ Base común:
   - Chips de categoría y estado.
   - Distancia ("a 340 m").
   - Acciones: **Ver ficha** o **Ir a este punto** (solo en modo Libre). En el recorrido, **Ver ficha** solo sale en los puntos ya visitados que tienen una ficha o una hoja con algo que mostrar, y la abre en vista previa (S05).
-- **En Explorar** muestra además el nombre de la ruta y la acción **Ver ruta**.
+- **En Explorar** muestra además el nombre de la ruta, un chip con su actividad (y su color) y la acción **Ver ruta**. En la vista Rutas, los pines no abren popup: eligen su ruta (S01).
 
 ---
 
@@ -317,7 +317,8 @@ Base común:
 | **ModeBadge** | **Libre** (fondo Atlántico suave + brújula) · **Reto** (fondo Terracota suave + bandera) |
 | **ActivityBadge** | A pie · Correr · Bici |
 | **StatChip** | Icono + valor + etiqueta ("3,4 km", "~2 h", "12 puntos", "Límite 1 h 30") |
-| **RouteCard** | Portada 16:9, ModeBadge sobre la imagen, título Fraunces, fila de stats, etiqueta "Creada por ti" (rutas de usuario). Estados: normal, sin portada (patrón de marca), skeleton |
+| **RouteCard** | Portada 16:9 (RouteCover), ModeBadge sobre la imagen, título Fraunces, fila de stats, etiqueta "Creada por ti" (rutas de usuario). Estados: normal, sin portada (ilustración o patrón de marca), skeleton |
+| **RouteCover** (fase 7.3) | La caja 16:9 de la portada: la foto de la ruta; si no tiene o no carga, la **ilustración** de su primer interés con ilustración (un azulejo de cuatro pétalos y un medallón con el icono Lucide del tema: Landmark historia, Palette arte, Building2 arquitectura, UtensilsCrossed gastronomía, Trees naturaleza, Church religión, Sparkles curiosidades), cada una con su tono; si no, el patrón de azulejos de siempre. La ilustración es decorativa (`aria-hidden`): el nombre de la tarjeta sigue siendo el título |
 | **PointListItem** | Burbuja de orden (color del estado), miniatura de 48 px, nombre, categoría · distancia. Estados: bloqueado (atenuado + candado), activo, **siguiente** (barra Terracota a la izquierda), completado (check + hora). En el recorrido, un punto visitado con ficha lleva a la derecha un botón secundario «Ver ficha». La variante del creador es la **PlaceListItem** (abajo) |
 | **HudTarget** | Tarjeta flotante superior: flecha de 40 px que **gira hacia el objetivo**, etiqueta "SIGUIENTE · 3/8", nombre, **distancia grande** + ETA. Estados: normal · acercándose (borde Terracota pulsante) · **confirmando llegada** (anillo de progreso + "Confirmando llegada…") · sin rumbo (punto cardinal "NE" en vez de flecha) · GPS débil (franja ámbar) · en pausa (atenuado) · modo Libre ("MÁS CERCANO", tocable para elegir otro) |
 | **GpsIndicator** | Chip: `good` (oculto o punto verde) · `weak` (ámbar "GPS débil") · `lost` (rojo "Sin señal") · `denied` (rojo + icono) · `waiting` ("Buscando señal…") |
@@ -342,7 +343,7 @@ Base común:
 | **EmptyState** | Ilustración/patrón, título, texto y llamada a la acción |
 | **MiniRunBar** | Barra persistente sobre la navegación inferior cuando hay un recorrido activo y el usuario está en otra pantalla: "● Leiria histórica · Castelo 340 m" + botón para volver |
 | **Dialog** | Confirmación destructiva |
-| **FilterPanel / MapLegend** | Chips por ruta, categoría, modo y estado. Leyenda de colores e iconos |
+| **FilterPanel / MapLegend** | Desde la fase 7.3, sin nombres de rutas: chips de origen (Oficiales, De la comunidad, Tuyas; solo si hay más de uno), de intereses (los que tiene alguna ruta) y de categoría, y el interruptor de lugares de interés. La leyenda muestra las actividades presentes (con su muestra de línea en la vista Rutas) y los lugares de interés |
 | **SimControls** | Panel flotante morado: "Toca el mapa para moverte", "Caminar al siguiente punto", velocidad 1× / 5× / 20×, interruptor "GPS débil" |
 | **AiBadge** | "✦ Generado con IA · Fuentes: Wikipedia" (pequeño, discreto) |
 | **TriviaCard** | «Pregunta rápida» dentro de la ficha de llegada (S06): pregunta, 2-4 opciones grandes, un solo intento, ✓ o ✕ con texto, explicación y «+10 pts». No es el QuizCard de la acción `quiz` |
@@ -441,7 +442,12 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
   - **SegmentedControl Lista | Mapa.**
   - Chips de filtro: Todas · Libre · Reto · A pie · Bici.
   - **Lista:** RouteCards apiladas: las curadas y las tuyas; después, si se conoce tu posición, la sección **«De la comunidad, cerca de ti»** (fase 7.2) con las rutas que otros publicaron a 30 km o menos, cada una con la etiqueta «De la comunidad» (las tuyas publicadas no se repiten). Mientras carga, un skeleton; si no hay ninguna, «Aún no hay rutas de la comunidad cerca de ti.»; si falla, «No pudimos cargar las rutas de la comunidad.» con [Reintentar]. Sin posición, una tarjeta invita a buscarlas: «Toca «Mi ubicación» para ver las rutas de la comunidad que hay cerca de ti.» [Mi ubicación]. Sin conexión no se muestra.
-  - **Mapa:** mapa a pantalla completa con **más de 20 marcadores** (color por ruta + icono de categoría), botón Filtro que abre el FilterPanel (por ruta, categoría y modo, con leyenda) y popup al tocar.
+  - **Mapa:** mapa a pantalla completa con **más de 20 marcadores** (color por actividad + icono de categoría), botón Filtro que abre el FilterPanel y popup al tocar.
+  - **Puntos | Rutas** (fase 7.3): un control segmentado sobre el mapa, arriba a la izquierda, que se recuerda.
+    - **Puntos:** los pines de las rutas y los lugares de interés, como siempre.
+    - **Rutas:** cada ruta es una línea que une sus puntos en orden (su `path` si lo tiene), con el color y el tipo de línea de su actividad y sus pines encima; los lugares de interés se ocultan. Tocar una línea o un pin **resalta esa ruta** (línea más gruesa, las demás atenuadas) y abre abajo una tarjeta con su nombre, su actividad, la distancia, **Ver ruta** y cerrar; tocar el mapa fuera la quita. Cada línea tiene una franja invisible de 28 px para tocarla con el dedo. Una lista «Rutas del mapa» (como la de marcadores) permite elegirlas con teclado o lector de pantalla.
+  - **Leyenda,** sin nombres de rutas: las actividades presentes y, en Puntos, «Lugares de interés».
+  - **Filtro** (FilterPanel): Origen (Oficiales, De la comunidad, Tuyas), Intereses (con alguno elegido, solo las rutas que tengan uno de ellos), «Lugares de interés» (solo en Puntos), Categorías, «{n} de {total} marcadores» y «Mostrar todo». Los chips de encima (Todas, Libre, Reto, A pie, Bici) siguen igual.
   - **Mi ubicación** (botón flotante con la mirilla): al tocarlo, lee la posición una vez (el permiso se pide entonces, nunca antes), la marca con el punto azul y su círculo de precisión, y centra el mapa en ella (zoom 16), esté donde esté el usuario. La posición no se guarda; solo sale del dispositivo redondeada a unos 110 m, para pedir las rutas de la comunidad cercanas. Si se niega el permiso: «No podemos ver tu ubicación. Activa el permiso de ubicación en el navegador.»; si falla: «No pudimos obtener tu ubicación. Inténtalo de nuevo.». No se ve si el navegador no tiene geolocalización.
   - **Si el permiso de ubicación ya estaba concedido** (fase 7.2), Explorar lee la posición al abrir, una vez y sin preguntar nada, para mostrar el punto azul y pedir las rutas de la comunidad. El mapa abre entonces sobre las rutas a 30 km o menos, o sobre el usuario (zoom 14) si no hay ninguna. Si el permiso no está concedido, espera al toque.
 - **Estados:** carga (skeletons), sin conexión (rutas guardadas + banner), vacío ("Aún no hay rutas en esta zona" + "Crea la tuya") y error.
@@ -743,6 +749,11 @@ La app prepara con la IA una ficha de cada lugar y **no la enseña**: lo bueno d
     - ⚠ mientras haya fichas en preparación: «{n} fichas aún en preparación: si guardas ahora, usarán la ficha básica.», con [Ver fichas], que vuelve a Fichas;
     - en Reto, ⚠ si el límite de tiempo es menor que la duración estimada;
     - una línea de error bloqueante («La ruta tiene errores: revisa los pasos anteriores») si la ruta no se puede construir o sus acciones no son válidas.
+  - **Portada** (fase 7.3), tras los StatChips: una tarjeta con la vista previa 16:9 (la foto elegida o, si no hay, la ilustración con «Sin foto, la ruta usa esta ilustración.» o el patrón con «Sin foto, la ruta usa el patrón de azulejos de Rumbo.») y tres acciones:
+    - **Subir una foto** (cámara o galería): el móvil la reduce a 1600 px y la sube; mientras, «Subiendo la foto…», y Guardar ruta y Probar ruta esperan;
+    - **Elegir de tus lugares**: una hoja «Fotos de tus lugares» («Elige la foto que será la portada de la ruta.») con las fotos de las fichas listas, el nombre del lugar y el crédito; si no hay, «Tus lugares aún no tienen fotos en sus fichas.»;
+    - **Quitar portada**.
+    Los avisos: «Necesitas conexión para subir una foto.», «No pudimos leer esa foto. Prueba con otra.», «No pudimos subir la foto. Inténtalo de nuevo en un rato.» y, si la foto elegida no carga, «No pudimos cargar esta foto. Puedes subir otra o quitar la portada.». Una foto de una ficha que ya no existe (la ficha se regeneró o se quitó el lugar) no se guarda.
   - **Publicar para la comunidad** (fase 7.2): una tarjeta con globo, el título, la ayuda «Quien use Rumbo cerca podrá verla y recorrerla, sin saber quién la creó.» y un interruptor, **apagado por defecto** (al editar, con el valor de la ruta). Encendido, la tarjeta toma el borde primario y muestra el aviso «Lo verán desconocidos: no incluyas tu casa ni datos personales.».
   - Botones: **Probar ruta** (secundario, tono de simulación) con la ayuda «La recorres en simulación; no se guarda nada», y **Guardar ruta** (primario; «Guardando…» mientras se escribe en el dispositivo).
 - **Probar ruta:**
@@ -972,6 +983,15 @@ Los textos de la fase 7 (`create.details.*`, `create.interests.*`, `create.sugge
 | `route.report.button` / `.intro` / `.send` / `.thanks` | Reportar ruta / ¿Qué le pasa a esta ruta? / Enviar / Gracias. La revisaremos. |
 | `create.review.publish.label` / `.help` / `.warning` | Publicar para la comunidad / Quien use Rumbo cerca podrá verla y recorrerla, sin saber quién la creó. / Lo verán desconocidos: no incluyas tu casa ni datos personales. |
 | `create.done.published` / `.publishPending` | Publicada para la comunidad. / Se publicará para la comunidad cuando vuelva la conexión. |
+| `create.review.cover.title` / `.upload` / `.uploading` / `.choose` / `.remove` | Portada / Subir una foto / Subiendo la foto… / Elegir de tus lugares / Quitar portada |
+| `create.review.cover.fallback` / `.fallbackPattern` | Sin foto, la ruta usa esta ilustración. / Sin foto, la ruta usa el patrón de azulejos de Rumbo. |
+| `create.review.cover.updated` / `.removed` / `.noPhotos` | Portada actualizada. / Portada quitada. / Tus lugares aún no tienen fotos en sus fichas. |
+| `create.review.cover.photoFailed` | No pudimos cargar esta foto. Puedes subir otra o quitar la portada. |
+| `create.review.cover.errors.offline` / `.unsupported` / `.failed` | Necesitas conexión para subir una foto. / No pudimos leer esa foto. Prueba con otra. / No pudimos subir la foto. Inténtalo de nuevo en un rato. |
+| `create.review.cover.sheet.title` / `.intro` | Fotos de tus lugares / Elige la foto que será la portada de la ruta. |
+| `explore.map.mode` / `.points` / `.routes` / `.routesList` | Mostrar en el mapa / Puntos / Rutas / Rutas del mapa |
+| `filter.origin` / `filter.origins.curated` / `.community` / `.mine` | Origen / Oficiales / De la comunidad / Tuyas |
+| `filter.interests` | Intereses |
 | `popup.distance` | a {distance} de ti |
 | `route.downloaded` | Descargada |
 | `prepare.ready` | Todo listo. Guarda el móvil y camina. |

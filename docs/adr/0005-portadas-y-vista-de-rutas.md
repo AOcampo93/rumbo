@@ -18,7 +18,7 @@ Hasta ahora una ruta de usuario no podía tener portada (`checkUserRoute` la rec
 Las dos primeras decisiones las tomó el responsable del proyecto el 2026-10-09.
 
 1. **La portada es tu foto o una de tus lugares.** Al crear o editar una ruta se puede subir una foto del móvil (cámara o galería) o elegir una de las fotos de Wikimedia de sus fichas. Sin portada, la app muestra la **ilustración** del primer interés de la ruta (azulejo con el icono del tema, sin licencias de terceros) y, si no tiene intereses, el azulejo de siempre.
-2. **La vista de rutas colorea por actividad.** El mapa de Explorar alterna **Puntos** (los pines, como ahora) y **Rutas** (los puntos unidos en su orden). El color depende de la actividad (a pie, corriendo, en bici), y la bici va además con línea discontinua, para no depender solo del color. La leyenda lleva solo esas entradas. Al tocar una ruta, se resalta y sale su nombre.
+2. **La vista de rutas colorea por actividad.** El mapa de Explorar alterna **Puntos** (los pines, como ahora) y **Rutas** (los puntos unidos en su orden). El color depende de la actividad (a pie, corriendo, en bici), y cada actividad tiene además su tipo de línea (continua, trazos largos, trazos cortos), para no depender solo del color. La leyenda lleva solo esas entradas. Al tocar una ruta, se resalta y sale su nombre.
 3. **El filtro no lista rutas.** En lugar de una fila por ruta, filtra por **origen** (oficiales, de la comunidad, tuyas) y por **intereses**. Siguen los lugares de interés y las categorías.
 
 ### Fotos de los usuarios (servidor)
@@ -26,9 +26,9 @@ Las dos primeras decisiones las tomó el responsable del proyecto el 2026-10-09.
 - **Subir:** `POST /media`, con `X-Device-Id` y la foto como cuerpo (`image/jpeg`, `image/png` o `image/webp`, hasta 4 MB: `MEDIA_LIMITS`). El móvil la reduce antes a 1600 px como mucho.
 - **Procesar:** el servidor la decodifica (con `sharp`), la endereza según su orientación, la reduce a 1600 px como mucho y la guarda como JPEG **sin ningún metadato** (ni la posición GPS ni el modelo del móvil). Lo que no se puede decodificar es `415 unsupported_media`.
 - **Guardar:** en Postgres (tabla `media`, migración 0004), con un id aleatorio de 128 bits. Responde `{ id, url, width, height, bytes }`, con la `url` absoluta en este servidor.
-- **Servir:** `GET /media/<id>.jpg`, con caché inmutable de un año, `nosniff` y una CSP que no deja ejecutar nada.
-- **Usar:** la `url` va en `spec.coverImage` (solo `url` y `alt`). `checkUserRoute` admite como portada una foto propia o una de las fotos de las fichas de la ruta, igual que en la ficha (crédito y licencia incluidos). El servidor comprueba además que la foto propia existe y es de su origen (`422 unverified_content` si no).
-- **Limpiar:** una foto que ninguna ruta usa se borra a las 24 horas (subidas abandonadas y portadas cambiadas). Borrar una ruta deja su foto sin uso, y también se borra.
+- **Servir:** `GET /media/<id>.jpg`, con un día de caché (el responsable puede borrar una foto), `nosniff` y una CSP que no deja ejecutar nada. El service worker de la web pide estas fotos primero a la red.
+- **Usar:** la `url` va en `spec.coverImage` (solo `url` y `alt`). `checkUserRoute` admite como portada una foto propia o una de las fotos de las fichas de la ruta, igual que en la ficha (crédito y licencia incluidos). El servidor comprueba además que la foto propia existe, es de su origen, la subió el dueño de la ruta y no es la portada de otra ruta (`422 unverified_content` si no). Una ruta que guarda la misma portada que ya tenía se acepta aunque el responsable haya borrado la foto.
+- **Limpiar:** una foto que ninguna ruta usa se borra a la semana (subidas abandonadas, portadas cambiadas y rutas borradas). La semana deja subir días después una ruta guardada sin conexión.
 - **Límites:** por IP, 10 subidas por minuto. Por dispositivo, 30 al día. En todo el servidor, un tope de espacio (`MEDIA_MAX_TOTAL_MB`, 300 MB por defecto; pasado el tope, `503 unavailable`).
 - **Moderación:**
   - una portada ofensiva se reporta con su ruta (motivo «Contenido ofensivo»);
