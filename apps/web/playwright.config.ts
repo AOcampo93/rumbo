@@ -3,7 +3,8 @@ import { defineConfig } from '@playwright/test';
 // End-to-end tests of PROJECT_PLAN §14.2 against the production build
 // (`pnpm build` first). Simulation mode and Playwright's clock make the walks
 // fast and deterministic.
-const PORT = 4173;
+// E2E_PORT lets two checkouts run their e2e at the same time without sharing a server.
+const PORT = Number(process.env.E2E_PORT) || 4173;
 const CI = Boolean(process.env.CI);
 
 export default defineConfig({
