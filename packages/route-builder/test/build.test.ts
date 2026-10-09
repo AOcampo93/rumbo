@@ -300,6 +300,28 @@ describe('buildRouteSpec: stable ids when editing', () => {
   });
 });
 
+describe('buildRouteSpec: the cover (phase 7.3)', () => {
+  const cover = {
+    url: 'https://rumbo.arturoocampo.com/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.jpg',
+    alt: { pt: 'Mi paseo por Leiria' },
+  };
+
+  it('puts the cover in the route, and leaves it out when there is none', () => {
+    const { spec } = build(draft({ coverImage: cover }));
+    expect(spec.coverImage).toEqual(cover);
+    expect(validateRouteSpec(spec).errors).toEqual([]);
+    expect(build(draft()).spec).not.toHaveProperty('coverImage');
+  });
+
+  it('copies it, so editing the draft never edits the route', () => {
+    const source = draft({ coverImage: { ...cover, alt: { ...cover.alt } } });
+    const { spec } = build(source);
+    source.coverImage!.url = 'https://example.com/other.jpg';
+    (source.coverImage!.alt as Record<string, string>)['pt'] = 'Outra';
+    expect(spec.coverImage).toEqual(cover);
+  });
+});
+
 describe('buildRouteSpec: no shared references', () => {
   it('copies positions, interests and settings, so editing the draft never edits the route', () => {
     const source = draft({

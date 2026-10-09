@@ -5,6 +5,7 @@ import type {
   Issue,
   LatLng,
   Locale,
+  MediaRef,
   NormalizedRouteSpec,
   PointCategory,
   RouteMode,
@@ -63,6 +64,12 @@ export interface RouteDraft {
   /** The array order is the route order. */
   places: DraftPlace[];
   settingsOverrides?: RouteSettingsInput;
+  /**
+   * The route's cover (phase 7.3): the user's own photo, stored by the API,
+   * or one of its cards' photos. Without one the app shows the illustration
+   * of the route's first interest.
+   */
+  coverImage?: MediaRef;
 }
 
 export interface BuildOptions {
@@ -185,11 +192,17 @@ export function buildRouteSpec(draft: RouteDraft, options: BuildOptions): BuiltR
     actions,
     triggers,
     ...(draft.interests?.length ? { meta: { interests: [...draft.interests] } } : {}),
+    ...(draft.coverImage ? { coverImage: copyMedia(draft.coverImage) } : {}),
   };
 
   const result = validateRouteSpec(spec);
   if (!result.spec) throw new RouteBuildError(result.errors);
   return { spec, normalized: result.spec, warnings: result.warnings };
+}
+
+/** A copy of a photo reference, so the spec shares nothing with the draft. */
+export function copyMedia(media: MediaRef): MediaRef {
+  return JSON.parse(JSON.stringify(media)) as MediaRef;
 }
 
 /** `<slug of the name>-<suffix>`, within the 64 characters an id may have. */

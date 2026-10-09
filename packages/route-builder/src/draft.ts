@@ -11,7 +11,7 @@ import {
   type ArrivalIssueCode,
   validateArrival,
 } from './arrival.ts';
-import { copySettings, type DraftPlace, type RouteDraft } from './build.ts';
+import { copyMedia, copySettings, type DraftPlace, type RouteDraft } from './build.ts';
 import { estimateMinutes } from './summary.ts';
 import { cleanText } from './text.ts';
 
@@ -77,6 +77,7 @@ export function draftFromSpec(spec: RouteSpec): RouteDraft {
     timeLimit: timeLimit ?? null,
     places,
     ...(Object.keys(overrides).length > 0 ? { settingsOverrides: copySettings(overrides) } : {}),
+    ...(spec.coverImage ? { coverImage: copyMedia(spec.coverImage) } : {}),
   };
 }
 

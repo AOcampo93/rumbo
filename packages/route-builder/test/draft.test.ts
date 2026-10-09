@@ -88,6 +88,22 @@ describe('draftFromSpec', () => {
     );
   });
 
+  it('keeps the cover through a round trip, as a copy', () => {
+    const base = draftFromSpec(savedRoute());
+    const cover = {
+      url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Castelo.jpg',
+      alt: { es: 'Castelo' },
+      credit: 'Autor',
+      license: 'CC BY-SA 4.0',
+    };
+    const built = rebuild({ ...base, coverImage: cover }, 'with-cover').spec;
+    const back = draftFromSpec(built);
+    expect(back.coverImage).toEqual(cover);
+    expect(back.coverImage).not.toBe(built.coverImage);
+    expect(rebuild(back, 'with-cover').spec).toStrictEqual(built);
+    expect(draftFromSpec(savedRoute())).not.toHaveProperty('coverImage');
+  });
+
   it('turns points back into places, in order, keeping their ids', () => {
     const spec = savedRoute();
     const result = draftFromSpec(spec);

@@ -71,6 +71,8 @@ export const API_ERROR_CODES = [
   'unverified_content',
   /** Web Push is off on this server (no or malformed VAPID settings): the app hides notifications. */
   'push_unavailable',
+  /** POST /media got something that isn't a JPEG, PNG or WebP photo the server can read. */
+  'unsupported_media',
   'internal',
 ] as const;
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
@@ -337,7 +339,7 @@ const USER_ACTION_PARAMS = new Map<string, z.ZodType>([
 const USER_ROUTE_TRIGGERS = new Set(['onDeviation', 'onIdle', 'onOutOfOrder', 'onTimeout']);
 const USER_POINT_TRIGGERS = new Set(['onEnter']);
 /** Fields the creator never writes. */
-const NOT_IN_USER_ROUTES = ['path', 'coverImage', 'description'] as const;
+const NOT_IN_USER_ROUTES = ['path', 'description'] as const;
 
 const RouteMetaSchema = z.strictObject({
   interests: z
@@ -436,6 +438,7 @@ export function checkUserRoute(bundle: unknown): ErrorDetail[] {
   }
 
   checkCards(bundle['contents'], spec, actions, add);
+  checkCover(spec['coverImage'], bundle['contents'], add);
 
   const meters = routeLength(points);
   if (meters > USER_ROUTE_LIMITS.maxRouteMeters) {
@@ -467,6 +470,42 @@ function checkTriggers(
  * The cards of a user route: exactly the AI cards its ai_template actions use,
  * in the route's language, with images from Wikimedia only.
  */
+/**
+ * A user route's cover (phase 7.3): the user's own photo, stored by this
+ * server (only its url and alt), or one of the photos of the route's own cards
+ * exactly as the card has it (credit and licence included). Whether the
+ * server really has that photo is the server's to check.
+ */
+function checkCover(cover: unknown, contents: unknown, add: (path: Path, message: string) => void) {
+  if (cover === undefined) return;
+  const path = ['spec', 'coverImage'];
+  if (!isRecord(cover) || typeof cover['url'] !== 'string') {
+    add(path, 'A cover is a photo reference');
+    return;
+  }
+  if (isOwnMediaUrl(cover['url'])) {
+    for (const key of ['credit', 'license', 'sourceUrl']) {
+      if (cover[key] !== undefined) add([...path, key], 'Not allowed on your own photo');
+    }
+    return;
+  }
+  const wanted = canonicalJson(cover);
+  const cards = isRecord(contents) ? Object.values(contents) : [];
+  const found = cards.some(
+    (entry) =>
+      isRecord(entry) &&
+      Object.values(entry).some(
+        (card) =>
+          isRecord(card) &&
+          Array.isArray(card['images']) &&
+          card['images'].some((image: unknown) => canonicalJson(image) === wanted),
+      ),
+  );
+  if (!found) {
+    add(path, "A cover is your own photo (POST /media) or one of the route's card photos");
+  }
+}
+
 function checkCards(
   contents: unknown,
   spec: Record<string, unknown>,
@@ -551,6 +590,52 @@ function checkStorable(
     checkStorable(child, childPath, depth + 1, add);
   }
 }
+
+// ------------------------------------------------------------------ media (phase 7.3)
+
+/**
+ * A photo a user uploads as a route's cover (POST /media, with X-Device-Id
+ * and the photo as the body). The phone scales it down first; the server
+ * decodes it, turns it upright, drops all its metadata (the GPS position above
+ * all), stores it as a JPEG and serves it at `/api/v1/media/<id>.jpg`.
+ */
+export const MEDIA_LIMITS = {
+  /** Largest body POST /media takes, in bytes: a scaled-down phone photo fits with room to spare. */
+  maxUploadBytes: 4 * 1024 * 1024,
+  /** Longest side of the stored photo, in pixels: larger ones are scaled down. */
+  maxEdge: 1600,
+  /** What POST /media takes (`Content-Type`). */
+  types: ['image/jpeg', 'image/png', 'image/webp'],
+} as const;
+
+/** Where a stored photo is served: 22 random base64url characters (128 bits) and `.jpg`. */
+export const MEDIA_PATH = /^\/api\/v1\/media\/[A-Za-z0-9_-]{22}\.jpg$/;
+
+/** A stored photo's whole address: http(s), a host (no credentials), the media path, nothing after. */
+const OWN_MEDIA_URL = /^https?:\/\/[^/?#@\s]+\/api\/v1\/media\/[A-Za-z0-9_-]{22}\.jpg$/;
+
+/**
+ * Whether `url` has the shape of a photo this server stores: http(s), the
+ * media path and nothing else (no query, fragment or credentials). That the
+ * origin is this server's and the photo exists is the server's to check.
+ */
+export function isOwnMediaUrl(url: string): boolean {
+  return OWN_MEDIA_URL.test(url);
+}
+
+/** GET /media/:file. */
+export const MediaParamsSchema = z.object({ file: z.string().regex(/^[A-Za-z0-9_-]{22}\.jpg$/) });
+
+/** Answer to POST /media: where the stored photo is, for the route's `coverImage.url`. */
+export const MediaUploadResponseSchema = z.object({
+  id: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
+  /** Absolute, on this server. */
+  url: z.url(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  bytes: z.number().int().positive(),
+});
+export type MediaUploadResponse = z.infer<typeof MediaUploadResponseSchema>;
 
 // ------------------------------------------------------------------ places (geocoding)
 

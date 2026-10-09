@@ -10,6 +10,10 @@ import {
   GeoSuggestionSchema,
   GeoSuggestQuerySchema,
   GeoSuggestResponseSchema,
+  isOwnMediaUrl,
+  MEDIA_LIMITS,
+  MediaParamsSchema,
+  MediaUploadResponseSchema,
   ModerationActionBodySchema,
   ModerationItemSchema,
   NearSchema,
@@ -277,5 +281,50 @@ describe('analytics batches', () => {
       });
       expect(result.success, key).toBe(false);
     }
+  });
+});
+
+describe('media (phase 7.3)', () => {
+  const OWN = 'https://rumbo.arturoocampo.com/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.jpg';
+
+  it('takes JPEG, PNG and WebP photos of up to 4 MB, stored at up to 1600 px', () => {
+    expect(MEDIA_LIMITS).toEqual({
+      maxUploadBytes: 4 * 1024 * 1024,
+      maxEdge: 1600,
+      types: ['image/jpeg', 'image/png', 'image/webp'],
+    });
+  });
+
+  it('knows the address of a stored photo, on http(s) and with nothing else', () => {
+    expect(isOwnMediaUrl(OWN)).toBe(true);
+    expect(isOwnMediaUrl('http://localhost:3000/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.jpg')).toBe(
+      true,
+    );
+    for (const url of [
+      'https://rumbo.arturoocampo.com/api/v1/media/AbCdEfGhIjKlMnOpQrStU.jpg',
+      'https://rumbo.arturoocampo.com/media/AbCdEfGhIjKlMnOpQrStUv.jpg',
+      `${OWN}?v=2`,
+      `${OWN}#x`,
+      'javascript:alert(1)',
+      '/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.jpg',
+      '',
+    ]) {
+      expect(isOwnMediaUrl(url), url).toBe(false);
+    }
+  });
+
+  it('serves a file by its 22-character id, and answers an upload with where it is', () => {
+    expect(MediaParamsSchema.safeParse({ file: 'AbCdEfGhIjKlMnOpQrStUv.jpg' }).success).toBe(true);
+    expect(MediaParamsSchema.safeParse({ file: '../etc/passwd' }).success).toBe(false);
+    expect(MediaParamsSchema.safeParse({ file: 'AbCdEfGhIjKlMnOpQrStUv.png' }).success).toBe(false);
+    const answer = {
+      id: 'AbCdEfGhIjKlMnOpQrStUv',
+      url: OWN,
+      width: 1600,
+      height: 1200,
+      bytes: 250_000,
+    };
+    expect(MediaUploadResponseSchema.parse(answer)).toEqual(answer);
+    expect(MediaUploadResponseSchema.safeParse({ ...answer, id: 'x' }).success).toBe(false);
   });
 });

@@ -97,7 +97,7 @@ describe('checkUserRoute: refuses what the creator never makes', () => {
     expect(paths({ ...userRoute(), contents: [] })).toEqual(['contents']);
   });
 
-  it('a path, a cover image, a description, or a summary that is not plain text', () => {
+  it('a path, a cover from anywhere, a description, or a summary that is not plain text', () => {
     const bundle = userRoute();
     bundle.spec.path = [start, destination(start, 0, 100)];
     bundle.spec.coverImage = { url: 'https://example.com/pixel.png', alt: 'x' };
@@ -106,8 +106,8 @@ describe('checkUserRoute: refuses what the creator never makes', () => {
     expect(paths(bundle)).toEqual([
       'spec.summary',
       'spec.path',
-      'spec.coverImage',
       'spec.description',
+      'spec.coverImage',
     ]);
     expect(paths(userRoute({ summary: 'Castillo, sé y río' }))).toEqual([]);
   });
@@ -598,5 +598,77 @@ describe('checkUserRoute: what a place shows on arrival', () => {
       expect(validateDraft({ ...draft(), ...change }), JSON.stringify(arrival)).toEqual([]);
       expect(checkUserRoute(userRoute(change)), JSON.stringify(arrival)).toEqual([]);
     }
+  });
+});
+
+describe('checkUserRoute: the cover (phase 7.3)', () => {
+  const OWN = 'https://rumbo.arturoocampo.com/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.jpg';
+  const REF = 'card-k3x9q2m7p1';
+  const photo = {
+    url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Castelo.jpg',
+    alt: 'Castelo',
+    credit: 'Autor',
+    license: 'CC BY-SA 4.0',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Castelo.jpg',
+  };
+  const card = {
+    id: REF,
+    locale: 'es',
+    title: 'Castillo de Leiria',
+    summary: 'Una fortaleza medieval sobre la ciudad.',
+    facts: [],
+    images: [photo],
+    sources: [{ title: 'Castillo de Leiria', url: 'https://es.wikipedia.org/wiki/Castillo' }],
+    generated: { by: 'ai', model: 'claude-sonnet-5-5', at: '2026-10-08T10:00:00.000Z' },
+    status: 'approved',
+  };
+  /** The first place has an AI card with `photo`; the route's cover is `cover`. */
+  function covered(cover: unknown): { spec: RouteSpec; contents: object } {
+    const [first, ...rest] = draft().places;
+    const bundle = {
+      ...userRoute({ places: [{ ...first!, contentRef: REF }, ...rest] }),
+      contents: { [REF]: { es: card } },
+    };
+    (bundle.spec as Record<string, unknown>)['coverImage'] = cover;
+    return bundle;
+  }
+
+  it("takes the user's own photo stored by the server, with its alt text only", () => {
+    const bundle = covered({ url: OWN, alt: 'Leiria en una mañana' });
+    expect(validateRouteBundle(bundle).errors).toEqual([]);
+    expect(checkUserRoute(bundle)).toEqual([]);
+    expect(paths(covered({ url: OWN, alt: 'x', credit: 'Yo', license: 'CC0' }))).toEqual([
+      'spec.coverImage.credit',
+      'spec.coverImage.license',
+    ]);
+  });
+
+  it('takes one of its cards’ photos exactly as the card has it, credit included', () => {
+    expect(checkUserRoute(covered(photo))).toEqual([]);
+    for (const changed of [
+      { ...photo, credit: 'Otro autor' },
+      { ...photo, license: undefined },
+      { ...photo, alt: 'Otra cosa' },
+      { ...photo, url: 'https://upload.wikimedia.org/wikipedia/commons/b/bb/Otra.jpg' },
+    ]) {
+      expect(paths(covered(JSON.parse(JSON.stringify(changed)))), JSON.stringify(changed)).toEqual([
+        'spec.coverImage',
+      ]);
+    }
+  });
+
+  it('refuses any other address, even one that looks like a stored photo', () => {
+    for (const url of [
+      'https://example.com/pixel.png',
+      'https://rumbo.arturoocampo.com/api/v1/media/short.jpg',
+      'https://rumbo.arturoocampo.com/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.png',
+      `${OWN}?x=1`,
+      `${OWN}#top`,
+      'https://user:pass@rumbo.arturoocampo.com/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.jpg',
+      'ftp://rumbo.arturoocampo.com/api/v1/media/AbCdEfGhIjKlMnOpQrStUv.jpg',
+    ]) {
+      expect(paths(covered({ url, alt: 'x' })), url).toEqual(['spec.coverImage']);
+    }
+    expect(paths(covered('cover.jpg'))).toEqual(['spec.coverImage']);
   });
 });
