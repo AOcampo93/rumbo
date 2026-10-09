@@ -18,6 +18,8 @@ import { userRoute } from './helpers.js';
 // route ever used it. The clock is injected; the database is real.
 
 const HOUR = 3_600_000;
+/** The user route the photos below may belong to. */
+const ROUTE_ID = 'leiria-a-pe-abc123defg';
 /** How long an unused photo is kept (a week). */
 const KEPT = UNUSED_PHOTO_HOURS * HOUR;
 /** A fixed "now" for the passes; the rows are placed relative to it. */
@@ -75,15 +77,15 @@ describe('which photos a pass deletes', () => {
   });
 
   it('never touches a photo a route uses, however old', async () => {
-    const owned = await create(api, 'leiria-a-pe-abc123defg', { spec: userRoute() });
+    const owned = await create(api, ROUTE_ID, { spec: userRoute() });
     expect(owned.statusCode).toBe(201);
     const attached = await insertPhoto(api, {
-      routeId: 'leiria-a-pe-abc123defg',
+      routeId: ROUTE_ID,
       createdAt: ago(365 * KEPT),
     });
     // Attached with a stale mark that nobody cleared: attached wins.
     const marked = await insertPhoto(api, {
-      routeId: 'leiria-a-pe-abc123defg',
+      routeId: ROUTE_ID,
       createdAt: ago(365 * KEPT),
       unusedSince: ago(364 * KEPT),
     });
@@ -124,7 +126,7 @@ describe('which photos a pass deletes', () => {
 
   it('leaves a photo that a route claims at the very same moment', async () => {
     const id = await insertPhoto(api, { createdAt: ago(2 * KEPT) });
-    const routeId = 'leiria-a-pe-abc123defg';
+    const routeId = ROUTE_ID;
     expect((await create(api, routeId, { spec: userRoute(routeId) })).statusCode).toBe(201);
 
     let claimed: () => void = () => {};
