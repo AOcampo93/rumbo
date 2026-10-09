@@ -13,6 +13,7 @@ import {
   retryMyRoute,
   routeSyncIdle,
   saveMyRoute,
+  setMyRouteVisibility,
   syncMyRoutes,
 } from '../src/services/myRoutes.ts';
 import { db, KEYS } from '../src/services/storage.ts';
@@ -28,7 +29,7 @@ interface Call {
   url: string;
   method: string;
   headers: Record<string, string>;
-  body: { spec: RouteSpec; contents: unknown } | undefined;
+  body: { spec: RouteSpec; contents: unknown; visibility?: string } | undefined;
   keepalive: boolean | undefined;
 }
 
@@ -481,5 +482,169 @@ describe('deleting', () => {
     expect(calls.map((call) => call.url).sort()).toEqual(
       [`/api/v1/routes/${a.id}`, `/api/v1/routes/${b.id}`].sort(),
     );
+  });
+});
+
+describe('who sees a route (phase 7.2)', () => {
+  /** A record as the app stored it before visibility existed. */
+  async function legacy(name: string, patch: Partial<MyRouteRecord> = {}): Promise<MyRouteRecord> {
+    const route = spec(name);
+    const record: MyRouteRecord = {
+      id: route.id,
+      editToken: 'B'.repeat(43),
+      bundle: { spec: route, contents: {} },
+      rev: 3,
+      sync: 'synced',
+      remote: 'yes',
+      failures: 0,
+      createdAt: NOW,
+      updatedAt: NOW,
+      syncedAt: NOW,
+      ...patch,
+    };
+    await db.set(KEYS.myRoutes, { v: 1, records: { [route.id]: record } });
+    return record;
+  }
+
+  it('is private for a new route, and the POST says so', async () => {
+    const route = spec();
+    const calls = stubApi(() => written(route.id));
+    const record = await saveMyRoute(route);
+    await routeSyncIdle();
+    expect(record.visibility).toBe('private');
+    expect(calls[0]?.body).toMatchObject({ spec: route, visibility: 'private' });
+  });
+
+  it('can be public from the first save: the POST carries it', async () => {
+    const route = spec();
+    const calls = stubApi(() => written(route.id));
+    const record = await saveMyRoute(route, {}, { visibility: 'public' });
+    await routeSyncIdle();
+    expect(record.visibility).toBe('public');
+    expect(calls[0]?.body?.visibility).toBe('public');
+    expect(await getMyRoute(route.id)).toMatchObject({ visibility: 'public', sync: 'synced' });
+  });
+
+  it('reads the records stored before it as private, and loses nothing of them', async () => {
+    const old = await legacy('Rota antiga');
+    expect('visibility' in old).toBe(false);
+    expect((await listMyRoutes()).records).toEqual([{ ...old, visibility: 'private' }]);
+    expect(await getMyRoute(old.id)).toEqual({ ...old, visibility: 'private' });
+    // Reading rewrites nothing.
+    expect(await stored(old.id)).toEqual(old);
+
+    // The first change keeps every field and writes the visibility down.
+    const calls = stubApi(() => written(old.id, 200));
+    await saveMyRoute(spec('Rota antiga, revista', old.id), {}, { editing: true });
+    await routeSyncIdle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ method: 'PUT', body: { visibility: 'private' } });
+    expect(await stored(old.id)).toMatchObject({
+      editToken: old.editToken,
+      createdAt: old.createdAt,
+      rev: 4,
+      visibility: 'private',
+      sync: 'synced',
+    });
+  });
+
+  it('is never public by mistake: only an explicit "public" publishes', async () => {
+    const odd = await legacy('Rota estranha', { visibility: 'unlisted' as never, sync: 'pending' });
+    expect((await getMyRoute(odd.id))?.visibility).toBe('private');
+    const calls = stubApi(() => written(odd.id, 200));
+    await syncMyRoutes();
+    expect(calls.map((call) => call.body?.visibility)).toEqual(['private']);
+  });
+
+  it('keeps the visibility when an edit does not say, and changes it when it does', async () => {
+    const route = spec();
+    stubApi((call) => written(call.body?.spec.id ?? '', 200));
+    await saveMyRoute(route, {}, { visibility: 'public' });
+    await routeSyncIdle();
+    await saveMyRoute(spec('Leiria renovada', route.id), {}, { editing: true });
+    expect(await getMyRoute(route.id)).toMatchObject({ rev: 2, visibility: 'public' });
+    await saveMyRoute(
+      spec('Leiria só para mim', route.id),
+      {},
+      { editing: true, visibility: 'private' },
+    );
+    expect(await getMyRoute(route.id)).toMatchObject({ rev: 3, visibility: 'private' });
+    await routeSyncIdle();
+  });
+
+  it('publishes as an edit: revision + 1, pending, then a PUT with the visibility', async () => {
+    const before = await uploaded();
+    const calls = stubApi(() => written(before.id, 200));
+    expect(await setMyRouteVisibility(before.id, 'public')).toBe(true);
+    expect(await getMyRoute(before.id)).toMatchObject({
+      rev: before.rev + 1,
+      sync: 'pending',
+      visibility: 'public',
+      failures: 0,
+    });
+    await routeSyncIdle();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      method: 'PUT',
+      url: `/api/v1/routes/${before.id}`,
+      body: { spec: before.bundle.spec, contents: {}, visibility: 'public' },
+    });
+    expect(calls[0]?.headers['x-edit-token']).toBe(before.editToken);
+    expect(await getMyRoute(before.id)).toMatchObject({ sync: 'synced', visibility: 'public' });
+
+    // And takes it back the same way.
+    expect(await setMyRouteVisibility(before.id, 'private')).toBe(true);
+    await routeSyncIdle();
+    expect(calls.map((call) => call.body?.visibility)).toEqual(['public', 'private']);
+    expect(await getMyRoute(before.id)).toMatchObject({
+      rev: before.rev + 2,
+      sync: 'synced',
+      visibility: 'private',
+    });
+  });
+
+  it('changes nothing for an unknown or a deleted route, or one that already is so', async () => {
+    const before = await uploaded();
+    const calls = stubApi(() => written(before.id, 200));
+    expect(await setMyRouteVisibility(before.id, 'private')).toBe(false);
+    expect(await setMyRouteVisibility('no-such-route-0000', 'public')).toBe(false);
+    stubApi(never);
+    await deleteMyRoute(before.id);
+    expect(await setMyRouteVisibility(before.id, 'public')).toBe(false);
+    expect(await stored(before.id)).toMatchObject({ deleted: true, visibility: 'private' });
+    expect(calls).toEqual([]);
+  });
+
+  it('waits offline and sends the PUT when the connection is back', async () => {
+    const before = await uploaded();
+    stubApi(() => Promise.reject(new TypeError('Failed to fetch')));
+    expect(await setMyRouteVisibility(before.id, 'public')).toBe(true);
+    await routeSyncIdle();
+    expect(await getMyRoute(before.id)).toMatchObject({
+      sync: 'pending',
+      visibility: 'public',
+      failures: 1,
+    });
+    const calls = stubApi(() => written(before.id, 200));
+    await syncMyRoutes();
+    expect(calls.map((call) => call.body?.visibility)).toEqual(['public']);
+    expect(await getMyRoute(before.id)).toMatchObject({ sync: 'synced', failures: 0 });
+  });
+
+  it('sends the newest choice when it changes while a request is on its way', async () => {
+    const first = deferred();
+    const route = spec();
+    const calls = stubApi((_call, index) => (index === 0 ? first.promise : written(route.id, 200)));
+    await saveMyRoute(route, {}, { visibility: 'public' });
+    await vi.waitFor(() => expect(calls).toHaveLength(1));
+    // Taken back before the first answer: the POST said public, the PUT after it says private.
+    await setMyRouteVisibility(route.id, 'private');
+    first.release(written(route.id));
+    await routeSyncIdle();
+    expect(calls.map((call) => `${call.method} ${call.body?.visibility}`)).toEqual([
+      'POST public',
+      'PUT private',
+    ]);
+    expect(await getMyRoute(route.id)).toMatchObject({ sync: 'synced', visibility: 'private' });
   });
 });

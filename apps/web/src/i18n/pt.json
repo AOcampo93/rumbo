@@ -81,7 +81,13 @@
     },
     "locate": "A minha localização",
     "locationDenied": "Não conseguimos ver a tua localização. Ativa a permissão de localização no navegador.",
-    "locationFailed": "Não conseguimos obter a tua localização. Tenta de novo."
+    "locationFailed": "Não conseguimos obter a tua localização. Tenta de novo.",
+    "community": {
+      "title": "Da comunidade, perto de ti",
+      "invite": "Toca em «A minha localização» para veres as rotas da comunidade que há perto de ti.",
+      "empty": "Ainda não há rotas da comunidade perto de ti.",
+      "error": "Não conseguimos carregar as rotas da comunidade."
+    }
   },
   "mode": {
     "free": "Livre",
@@ -141,7 +147,37 @@
     "exitFullscreen": "Reduzir o mapa",
     "noCover": "Sem foto",
     "edit": "Editar rota",
-    "delete": "Eliminar rota"
+    "delete": "Eliminar rota",
+    "community": "Da comunidade",
+    "published": "Publicada",
+    "otherLanguage": "Esta rota está em {language}.",
+    "publish": "Publicar",
+    "unpublish": "Deixar de publicar",
+    "publishConfirm": "Publicar para a comunidade?",
+    "publishedToast": "Rota publicada para a comunidade",
+    "unpublishedToast": "Agora só tu vês esta rota",
+    "status": {
+      "private": "Privada: só tu a vês.",
+      "public": "Publicada: quem usar o Rumbo por perto pode vê-la.",
+      "pending": "Vai ser publicada quando voltares a ter ligação.",
+      "hidden": "Oculta devido a denúncias: vamos revê-la.",
+      "blocked": "Retirada pela moderação."
+    },
+    "report": {
+      "button": "Denunciar rota",
+      "title": "Denunciar rota",
+      "intro": "O que se passa com esta rota?",
+      "reasons": {
+        "spam": "Spam ou publicidade",
+        "offensive": "Conteúdo ofensivo",
+        "dangerous": "Lugar perigoso ou de acesso proibido",
+        "privacy": "Expõe dados pessoais ou uma habitação",
+        "wrong": "Informação falsa ou lugares que não existem",
+        "other": "Outro motivo"
+      },
+      "send": "Enviar",
+      "thanks": "Obrigado. Vamos revê-la."
+    }
   },
   "popup": {
     "distance": "a {distance} de ti",
@@ -691,7 +727,12 @@
       "cardsBasic": "{n} básica | {n} básicas",
       "cardsPreparing": "{n} ficha ainda em preparação: se guardares agora, vai usar a ficha básica. | {n} fichas ainda em preparação: se guardares agora, vão usar a ficha básica.",
       "fixCards": "Ver fichas",
-      "arrivalMix": "Ao chegar: {mix}"
+      "arrivalMix": "Ao chegar: {mix}",
+      "publish": {
+        "label": "Publicar para a comunidade",
+        "help": "Quem usar o Rumbo por perto poderá vê-la e percorrê-la, sem saber quem a criou.",
+        "warning": "Vai ser vista por desconhecidos: não incluas a tua casa nem dados pessoais."
+      }
     },
     "trial": {
       "badge": "Teste",
@@ -709,7 +750,9 @@
       "start": "Iniciar agora",
       "myRoutes": "Ver as minhas rotas",
       "backToRun": "Voltar ao percurso",
-      "runUpdated": "O teu percurso em curso já usa estas alterações. O que visitaste mantém-se."
+      "runUpdated": "O teu percurso em curso já usa estas alterações. O que visitaste mantém-se.",
+      "published": "Publicada para a comunidade.",
+      "publishPending": "Vai ser publicada para a comunidade quando voltares a ter ligação."
     }
   },
   "errors": {

@@ -18,7 +18,7 @@ Todo vive en el proyecto **Rumbo** de Coolify (entorno `production`). El VPS alo
 - **`production`**: lo que está desplegado. Coolify construye las dos apps desde esta rama.
 - **Un push no despliega nada por sí solo.** La GitHub App con la que Coolify lee el repositorio no tiene webhook, así que GitHub no le avisa de los push. Esa App es de todo el servidor y la comparten otros proyectos: si se le activara el webhook, sus apps también se desplegarían solas en cada push. Por eso no se toca, y el despliegue lo lanza `pnpm deploy:prod` por la API de Coolify.
 - **Qué se despliega:** solo las apps con cambios en sus archivos desde el commit que sirven: `apps/web/**` o `apps/api/**`, `packages/**`, `data/**`, el lockfile, la configuración del workspace o `.dockerignore`. Las dos apps vigilan `data/**`: la web empaqueta las rutas curadas y los lugares de interés, y la API siembra las rutas en la base de datos al arrancar. La lista está en `scripts/deploy-prod.sh` y también en las *Watch Paths* de cada app en Coolify, por si algún día se activa el webhook: hay que mantenerlas iguales.
-- **La web y la API se despliegan por separado, no a la vez.** Durante unos segundos la web nueva puede hablar con la API vieja, o al revés. La web lo tolera: si la API todavía no tiene los endpoints de rutas de usuario y responde `not_found`, la ruta se queda pendiente y se reintenta.
+- **Primero la API y después la web** (desde el 2026-10-09). El script no despliega la web hasta que la API nueva sirve el commit y Coolify da su despliegue por terminado; si la API falla, la web se queda como estaba. Así la web nueva nunca habla con la API vieja: desde la fase 7.2 manda `visibility`, que una API anterior rechaza. La API nueva sí atiende a la web vieja mientras tanto. Además, la web tolera una API sin los endpoints de rutas de usuario (`not_found`): la ruta se queda pendiente y se reintenta.
 - **Solo se despliega cuando lo pide el responsable del proyecto.**
 
 Para desplegar:
@@ -34,7 +34,7 @@ El script:
 2. Comprueba que la CI de ese commit terminó en verde.
 3. Decide qué apps desplegar comparando con el commit que sirve cada una: la API lo dice en `/api/v1/health` y la web en `/version.json`. Si solo cambian docs o CI, no se redespliega nada. Por eso se puede repetir sin riesgo: si un despliegue falló o no llegó a lanzarse, lo intenta de nuevo.
 4. Hace *fast-forward* de `production` (nunca `--force`).
-5. Pide a Coolify que despliegue cada app y espera hasta que sirva el nuevo commit. Si el despliegue falla en Coolify, se detiene y da su identificador para buscar el log.
+5. Pide a Coolify que despliegue la API y espera hasta que sirva el nuevo commit; después, igual con la web. Si un despliegue falla en Coolify, se detiene y da su identificador para buscar el log (y si es el de la API, no despliega la web).
 
 Necesita una configuración local, fuera del repo y con permisos 600, en `~/.config/rumbo/`:
 

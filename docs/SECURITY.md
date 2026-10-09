@@ -167,6 +167,12 @@ Desde la fase 7.2 el dueño de una ruta puede publicarla: la verán y la podrán
 - **Anónima:** ninguna respuesta pública lleva el `X-Device-Id` del dueño, su token ni su hash. La lista ni siquiera lee esas columnas.
 - Retirar una ruta (volverla privada) la quita de la lista y de las lecturas al momento. Una caché compartida puede servirla aún hasta 60 s (`max-age=60`), y quien ya la había descargado conserva su copia.
 
+**La posición de quien busca rutas cercanas**
+
+- Para pedir las rutas de la comunidad, Explorar manda la posición del usuario **redondeada a 3 decimales** (unos 110 m) en `GET /routes?near=`, y el servidor la vuelve a redondear. No la guarda, y el log no registra la query.
+- Explorar solo lee la posición al tocar «Mi ubicación» o, si el permiso ya estaba concedido, una vez al abrir. Nunca pregunta sin un toque.
+- El service worker no guarda las listas con `?near=` (llevan la posición) ni `GET /routes/:id/status` (es del dueño), y su caché de la API tiene un tope de 100 entradas y 30 días.
+
 **Reportes**
 
 - Cualquiera puede reportar una ruta de la comunidad con un motivo de una lista cerrada. No hay texto libre: no queda nada personal que guardar ni que moderar.
@@ -251,6 +257,7 @@ Desde la fase 7.1 la API manda recordatorios y anuncios con Web Push (RFC 8030, 
 - Los errores del cliente (JSON mal formado, un valor que Postgres no admite) no se registran como errores del servidor.
 - Una llamada a la IA que falla se registra con su motivo (`anthropic 401 authentication_error`, `rate_limited`, `timeout`…), sin la clave, el prompt, el nombre ni la posición del lugar ni lo que contestó el proveedor. Un fallo de Wikimedia al preparar una ficha se registra solo con su motivo.
 - Push: nunca se registran la dirección de una suscripción, sus claves ni el texto de un aviso. Un fallo de envío queda como el estado que contestó el servicio push o un código de red (`ECONNRESET`, `timeout`…), y un anuncio, solo con cuántos avisos salieron y cuántos no.
+- Rutas de la comunidad: `route hidden by reports` (con el id de la ruta) cuando los reportes la ocultan, y `route moderated` (con el id y la acción) cuando decide el responsable. Nunca quién reportó ni el motivo.
 - Analytics: las propiedades con forma de posición (`lat`, `lng`…) se rechazan.
 
 ## La web: cabeceras y XSS

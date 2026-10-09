@@ -6,7 +6,8 @@ import RouteCard from '../src/components/RouteCard.vue';
 import { applyLocale, i18n } from '../src/i18n/index.ts';
 import { type CatalogRoute, toCatalogRoute } from '../src/services/catalog.ts';
 
-// RouteCard: the user's own routes say "Creada por ti" (DESIGN §7).
+// RouteCard: the user's own routes say "Creada por ti", the ones the community
+// published "De la comunidad", and an own route that is public "Publicada" (DESIGN §7).
 
 function userRoute(mine?: CatalogRoute['mine']): CatalogRoute {
   const built = buildRouteSpec(
@@ -60,5 +61,65 @@ describe('RouteCard', () => {
     applyLocale('en');
     await card.vm.$nextTick();
     expect(card.get('.card__badge--mine').text()).toBe('Created by you');
+  });
+});
+
+describe('RouteCard, with the community (phase 7.2)', () => {
+  it('says "De la comunidad" on a user route that is not the user\'s own', () => {
+    const card = mountCard({ route: userRoute() });
+    expect(card.get('.card__badge--shared').text()).toBe('De la comunidad');
+    expect(card.find('.card__badge--mine').exists()).toBe(false);
+    expect(card.findAll('.card__badge--shared')).toHaveLength(1);
+  });
+
+  it('says it on the user\'s own routes only as "Creada por ti"', () => {
+    const card = mountCard({ route: userRoute({ sync: 'synced' }) });
+    expect(card.find('.card__badge--shared').exists()).toBe(false);
+    expect(card.get('.card__badge--mine').text()).toBe('Creada por ti');
+  });
+
+  it('says "Publicada" on an own route that is public, when the screen asks for it', async () => {
+    const card = mountCard({
+      route: userRoute({ sync: 'synced', published: true }),
+      published: true,
+    });
+    expect(card.findAll('.card__badge').map((badge) => badge.text())).toEqual([
+      'Creada por ti',
+      'Publicada',
+    ]);
+    expect(card.find('.card__badge--shared').text()).toBe('Publicada');
+    applyLocale('en');
+    await card.vm.$nextTick();
+    expect(card.findAll('.card__badge').map((badge) => badge.text())).toEqual([
+      'Created by you',
+      'Published',
+    ]);
+    applyLocale('pt');
+    await card.vm.$nextTick();
+    expect(card.findAll('.card__badge').map((badge) => badge.text())).toEqual([
+      'Criada por ti',
+      'Publicada',
+    ]);
+  });
+
+  it("has neither label on a private route of the user's, nor on a curated one", () => {
+    const own = mountCard({ route: userRoute({ sync: 'synced' }) });
+    expect(own.findAll('.card__badge--shared')).toHaveLength(0);
+    const curated = mountCard({
+      route: {
+        ...userRoute(),
+        bundle: { ...userRoute().bundle, spec: { ...userRoute().bundle.spec, source: 'curated' } },
+      },
+    });
+    expect(curated.findAll('.card__badge--shared')).toHaveLength(0);
+  });
+
+  it('keeps the labels clear of the menu button laid over a cover', () => {
+    const card = mountCard({
+      route: userRoute({ sync: 'synced', published: true }),
+      published: true,
+      menuSpace: true,
+    });
+    expect(card.get('.card__badges').classes()).toContain('card__badges--menu');
   });
 });

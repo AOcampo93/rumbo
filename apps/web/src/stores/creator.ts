@@ -93,6 +93,12 @@ export interface CreatorDraft {
   /** A line about the route (the AI suggests one with its places); at most 280 characters. */
   summary?: string;
   /**
+   * The switch of the review step: save the route as public, for the
+   * community (phase 7.2). Off for a new route; an edited one starts with
+   * the route's visibility. Drafts from before it have none and read as off.
+   */
+  publish: boolean;
+  /**
    * The card of each place by tempId (step 3). A place without an entry has
    * not been looked at yet; a `ready` one ships with the route.
    */
@@ -128,6 +134,7 @@ export type DraftPatch = Partial<
     | 'area'
     | 'interests'
     | 'settingsOverrides'
+    | 'publish'
   >
 >;
 /** A place to add; `tempId` is made when missing (pass one to refer to the place right away). */
@@ -391,6 +398,12 @@ function parseDraft(
       .string()
       .optional()
       .catch(fallback(() => undefined)),
+    // A draft from before phase 7.2 has none: nothing to repair, it just isn't published.
+    publish: z
+      .boolean()
+      .optional()
+      .catch(fallback(() => undefined))
+      .transform((value) => value ?? false),
     cards: z.unknown().optional(),
     settingsOverrides: RouteSettingsInputSchema.optional().catch(fallback(() => undefined)),
     updatedAt: z.string().catch(fallback(() => new Date().toISOString())),
@@ -780,6 +793,7 @@ export const useCreatorStore = defineStore('creator', () => {
       timeLimitMinutes: null,
       area: null,
       places: [],
+      publish: false,
       cards: {},
       updatedAt: new Date().toISOString(),
     };
@@ -815,6 +829,7 @@ export const useCreatorStore = defineStore('creator', () => {
     }
     let spec: RouteSpec | null = null;
     let contents: RouteBundle['contents'] = {};
+    let published = false;
     let found = false;
     try {
       const record = await getMyRoute(id);
@@ -822,6 +837,7 @@ export const useCreatorStore = defineStore('creator', () => {
       if (record && validateRouteBundle(record.bundle).ok) {
         spec = record.bundle.spec;
         contents = record.bundle.contents;
+        published = record.visibility === 'public';
       }
     } catch (error) {
       console.warn('creator: the route could not be read', error);
@@ -844,6 +860,7 @@ export const useCreatorStore = defineStore('creator', () => {
       activity: base.activity,
       timeLimitMinutes: base.timeLimit ? Math.max(1, Math.round(base.timeLimit / 60)) : null,
       places,
+      publish: published,
       cards: cardsFromBundle(places, contents, base.locale),
       ...(base.summary ? { summary: base.summary } : {}),
       ...(base.interests ? { interests: knownInterests(base.interests) } : {}),
@@ -1184,24 +1201,30 @@ export const useCreatorStore = defineStore('creator', () => {
     saving.value = true;
     try {
       const editing = current.editingId !== null;
+      const visibility = current.publish ? 'public' : 'private';
       let built = build();
       if (!built.ok) throw new Error('creator: the draft is not a valid route yet');
+      // What the route was before this save, to tell publishing or taking it back from an edit.
+      const before = current.editingId
+        ? ((await getMyRoute(current.editingId).catch(() => undefined))?.visibility ?? 'private')
+        : 'private';
       let record;
       try {
-        record = await saveMyRoute(built.spec, built.contents, { editing });
+        record = await saveMyRoute(built.spec, built.contents, { editing, visibility });
       } catch (error) {
         if (editing || !(error instanceof MyRoutesError) || error.code !== 'id_taken') throw error;
         // A new route whose id is taken (practically never): a new suffix, once.
         current.idSuffix = newIdSuffix();
         built = build();
         if (!built.ok) throw error;
-        record = await saveMyRoute(built.spec, built.contents, { editing });
+        record = await saveMyRoute(built.spec, built.contents, { editing, visibility });
       }
       // PROJECT_PLAN §13 (only with consent; never a position).
       if (!editing) {
         const { points, mode, activity } = built.spec;
         track('route_created', { points: points.length, mode, activity });
       }
+      if (visibility !== before) track(current.publish ? 'route_published' : 'route_unpublished');
       // The catalog has the route once it listens (it may not have loaded yet).
       await catalog.loadMine();
       // In this order: nothing may store the draft again once it is saved.

@@ -113,6 +113,8 @@ export const KEYS = {
   creatorDraft: 'create:draft',
   /** A stored draft that couldn't be read back as it was, kept just in case. */
   creatorDraftBackup: 'create:draft:backup',
+  /** The community routes this device reported (ids): "Reportar ruta" isn't offered again for them. */
+  reportedRoutes: 'routes:reported',
 } as const;
 
 /** localStorage that never throws. */

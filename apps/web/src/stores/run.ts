@@ -460,7 +460,8 @@ export const useRunStore = defineStore('run', () => {
 
   async function start(id: string): Promise<boolean> {
     await catalog.load();
-    const route = catalog.byId(id);
+    // A community route is not in the lists: its page asked for it, and the catalog has it by id.
+    const route = catalog.byId(id) ?? (await catalog.resolve(id)).route;
     if (!route) return false;
     begin(route.bundle, { simulated: settings.simulation, trial: false });
     return true;
@@ -561,10 +562,13 @@ export const useRunStore = defineStore('run', () => {
     if (!record || busy()) return;
     await catalog.load();
     if (busy()) return;
+    // Not in the lists: it may be the community route this run was walking.
+    const resolved = catalog.byId(record.routeId) ? null : await catalog.resolve(record.routeId);
+    if (busy()) return;
     const route = catalog.byId(record.routeId);
     if (!route) {
-      // Only when the catalog knows every route; otherwise (offline…) it waits for later.
-      if (catalog.authoritative) await db.del(KEYS.activeRun);
+      // Only when the catalog knows every route and the API says this one is gone; otherwise (offline…) it waits for later.
+      if (catalog.authoritative && resolved?.gone) await db.del(KEYS.activeRun);
       return;
     }
     recoverable.value = {

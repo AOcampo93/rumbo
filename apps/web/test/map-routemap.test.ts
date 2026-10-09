@@ -153,7 +153,12 @@ afterEach(() => {
 });
 
 function mountMap(
-  props: { markers?: MapMarker[]; zones?: MapZoneItem[]; fit?: LatLng[] | null } = {},
+  props: {
+    markers?: MapMarker[];
+    zones?: MapZoneItem[];
+    fit?: LatLng[] | null;
+    fitZoom?: number;
+  } = {},
 ) {
   const wrapper = mount(RouteMap, {
     props: { markers: [], label: 'Map', ...props },
@@ -342,6 +347,28 @@ describe('RouteMap camera API', () => {
     await flushPromises();
     const element = wrapper.find('arcgis-map').element as unknown as { extent?: unknown };
     expect(element.extent).toMatchObject({ xmin: -8.81, ymin: 39.74, xmax: -8.8, ymax: 39.75 });
+  });
+
+  // Explore opens on the user when no route is around them (phase 7.2): a neighbourhood, not a close-up.
+  it('opens on a single position at the zoom it is told, and goes there once ready', async () => {
+    const wrapper = mountMap({ fit: [target], fitZoom: 14 });
+    await flushPromises();
+    const element = wrapper.find('arcgis-map').element as unknown as { zoom?: number };
+    expect(element.zoom).toBe(14);
+    gate.resolve();
+    await flushPromises();
+    expect(view.goTo.mock.lastCall?.[0]).toEqual({
+      target: { latitude: 39.75, longitude: -8.81 },
+      zoom: 14,
+    });
+  });
+
+  it('frames positions that have an area by their extent, whatever zoom it is told', async () => {
+    const wrapper = mountMap({ fit: [target, { lat: 39.74, lng: -8.8 }], fitZoom: 14 });
+    gate.resolve();
+    await flushPromises();
+    expect(wrapper.emitted('ready')).toHaveLength(1);
+    expect(view.goTo.mock.lastCall?.[0]).toMatchObject({ xmin: -8.81, xmax: -8.8 });
   });
 
   it('frames positions without an area by their centre, close up', async () => {

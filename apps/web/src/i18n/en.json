@@ -81,7 +81,13 @@
     },
     "locate": "My location",
     "locationDenied": "We can't see your location. Allow location access in your browser.",
-    "locationFailed": "We couldn't get your location. Try again."
+    "locationFailed": "We couldn't get your location. Try again.",
+    "community": {
+      "title": "From the community, near you",
+      "invite": "Tap “My location” to see the community's routes near you.",
+      "empty": "There are no community routes near you yet.",
+      "error": "We couldn't load the community routes."
+    }
   },
   "mode": {
     "free": "Free",
@@ -141,7 +147,37 @@
     "exitFullscreen": "Shrink the map",
     "noCover": "No photo",
     "edit": "Edit route",
-    "delete": "Delete route"
+    "delete": "Delete route",
+    "community": "From the community",
+    "published": "Published",
+    "otherLanguage": "This route is in {language}.",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "publishConfirm": "Publish for the community?",
+    "publishedToast": "Route published for the community",
+    "unpublishedToast": "Now only you can see this route",
+    "status": {
+      "private": "Private: only you can see it.",
+      "public": "Published: anyone using Rumbo nearby can see it.",
+      "pending": "It will be published when you're back online.",
+      "hidden": "Hidden after reports: we'll review it.",
+      "blocked": "Taken down by moderation."
+    },
+    "report": {
+      "button": "Report route",
+      "title": "Report route",
+      "intro": "What's wrong with this route?",
+      "reasons": {
+        "spam": "Spam or advertising",
+        "offensive": "Offensive content",
+        "dangerous": "Dangerous place or no-entry area",
+        "privacy": "Exposes personal details or a home",
+        "wrong": "False information or places that don't exist",
+        "other": "Another reason"
+      },
+      "send": "Send",
+      "thanks": "Thank you. We'll review it."
+    }
   },
   "popup": {
     "distance": "{distance} away",
@@ -691,7 +727,12 @@
       "cardsBasic": "{n} basic | {n} basic",
       "cardsPreparing": "{n} card still being prepared: if you save now, it will use the basic card. | {n} cards still being prepared: if you save now, they will use the basic card.",
       "fixCards": "See cards",
-      "arrivalMix": "On arrival: {mix}"
+      "arrivalMix": "On arrival: {mix}",
+      "publish": {
+        "label": "Publish for the community",
+        "help": "Anyone using Rumbo nearby will be able to see it and walk it, without knowing who made it.",
+        "warning": "Strangers will see it: don't include your home or personal details."
+      }
     },
     "trial": {
       "badge": "Test",
@@ -709,7 +750,9 @@
       "start": "Start now",
       "myRoutes": "See my routes",
       "backToRun": "Back to the route",
-      "runUpdated": "Your route in progress already uses these changes. What you visited stays."
+      "runUpdated": "Your route in progress already uses these changes. What you visited stays.",
+      "published": "Published for the community.",
+      "publishPending": "It will be published for the community when you're back online."
     }
   },
   "errors": {

@@ -15,7 +15,8 @@ import type { MyRouteRecord } from '../services/myRoutes.ts';
 import { useCatalogStore } from '../stores/catalog.ts';
 
 // S02 · My routes: the routes made with the creator on this device, newest
-// first. Each one is its RouteCard plus, outside the card's link, a ⋯ menu
+// first. Each one is its RouteCard (labelled "Publicada" when the user made it
+// public for the community) plus, outside the card's link, a ⋯ menu
 // (Edit, Delete), a line for its upload state and a visible "Editar" button
 // (the upload's own action takes its place when that failed). A record whose
 // route no longer validates can only be deleted. What the actions do is shared
@@ -162,7 +163,11 @@ onMounted(() => void catalog.loadMine());
       <ul v-else class="mine__list" :aria-label="t('myRoutes.title')">
         <li v-for="row in rows" :key="row.record.id" class="item">
           <template v-if="row.route">
-            <RouteCard :route="row.route" menu-space />
+            <RouteCard
+              :route="row.route"
+              :published="row.record.visibility === 'public'"
+              menu-space
+            />
             <OverflowMenu
               class="item__menu"
               :items="menuItems"

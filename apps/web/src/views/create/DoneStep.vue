@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CloudCheck, CloudUpload, Navigation, PartyPopper } from '@lucide/vue';
+import { CloudCheck, CloudUpload, Globe, Navigation, PartyPopper } from '@lucide/vue';
 import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
@@ -10,10 +10,12 @@ import { useCreatorStore } from '../../stores/creator.ts';
 import { useRunStore } from '../../stores/run.ts';
 
 // C5 · Lista (DESIGN C5): the saved route's card, whether it is already on
-// the server (it updates by itself when the upload finishes), "Iniciar ahora"
-// (to its preparation) and "Ver mis rutas". When the route saved is the one a
-// run is walking (the user edited it from the run), that run has already taken
-// the changes: the main button takes the user back to it instead of starting another.
+// the server (it updates by itself when the upload finishes), whether it is
+// published for the community (or will be, once it is uploaded), "Iniciar
+// ahora" (to its preparation) and "Ver mis rutas". When the route saved is the
+// one a run is walking (the user edited it from the run), that run has already
+// taken the changes: the main button takes the user back to it instead of
+// starting another.
 
 const { t } = useI18n();
 const router = useRouter();
@@ -23,6 +25,8 @@ const run = useRunStore();
 
 const route = computed(() => (creator.savedId ? catalog.byId(creator.savedId) : undefined));
 const synced = computed(() => route.value?.mine?.sync === 'synced');
+/** Saved for the community (phase 7.2). It only is public once the API has it. */
+const published = computed(() => route.value?.mine?.published === true);
 /** The run in progress is of this very route (a trial belongs to the draft, not to the route). */
 const inRun = computed(
   () => creator.savedId !== null && run.active && !run.trial && run.routeId === creator.savedId,
@@ -51,6 +55,10 @@ function backToRun(): void {
         <p class="done__status" :class="{ 'is-synced': synced }" role="status">
           <component :is="synced ? CloudCheck : CloudUpload" :size="18" aria-hidden="true" />
           <span>{{ synced ? t('create.done.synced') : t('create.done.local') }}</span>
+        </p>
+        <p v-if="published" class="done__status" :class="{ 'is-synced': synced }" role="status">
+          <Globe :size="18" aria-hidden="true" />
+          <span>{{ synced ? t('create.done.published') : t('create.done.publishPending') }}</span>
         </p>
         <p v-if="inRun" class="done__status">
           <Navigation :size="18" aria-hidden="true" />

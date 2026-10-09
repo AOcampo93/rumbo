@@ -1,6 +1,7 @@
 import {
   type ApiErrorCode,
   EDIT_TOKEN_HEADER,
+  type RouteVisibility,
   RouteWriteResponseSchema,
 } from '@rumbo/api-contract';
 import { type RouteBundle, type RouteSpec, validateRouteBundle } from '@rumbo/route-spec';
@@ -14,6 +15,8 @@ import { db, KEYS } from './storage.ts';
 // when the user deletes it. Every change is one atomic update of the registry
 // (`routes:mine`), and an answer only counts for the revision it was sent for,
 // so a late answer never overwrites a newer change, in this tab or another.
+// Publishing a route for the community (phase 7.2) is one more change of the
+// same kind: it rides along in the POST and PUT bodies as `visibility`.
 // This module never imports stores: the catalog listens with onMyRoutesChange.
 
 export type SyncState = 'synced' | 'pending' | 'error';
@@ -31,6 +34,13 @@ export interface MyRouteRecord {
   error?: string;
   /** Whether the API has a copy; 'maybe' is stored before the first POST leaves the device. */
   remote: 'no' | 'maybe' | 'yes';
+  /**
+   * Who sees the route (phase 7.2): only this device ('private') or the
+   * community ('public'). Records stored before it have none and read as
+   * 'private': listMyRoutes and getMyRoute always return it. Changing it is
+   * an edit like any other.
+   */
+  visibility?: RouteVisibility;
   /** Tombstone: hidden, and removed once the API confirms the DELETE. */
   deleted?: boolean;
   /** Consecutive failed attempts; the record turns to 'error' after MAX_FAILURES. */
@@ -93,6 +103,16 @@ const RecordSchema = z.looseObject({
 const isUsable = (record: unknown, id: string): record is MyRouteRecord =>
   RecordSchema.safeParse(record).success && (record as MyRouteRecord).id === id;
 
+/** Nothing but an explicit 'public' publishes a route: a record without a (readable) visibility is private. */
+const visibilityOf = (record: { visibility?: unknown }): RouteVisibility =>
+  record.visibility === 'public' ? 'public' : 'private';
+
+/** The record as the rest of the app reads it: always with its visibility (the registry itself is rewritten only by changes). */
+const withVisibility = (record: MyRouteRecord): MyRouteRecord =>
+  record.visibility === visibilityOf(record)
+    ? record
+    : { ...record, visibility: visibilityOf(record) };
+
 /**
  * The stored registry, or an empty one when there is none. Anything else
  * (another format, e.g. from a newer app) throws: it is never overwritten.
@@ -116,14 +136,14 @@ function toRegistry(raw: unknown): Registry {
 function listFrom(registry: Registry): MyRouteRecord[] {
   return Object.entries(registry.records)
     .filter((entry): entry is [string, MyRouteRecord] => isUsable(entry[1], entry[0]))
-    .map(([, record]) => record)
+    .map(([, record]) => withVisibility(record))
     .filter((record) => !record.deleted)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
 }
 
 function recordOf(registry: Registry, id: string): MyRouteRecord | undefined {
   const record = Object.hasOwn(registry.records, id) ? registry.records[id] : undefined;
-  return isUsable(record, id) ? record : undefined;
+  return isUsable(record, id) ? withVisibility(record) : undefined;
 }
 
 /** A record with `patch` applied, keeping its invariants: `error` only in 'error', `deleted` only when true. */
@@ -243,11 +263,13 @@ function askPersistentStorage(): void {
  * A new id gets a new edit token. An existing id is only overwritten when
  * `editing` (a new route never replaces another one): then it gets rev + 1
  * and goes back to 'pending', deleting it is undone, and its token stays.
+ * `visibility` is the creator's publish choice: a new route is private
+ * without it, and an edited one keeps the one it has.
  */
 export async function saveMyRoute(
   spec: RouteSpec,
   contents: RouteBundle['contents'] = {},
-  options: { editing?: boolean } = {},
+  options: { editing?: boolean; visibility?: RouteVisibility } = {},
 ): Promise<MyRouteRecord> {
   const now = new Date().toISOString();
   // A plain copy: nothing stored is shared with the caller (or is a reactive proxy).
@@ -262,13 +284,14 @@ export async function saveMyRoute(
         throw new MyRoutesError('id_taken', `A route with id ${spec.id} already exists`);
       }
       const record = isUsable(existing, spec.id)
-        ? patched(existing, {
+        ? patched(withVisibility(existing), {
             bundle,
             rev: existing.rev + 1,
             sync: 'pending',
             deleted: false,
             failures: 0,
             updatedAt: now,
+            ...(options.visibility ? { visibility: options.visibility } : {}),
           })
         : {
             id: spec.id,
@@ -277,6 +300,7 @@ export async function saveMyRoute(
             rev: 1,
             sync: 'pending' as const,
             remote: 'no' as const,
+            visibility: options.visibility ?? ('private' as const),
             failures: 0,
             createdAt: now,
             updatedAt: now,
@@ -289,6 +313,38 @@ export async function saveMyRoute(
   askPersistentStorage();
   void syncMyRoutes();
   return saved.record as MyRouteRecord;
+}
+
+/**
+ * Publishes a route for the community, or takes it back (phase 7.2). It is an
+ * edit like any other: rev + 1, 'pending', and the upload loop sends a PUT
+ * with the new visibility, offline included (it waits and retries). Resolves
+ * true when something changed; false for an unknown or deleted route, or one
+ * that already is so. Rejects when storage fails.
+ */
+export async function setMyRouteVisibility(
+  id: string,
+  visibility: RouteVisibility,
+): Promise<boolean> {
+  const now = new Date().toISOString();
+  const result = { changed: false };
+  await mutate((registry) => {
+    const record = recordOf(registry, id);
+    if (!record || record.deleted || record.visibility === visibility) return UNCHANGED;
+    result.changed = true;
+    return withRecord(
+      registry,
+      patched(record, {
+        visibility,
+        rev: record.rev + 1,
+        sync: 'pending',
+        failures: 0,
+        updatedAt: now,
+      }),
+    );
+  });
+  if (result.changed) void syncMyRoutes();
+  return result.changed;
 }
 
 /** Also forgets what the device keeps about the route: its offline bundle, and its run in progress or last summary. */
@@ -352,6 +408,8 @@ interface Attempt {
   kind: 'post' | 'put' | 'delete';
   token: string;
   bundle?: MyRouteRecord['bundle'];
+  /** Goes with the bundle: who sees the route, as the record had it when the request was built. */
+  visibility?: RouteVisibility;
 }
 
 type Outcome =
@@ -373,7 +431,9 @@ async function send(attempt: Attempt, timeoutMs = WRITE_TIMEOUT_MS): Promise<Out
       // The device that creates a route owns it.
       device: attempt.kind === 'post',
       headers: { [EDIT_TOKEN_HEADER]: attempt.token },
-      ...(attempt.bundle ? { body: attempt.bundle } : {}),
+      ...(attempt.bundle
+        ? { body: { ...attempt.bundle, visibility: attempt.visibility ?? 'private' } }
+        : {}),
       timeoutMs,
     });
   } catch {
@@ -427,12 +487,13 @@ async function plan(id: string): Promise<Attempt | null> {
       return UNCHANGED;
     }
     if (record.sync !== 'pending') return UNCHANGED;
+    const upload = { bundle: record.bundle, visibility: record.visibility };
     if (record.remote === 'yes') {
-      planned.attempt = { ...base, kind: 'put', bundle: record.bundle };
+      planned.attempt = { ...base, kind: 'put', ...upload };
       return UNCHANGED;
     }
     // POST is idempotent for the owner, so 'maybe' (a lost answer) posts again.
-    planned.attempt = { ...base, kind: 'post', bundle: record.bundle };
+    planned.attempt = { ...base, kind: 'post', ...upload };
     return record.remote === 'no'
       ? withRecord(registry, patched(record, { remote: 'maybe' }))
       : UNCHANGED;

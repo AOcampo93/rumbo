@@ -1,6 +1,6 @@
 # Rumbo: motor de rutas con check-in por geolocalización
 
-> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales.
+> **Nombre provisional:** Rumbo. **Estado:** fases 0 a 7 completadas (base, contratos, motor, sistema de eventos, la web para recorrer rutas, el backend mínimo, el creador de rutas y la guía con IA). Producción activa en https://rumbo.arturoocampo.com con todo lo anterior: la guía con IA (fase 7) desde el 2026-10-08, verificada con la IA real, y la fase 7.1 (ajustes tras las primeras pruebas en un iPhone y notificaciones push) desde el mismo día ([DEPLOY.md](DEPLOY.md)). Falta probar el push en dispositivos reales. La fase 7.2 (rutas de la comunidad, [ADR 0004](adr/0004-rutas-de-la-comunidad.md)) está construida y pendiente del despliegue.
 > **Idiomas:** español, inglés y portugués de Portugal ([ADR 0001](adr/0001-multilenguaje.md)).
 > **Stack:** Vue 3 + Vite + TypeScript (PWA headless) · Node + Fastify + TypeScript + PostgreSQL (API en VPS propio) · ArcGIS Maps SDK for JavaScript.
 
@@ -1090,7 +1090,7 @@ src/
 | `/onboarding` | Onboarding (primera vez) |
 | `/` | Inicio, pestaña Explorar (lista o mapa) |
 | `/my-routes` | Mis rutas: las del usuario, con su estado de subida; «Editar» a la vista y eliminar |
-| `/routes/:routeId` | Detalle de ruta. En las rutas propias, «Editar ruta» y «Eliminar ruta» |
+| `/routes/:routeId` | Detalle de ruta. En las rutas propias, «Publicar» o «Dejar de publicar», «Editar ruta» y «Eliminar ruta»; en las de la comunidad, «Reportar ruta» (fase 7.2). También abre una ruta de la comunidad que la lista no tiene, pidiéndola a la API |
 | `/routes/:routeId/prepare` | Preparación y permisos |
 | `/run` | Recorrido en curso (una ruta activa a la vez). Acepta `?point=<id>` desde una notificación. En las rutas propias, su lista de puntos ofrece «Editar ruta» |
 | `/run/summary` | Resumen del último recorrido |
@@ -1264,6 +1264,37 @@ Al probar la fase 7 en un iPhone se concretaron estos puntos. La elección «Al 
     - la notificación no lleva insignia propia: haría falta un icono monocromo, y mientras tanto Android usa la suya;
     - Playwright no puede probar la suscripción completa (su Chrome rechaza `subscribe()`, así que acaba en `unavailable`): falta probarla en un Android real y en un iPhone con la app instalada, una vez desplegado.
 - **Textos:** `route.edit` y `route.delete`; `run.editRoute`, `run.routeUpdated`, `run.viewCard` y `run.viewCardNamed`; `create.done.backToRun` y `create.done.runUpdated`; `create.arrival.*`; `settings.push.*`. `myRoutes.activeRunEdit` ahora dice que el recorrido se actualizará con los cambios.
+- **Tests:** en el §14.2.
+
+### 10.12 Precisiones de la implementación (fase 7.2)
+
+Las rutas de la comunidad ([ADR 0004](adr/0004-rutas-de-la-comunidad.md)). El servidor está en el §11.1, y las pantallas, en DESIGN (S01, S02, S03, C4 y C5).
+
+- **Registro de «Mis rutas»** (`services/myRoutes.ts`):
+  - Cada registro lleva `visibility`. En el tipo es opcional, y lo que no es `'public'` se lee como privada, así que los registros anteriores siguen valiendo.
+  - La cola de subida la manda en **todos** los POST y PUT, también `'private'` para retirarla, porque un PUT sin ella no la cambia.
+  - `setMyRouteVisibility(id, visibility)` es una edición más: `rev` + 1 y `pending`, con `mutate` y `patched`.
+- **Creador:** el borrador lleva `publish` (al editar, el valor de la ruta) y C4 tiene el interruptor. Guardar escribe la visibilidad y cuenta `route_published` o `route_unpublished`. C5 lo dice.
+- **Detalle de una ruta propia** (`RouteDetailView` y `useMyRouteActions.setPublished`): la línea de estado y Publicar o Dejar de publicar.
+  - Publicar pide confirmar, con el aviso de privacidad del creador; retirar no pregunta.
+  - `GET /routes/:id/status` se pide una vez por visita, solo si la ruta está publicada, subida (`remote !== 'no'`) y hay conexión, porque cuenta contra el límite de escrituras.
+  - «Se publicará cuando vuelva la conexión.» es un quinto estado que no está en el ADR: la ruta está publicada en el dispositivo, sin subir y sin conexión.
+- **Explorar** (`HomeView`, `stores/catalog.ts` y `services/community.ts`):
+  - La posición se conoce al tocar «Mi ubicación» o, si el permiso ya está concedido (Permissions API), al abrir: una lectura sin preguntar, de baja precisión y de hasta 5 min de antigüedad.
+  - `loadCommunity(posición)` pide `GET /routes?near=` (3 decimales) y después el bundle de cada ruta que no es curada ni propia, 4 a la vez y 20 como mucho.
+    - Una ruta que responde `404` se descarta sin error: una caché compartida puede listarla un minuto más.
+    - Si no se puede leer ninguna y alguna falló, es un error.
+    - La lista se vuelve a pedir pasados 2 min, si cambia la posición y al volver la conexión.
+  - Los bundles de la comunidad viven en memoria (`communityPool`). Solo se guardan en el dispositivo si el usuario descarga la ruta, como las curadas.
+  - El mapa dibuja las rutas de la comunidad como las demás (color por ruta; la leyenda ocupa como mucho el 40 % de la altura y hace scroll). Con la posición conocida al abrir, encuadra las rutas a 30 km o menos, o al usuario a zoom 14 si no hay ninguna (`fitZoom`, nuevo en `RouteMap`).
+- **Rutas que la lista no conoce** (`catalog.resolve(id)`): una ruta de la comunidad abierta por su dirección, o la de un recorrido guardado tras recargar.
+  - Pregunta a la API y, si no responde, a la copia descargada. Lo usan el detalle, Preparación, el resumen y `run.start`.
+  - Un recorrido guardado solo se borra si la API dice que su ruta ya no existe (`404 route_not_found`) y no hay copia. Sin conexión se conserva (antes, con el catálogo completo, se borraba).
+- **Detalle de una ruta de la comunidad:** la etiqueta (una ruta de usuario que no está en el registro), la línea de idioma (con `create.details.languageNames`) y Reportar ruta.
+  - La hoja de reporte (`ReportSheet`) no se puede cerrar mientras se envía.
+  - Las rutas reportadas se recuerdan en IndexedDB (`reportedRoutes`, hasta 500), así que «Borrar mis datos locales» las olvida.
+- **Service worker** (`services/swCache.ts`): no guarda las listas con `?near=`, que llevan la posición, ni `/status`, que es del dueño. La caché `rumbo-api` tiene un tope de 100 entradas y 30 días.
+- **Despliegue:** la web nueva manda `visibility`, que una API anterior rechaza, así que `deploy-prod.sh` despliega primero la API ([DEPLOY.md](DEPLOY.md)).
 - **Tests:** en el §14.2.
 
 ---
@@ -1846,6 +1877,7 @@ Al construir la API de la IA se concretaron estos puntos. La web está en el §7
   - **Uso general:** `app_open`, `onboarding_completed`, `pwa_installed`, `route_viewed`.
   - **Recorrido:** `run_started`, `permission_result` (`{ type, result }`), `point_reached` (`{ pointId, manual }`), `point_completed` (`{ pointId, handlerType, status, ms }`), `interruption_shown` (`{ type }`), `decision_made` (`{ type, decision }`), `run_paused`, `run_resumed`, `run_cancelled`, `run_finished` (`{ elapsedMs, completed, total }`), `gps_weak`. La fase 7.1 no añade eventos: `point_completed` sale con `status: 'dismissed'` cuando la ficha se cierra al salir de la zona, y una edición de la ruta con el recorrido en curso no cuenta como `run_resumed`.
   - **Creador:** `creator_step_completed` (`{ step }`), `route_created`, `content_generated` (`{ ok, ms }`: uno por cada petición de ficha a la API, con `ok: false` si falló; desde la fase 7 se emite de verdad). Sin propiedades que identifiquen el lugar.
+  - **Comunidad (fase 7.2):** `route_published`, `route_unpublished` y `route_reported` (`{ reason }`). Sin nada que identifique la ruta.
   - **Errores:** `error` (`{ code }`).
 - **Métricas internas** (consultas SQL; panel privado en el futuro): rutas iniciadas frente a completadas, abandono por punto, tiempo medio por punto, frecuencia de desvíos, porcentaje de GPS débil por ruta, coste de IA por ruta creada y plataformas. El coste y la latencia de la IA salen de `ai_generations` (`cost_usd`, tokens y `latency_ms` por llamada), no de los eventos.
 
@@ -1885,6 +1917,15 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - Desde la fase 7, la IA se prueba con un proveedor falso y respuestas grabadas de Wikipedia, Wikidata y Commons (`apps/api/test/fixtures/ai` y `suggest`), también sin red: los tres caminos de una ficha (artículo, web y ficha honesta), los reintentos y el respaldo, la caché, el vuelo único, los presupuestos y el límite por dispositivo, la IA apagada, `unverified_content` en el POST y el PUT, y las sugerencias (candidatos, ids desconocidos, orden y ajuste al tiempo). El proveedor de Anthropic se prueba con un `fetch` simulado (forma de la petición, citas y errores).
   - El proveedor real **no** se prueba en la CI: se mide a mano, con la clave local (§12.5).
   - Desde la fase 7.1, el push se prueba con un servicio push falso: la lista de servicios permitidos y la validación de las claves, el registro, el refresco y el borrado de suscripciones, el recordatorio (a la hora fijada, una sola vez aunque haya dos pases a la vez, las horas de silencio de Lisboa, el reintento si el servicio push falla y la caducidad a las 24 horas), los anuncios (token, idioma de cada suscripción y varias páginas), el borrado con `404` y `410` y a los 10 rechazos, el apagado sin claves y los límites. El transporte real (`web-push`) se prueba con `https.request` sustituido: se comprueba lo que saldría a la red (el mensaje cifrado para el navegador y la firma VAPID) sin tocarla. `checkUserRoute` se prueba con las acciones nuevas (17 tests más).
+  - Desde la fase 7.2 (89 tests nuevos), las rutas de la comunidad:
+    - una privada nunca se lista ni la lee otro;
+    - una pública y visible solo se lista con `near`, a 30 km o menos y como mucho 20, las más cercanas primero;
+    - una oculta o bloqueada no la ve nadie más que su dueño, y `/status` lo dice; volver a publicarla no la desoculta;
+    - los reportes: uno abierto por dispositivo, el del dueño no cuenta, la ruta se oculta justo al tercer dispositivo, también con reportes a la vez (sin el bloqueo de la fila, el test falla), y lo que no se puede reportar responde `404`;
+    - la moderación: `404` y `403`, el límite compartido con los anuncios, funciona con el push apagado, restaurar cierra los reportes, y la lectura del responsable no alcanza una ruta privada que nadie vio;
+    - la migración 0003 sobre una base con la ruta curada (pasa a pública), la siembra y el borrado en cascada de los reportes.
+
+    El agente que la construyó rompió el código a propósito de 24 maneras (sin el bloqueo, sin el corte de 30 km, sin el tope de 20, contando al dueño…) y los tests cazaron todas.
 - Web, capa de datos del creador: tests unitarios del registro de «Mis rutas» y su sincronización (IndexedDB falso, `fetch` simulado), del borrador, de la prueba aislada, del router y de que cada clave i18n que usa el código existe.
 - Web, fase 7: servicios de IA (errores por código y plazos), cola y borrador de fichas, la interfaz sin spoilers, la trivia de la llegada (con el `ai_template` real: 10, 0 o nada) y las fotos para uso sin conexión. Se comprobó con mutaciones que fallan si se quita el reinicio al cambiar de idioma, la región `aria-live` o el cableado de `PrepareView`.
 - Web, fase 7.1 (174 tests nuevos):
@@ -1893,6 +1934,7 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - «Al llegar» en el editor y el borrador (27) y las acciones del detalle y de Mis rutas (19), más `confirm` con señal (1).
 
   Se comprobó con mutaciones: de 17 roturas hechas a propósito en el push, los tests cazaron 16 (la otra no cambia el comportamiento), y quitar la protección de «No encontramos esta ruta.» al eliminar rompe su test.
+- Web, fase 7.2 (135 tests nuevos): la visibilidad en el registro (registros antiguos, el cuerpo de la subida, publicar y retirar como ediciones), el interruptor de C4 y la línea de C5, el detalle (los estados, la confirmación al publicar, una sola petición de `/status`), la sección de Explorar (con y sin posición, sin las rutas propias, fallos, un `404` descartado), `catalog.resolve` y el recorrido de una ruta de la comunidad, la hoja de reporte y las reglas de caché del service worker.
 - **e2e (Playwright, Chromium):**
   - Recorrer "Leiria histórica" en simulación.
   - Reto con un punto fuera de orden.
@@ -1926,6 +1968,11 @@ Tests de escenario con reloj y planificador falsos, y trayectos simulados o grab
   - `mid-run.spec.ts` (2):
     - una ruta propia (Castelo, Sé y Museu) en simulación: se visita Castelo, «Ver ficha» abre su hoja en vista previa y se cierra sin cambiar el progreso; «Editar ruta» (sin pregunta, en `/create/places`) quita Museu y añade Jardim; se guarda (PUT con el token y los ids de punto conservados), sale el aviso y «Volver al recorrido» deja el recorrido en «1 de 3» con Castelo visitado; se camina hasta el resumen, «3/3»;
     - quitar el último lugar pendiente termina el recorrido en su resumen.
+- **e2e de la fase 7.2**, con la API simulada:
+  - `explore.spec.ts`: «Mi ubicación» centra el mapa en el usuario (Oporto, lejos de las rutas de Leiria) y sin permiso muestra el aviso; con el permiso ya concedido y ninguna ruta cerca, el mapa abre sobre el usuario a zoom 14 sin tocar nada; Inicio no nombra ninguna ciudad.
+  - `community.spec.ts` (2):
+    - una ruta creada con «Publicar para la comunidad» se sube pública (`visibility: 'public'` en el POST), su detalle lo dice y «Dejar de publicar» manda el PUT con `'private'`;
+    - con el permiso concedido cerca de Leiria, Explorar pide `?near=39.744,-8.807`, lista la ruta de la comunidad bajo «De la comunidad, cerca de ti», su detalle tiene la etiqueta, «Esta ruta está en portugués.» y «Reportar ruta», y el reporte sale con su motivo y `X-Device-Id`, y no se vuelve a ofrecer, tampoco tras recargar.
 - **CI:** todo lo anterior en cada PR.
 
 ### 14.3 Definition of Done global
@@ -2099,6 +2146,34 @@ Salieron de la primera prueba de la fase 7 en un iPhone, hecha por el responsabl
   - Una migración nueva (0002, `push_subscriptions` y `push_log`), una dependencia nueva de la API (`web-push`, MPL-2.0, sin modificar) y variables nuevas (`VAPID_*`, `PUSH_*` y `ADMIN_*`, §11.4). Sin las claves VAPID la API arranca y el push queda apagado.
   - Queda para después: los avisos de llegada con la pantalla apagada (app nativa), una insignia monocromo para las notificaciones y un manejador de `pushsubscriptionchange`.
 
+### Fase 7.2: rutas de la comunidad · construida el 2026-10-09, pendiente del despliegue
+
+La pidió el responsable del proyecto tras probar la 7.1 en un iPhone: que Rumbo sirva en cualquier ciudad y que las rutas de la gente las vean otros que estén cerca ([ADR 0004](adr/0004-rutas-de-la-comunidad.md)).
+
+- [x] Inicio sin «Leiria» fijo y «Mi ubicación» que centra el mapa en el usuario (desplegado el 2026-10-09, §10.4).
+- [x] Contrato: visibilidad, moderación, lista cercana, estado del dueño, reportes y cola de moderación (`api-contract`).
+- [x] API (§11.1):
+  - la migración 0003 y publicar con `visibility`;
+  - `GET /routes?near=` con las rutas de la comunidad a 30 km o menos, la lectura pública y `/status`;
+  - los reportes (3 dispositivos ocultan una ruta);
+  - la moderación con `ADMIN_TOKEN`: la cola, la lectura para revisar y retirar o restaurar.
+- [x] Web (§10.12):
+  - «Publicar para la comunidad» en el creador y en el detalle (allí, con confirmación), la línea de estado y «Publicada» en Mis rutas;
+  - «De la comunidad, cerca de ti» en Explorar, en la lista y en el mapa;
+  - el detalle de una ruta de la comunidad, con su idioma y «Reportar ruta».
+- [x] `deploy-prod.sh` despliega la API antes que la web.
+- **DoD:** pendiente del despliegue.
+  - Generar `ADMIN_TOKEN`, cargarlo en `rumbo-api` (solo de ejecución) y desplegar (migración 0003).
+  - En producción: publicar una ruta, verla desde otro dispositivo cerca (o desde otro navegador con esa ubicación), reportarla, revisarla en la cola y restaurarla.
+- **Notas de implementación:**
+  - Precisiones en el §10.12 (web) y el §11.1 (API).
+  - Tests: 1.458 en total (1.229 en la fase 7.1). La API pasa de 393 a 482, la web de 414 a 549, `api-contract` de 48 a 53 y los e2e de 22 a 27.
+  - Queda para después:
+    - cuentas: los reportes contarían por cuenta y el creador podría tener un nombre;
+    - compartir por enlace privado;
+    - traducir las fichas;
+    - avisar al responsable cuando se oculta una ruta.
+
 ### Fase 8: Futuro (P2)
 
 - [ ] Cuentas de usuario y propiedad real de las rutas.
@@ -2162,6 +2237,10 @@ Salieron de la primera prueba de la fase 7 en un iPhone, hecha por el responsabl
 | Un solo recordatorio por recorrido, a las 6 horas y nunca de 22:00 a 08:00 en Lisboa | Un aviso útil sin molestar. La hora de silencio es la de Portugal, esté donde esté el usuario, y el aviso caduca a las 24 horas |
 | El service worker siempre muestra una notificación al recibir un push | Safari revoca el permiso si llega un push que no muestra nada |
 | Las direcciones de suscripción, solo de servicios push conocidos | Sin la lista, la API mandaría peticiones a donde le dijera el cliente (SSRF) |
+| Publicar una ruta es a elección y anónimo | Lo decidió el responsable del proyecto (ADR 0004). El interruptor empieza apagado, se avisa de no incluir la casa ni datos personales, y nada identifica al creador |
+| Con reportes de 3 dispositivos, una ruta se oculta hasta revisarla | Lo decidió el responsable del proyecto: la comunidad avisa y el responsable decide si la retira o la restaura. Ocultar no borra nada |
+| Rutas de la comunidad a 30 km o menos, las 20 más cercanas | Lo que se recorre a pie o en bici en una visita, sin pedir más bundles de los que caben en la lista |
+| Primero la API y después la web al desplegar | La web nueva puede llamar a lo que solo responde la API nueva; al revés no pasa |
 
 **Preguntas abiertas:**
 
@@ -2172,6 +2251,8 @@ Salieron de la primera prueba de la fase 7 en un iPhone, hecha por el responsabl
 - Estrategia de mapa base si el producto crece (cobro por teselas frente a sesiones, u otro proveedor de teselas).
 - Cómo se comparten las rutas de usuario (C5, «Compartir enlace»): hará falta un token de lectura aparte del de edición.
 - Cuándo hacer la app nativa (Capacitor) para los avisos de llegada con la pantalla apagada.
+- Cuándo llegan las cuentas: los reportes contarían por cuenta y el creador podría tener un nombre.
+- Cómo avisar al responsable de que una ruta se ocultó por reportes (hoy tiene que mirar la cola).
 
 ---
 

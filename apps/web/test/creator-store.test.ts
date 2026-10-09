@@ -2,6 +2,12 @@ import 'fake-indexeddb/auto';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { i18n } from '../src/i18n/index.ts';
+import {
+  type AnalyticsEvent,
+  clearAnalytics,
+  initAnalytics,
+  stopAnalytics,
+} from '../src/services/analytics.ts';
 import { getMyRoute, type MyRouteRecord, routeSyncIdle } from '../src/services/myRoutes.ts';
 import { db, KEYS } from '../src/services/storage.ts';
 import { useCatalogStore } from '../src/stores/catalog.ts';
@@ -297,5 +303,138 @@ describe('saving', () => {
     await store.discardIfEditing(id);
     expect(store.draft).toBeNull();
     expect(await storedDraft()).toBeUndefined();
+  });
+});
+
+describe('publishing for the community (phase 7.2)', () => {
+  async function readyToSave() {
+    const store = await open();
+    await store.ensureDraft();
+    await store.update({ name: 'Leiria numa manhã' });
+    await store.addPlace(castle);
+    await store.addPlace(cathedral);
+    return store;
+  }
+
+  const analyticsNames = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    return ((await db.get<AnalyticsEvent[]>(KEYS.analyticsQueue)) ?? []).map((event) => event.name);
+  };
+
+  beforeEach(async () => {
+    await initAnalytics(() => true);
+    clearAnalytics();
+  });
+
+  afterEach(() => stopAnalytics());
+
+  it('is off in a new draft, and stays as the user left it after a reload', async () => {
+    let store = await open();
+    await store.ensureDraft();
+    expect(store.draft?.publish).toBe(false);
+    await store.update({ publish: true });
+    await store.flush();
+    expect((await storedDraft())?.publish).toBe(true);
+    store = await open();
+    expect(store.draft?.publish).toBe(true);
+    expect(await db.get(KEYS.creatorDraftBackup)).toBeUndefined();
+  });
+
+  it('reads a draft from before it as not published, with nothing to repair', async () => {
+    await db.set(KEYS.creatorDraft, {
+      v: 1,
+      rev: 5,
+      tabId: 'other-tab',
+      editingId: null,
+      idSuffix: 'abcdefghij',
+      locale: 'es',
+      name: 'Ruta antigua',
+      mode: 'free',
+      activity: 'walk',
+      timeLimitMinutes: null,
+      area: null,
+      places: [{ ...castle, tempId: 'p1' }],
+      updatedAt: '2026-10-08T09:00:00.000Z',
+    });
+    const store = await open();
+    expect(store.draft).toMatchObject({ name: 'Ruta antigua', publish: false });
+    expect(await db.get(KEYS.creatorDraftBackup)).toBeUndefined();
+  });
+
+  it('repairs a value that is not a yes or a no, keeping the original aside', async () => {
+    const raw = {
+      v: 1,
+      rev: 5,
+      tabId: 'other-tab',
+      editingId: null,
+      idSuffix: 'abcdefghij',
+      locale: 'es',
+      name: 'Ruta',
+      mode: 'free',
+      activity: 'walk',
+      timeLimitMinutes: null,
+      area: null,
+      places: [],
+      publish: 'sí',
+      updatedAt: '2026-10-08T09:00:00.000Z',
+    };
+    await db.set(KEYS.creatorDraft, raw);
+    const store = await open();
+    expect(store.draft?.publish).toBe(false);
+    expect(await db.get(KEYS.creatorDraftBackup)).toEqual(raw);
+  });
+
+  it('saves a new route private unless the switch is on, and counts the publication', async () => {
+    let store = await readyToSave();
+    const privateId = await store.save();
+    expect(await getMyRoute(privateId)).toMatchObject({ visibility: 'private' });
+    expect(await analyticsNames()).not.toContain('route_published');
+
+    store = await readyToSave();
+    await store.update({ publish: true });
+    const publicId = await store.save();
+    expect(await getMyRoute(publicId)).toMatchObject({ visibility: 'public', rev: 1 });
+    const names = await analyticsNames();
+    expect(names.filter((name) => name === 'route_published')).toHaveLength(1);
+    expect(names.filter((name) => name === 'route_created')).toHaveLength(2);
+    // Nothing that tells which route it was.
+    const events = (await db.get<AnalyticsEvent[]>(KEYS.analyticsQueue)) ?? [];
+    expect(events.find((event) => event.name === 'route_published')?.props).toEqual({});
+  });
+
+  it('opens an edit with the visibility the route has, and saves the new choice', async () => {
+    let store = await readyToSave();
+    await store.update({ publish: true });
+    const id = await store.save();
+    clearAnalytics();
+
+    store = await open();
+    expect(await store.loadForEdit(id)).toBe(true);
+    expect(store.draft?.publish).toBe(true);
+    // Saving it as it is neither publishes nor takes it back.
+    await store.update({ name: 'Leiria à tarde' });
+    await store.save();
+    expect(await getMyRoute(id)).toMatchObject({ visibility: 'public', rev: 2 });
+    expect(await analyticsNames()).toEqual([]);
+
+    // Switching it off takes the route back.
+    store = await open();
+    await store.loadForEdit(id);
+    await store.update({ publish: false });
+    await store.save();
+    expect(await getMyRoute(id)).toMatchObject({ visibility: 'private', rev: 3, sync: 'pending' });
+    expect(await analyticsNames()).toEqual(['route_unpublished']);
+  });
+
+  it('opens an old private route with the switch off, and publishes it when turned on', async () => {
+    let store = await readyToSave();
+    const id = await store.save();
+    store = await open();
+    await store.loadForEdit(id);
+    expect(store.draft?.publish).toBe(false);
+    await store.update({ publish: true });
+    await store.save();
+    expect(await getMyRoute(id)).toMatchObject({ visibility: 'public' });
+    expect(await analyticsNames()).toContain('route_published');
   });
 });

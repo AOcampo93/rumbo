@@ -10,6 +10,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst } from 'workbox-strategies';
 // No `.ts` here, unlike the page's imports: tsconfig.sw.json doesn't allow it.
 import { openNotificationTarget, showPush } from './services/pushEvents';
+import { isCacheableRouteRequest } from './services/swCache';
 
 // Service worker (PROJECT_PLAN §10.6): the app shell and the three language
 // catalogs are precached; the map SDK, photos and route data are cached as
@@ -65,11 +66,17 @@ registerRoute(
   }),
 );
 
-// Route data from the API: fresh when online, the last copy when not.
+// Route data from the API: fresh when online, the last copy when not. The
+// routes the community published that Explore looks at come and go: only the
+// latest are kept; the ones the user downloads to walk also live on the device
+// itself (IndexedDB). What is kept (and what never is) is in swCache.ts.
 registerRoute(
-  ({ request, url }) =>
-    sameOrigin(url) && request.method === 'GET' && url.pathname.startsWith('/api/v1/routes'),
-  new NetworkFirst({ cacheName: 'rumbo-api', networkTimeoutSeconds: 4 }),
+  ({ request, url }) => sameOrigin(url) && isCacheableRouteRequest(url, request.method),
+  new NetworkFirst({
+    cacheName: 'rumbo-api',
+    networkTimeoutSeconds: 4,
+    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 30 * DAY })],
+  }),
 );
 
 // Files the page loaded before this worker controlled it (first visit) never

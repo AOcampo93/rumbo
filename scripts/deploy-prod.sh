@@ -147,11 +147,22 @@ wait_for() { # $1 = label, $2 = URL returning {"commit": "..."}, $3 = deployment
   return 1
 }
 
-API_DEPLOY="" WEB_DEPLOY=""
-if (( DEPLOY_API )); then API_DEPLOY=$(deploy "API" "$COOLIFY_API_APP"); echo "→ API deployment $API_DEPLOY"; fi
-if (( DEPLOY_WEB )); then WEB_DEPLOY=$(deploy "Web" "$COOLIFY_WEB_APP"); echo "→ Web deployment $WEB_DEPLOY"; fi
-
+# The API first, then the web: a new web may call what only the new API
+# answers (since phase 7.2 it sends `visibility`, which an older API refuses),
+# while a new API keeps answering the web that is already out there.
 STATUS=0
-if (( DEPLOY_API )); then wait_for "API" "$BASE_URL/api/v1/health" "$API_DEPLOY" || STATUS=1; fi
-if (( DEPLOY_WEB )); then wait_for "Web" "$BASE_URL/version.json" "$WEB_DEPLOY" || STATUS=1; fi
+if (( DEPLOY_API )); then
+  API_DEPLOY=$(deploy "API" "$COOLIFY_API_APP")
+  echo "→ API deployment $API_DEPLOY"
+  wait_for "API" "$BASE_URL/api/v1/health" "$API_DEPLOY" || STATUS=1
+fi
+if (( DEPLOY_WEB )); then
+  if (( STATUS )); then
+    echo "✗ Web not deployed: the API didn't make it, and the new web may need it." >&2
+  else
+    WEB_DEPLOY=$(deploy "Web" "$COOLIFY_WEB_APP")
+    echo "→ Web deployment $WEB_DEPLOY"
+    wait_for "Web" "$BASE_URL/version.json" "$WEB_DEPLOY" || STATUS=1
+  fi
+fi
 exit "$STATUS"

@@ -43,6 +43,8 @@ const settings = useSettingsStore();
 const texts = useTexts();
 
 const route = computed(() => catalog.byId(props.routeId));
+/** Looking for a route the catalog doesn't list (a community route opened by its address). */
+const resolving = ref(true);
 const location = ref<'prompt' | 'granted' | 'denied' | 'asking'>('prompt');
 const notifications = ref<NotificationStatus>('default');
 const download = ref<'pending' | 'done' | 'failed'>('pending');
@@ -98,6 +100,8 @@ async function startRun(): Promise<void> {
 
 onMounted(async () => {
   await catalog.load();
+  if (!route.value) await catalog.resolve(props.routeId);
+  resolving.value = false;
   notifications.value = notificationStatus();
   try {
     permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
@@ -124,7 +128,10 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="prepare">
-    <EmptyState v-if="catalog.status === 'ready' && !route" :title="t('route.notFound')">
+    <EmptyState
+      v-if="catalog.status === 'ready' && !route && !resolving"
+      :title="t('route.notFound')"
+    >
       <AppButton size="m" @click="router.replace('/')">{{ t('notFound.cta') }}</AppButton>
     </EmptyState>
     <template v-else-if="route">

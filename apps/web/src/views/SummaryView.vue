@@ -77,6 +77,10 @@ const items = computed(() => {
 onMounted(async () => {
   await catalog.load();
   summary.value = await run.loadLastSummary();
+  // The route of a community run isn't in the lists after a reload: ask for it by id.
+  if (summary.value && !catalog.byId(summary.value.routeId)) {
+    await catalog.resolve(summary.value.routeId);
+  }
   loaded.value = true;
 });
 

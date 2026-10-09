@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { CircleCheck, Clock, MapPin, Route, UserRound } from '@lucide/vue';
+import { CircleCheck, Clock, Globe, MapPin, Route, UserRound, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useFormat } from '../i18n/useFormat.ts';
 import { useTexts } from '../i18n/text.ts';
-import type { CatalogRoute } from '../services/catalog.ts';
+import { type CatalogRoute, isCommunityRoute } from '../services/catalog.ts';
 import ActivityBadge from './ActivityBadge.vue';
 import ModeBadge from './ModeBadge.vue';
 import StatChip from './StatChip.vue';
 
 // RouteCard (DESIGN §7): 16:9 cover (or the brand pattern), mode badge,
-// "Created by you" on the user's own routes, Fraunces title, activity,
-// summary and the stats row. `menuSpace` keeps the cover's top-right corner
-// free for a menu button laid over the card (My routes): it can't go inside
-// the link.
-const props = defineProps<{ route: CatalogRoute; downloaded?: boolean; menuSpace?: boolean }>();
+// "Created by you" on the user's own routes, "From the community" on the ones
+// other people published, Fraunces title, activity, summary and the stats
+// row. `published` adds "Published" to the user's own route that is public
+// (My routes). `menuSpace` keeps the cover's top-right corner free for a menu
+// button laid over the card (My routes): it can't go inside the link.
+const props = defineProps<{
+  route: CatalogRoute;
+  downloaded?: boolean;
+  published?: boolean;
+  menuSpace?: boolean;
+}>();
 const { t } = useI18n();
 const texts = useTexts();
 const format = useFormat();
@@ -23,6 +29,7 @@ const spec = computed(() => props.route.bundle.spec);
 const name = computed(() => texts.text(spec.value.name, spec.value.locale));
 const summary = computed(() => texts.text(spec.value.summary, spec.value.locale));
 const cover = computed(() => spec.value.coverImage);
+const community = computed(() => isCommunityRoute(props.route));
 </script>
 
 <template>
@@ -33,6 +40,12 @@ const cover = computed(() => spec.value.coverImage);
         <ModeBadge :mode="spec.mode" />
         <span v-if="route.mine" class="card__badge card__badge--mine">
           <UserRound :size="15" aria-hidden="true" />{{ t('route.createdByYou') }}
+        </span>
+        <span v-if="community" class="card__badge card__badge--shared">
+          <Users :size="15" aria-hidden="true" />{{ t('route.community') }}
+        </span>
+        <span v-if="published" class="card__badge card__badge--shared">
+          <Globe :size="15" aria-hidden="true" />{{ t('route.published') }}
         </span>
         <span v-if="downloaded" class="card__badge card__badge--offline">
           <CircleCheck :size="15" aria-hidden="true" />{{ t('route.downloaded') }}
@@ -108,6 +121,9 @@ const cover = computed(() => spec.value.coverImage);
 }
 .card__badge--mine {
   color: #1e4fa3;
+}
+.card__badge--shared {
+  color: #0b6b66;
 }
 .card__badge--offline {
   margin-left: auto;

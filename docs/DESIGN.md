@@ -434,15 +434,16 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
 
 ### S01 · Inicio, Explorar (`/`)
 
-- **Entradas:** `RouteSummary[]` (nombre, resumen, modo, actividad, portada, nº de puntos, distancia, minutos estimados); para la vista Mapa, los puntos de todas las rutas curadas y de las creadas en este dispositivo (nombre, categoría, ruta, posición, imagen). Las tuyas llevan la etiqueta «Creada por ti».
+- **Entradas:** `RouteSummary[]` (nombre, resumen, modo, actividad, portada, nº de puntos, distancia, minutos estimados); para la vista Mapa, los puntos de todas las rutas curadas, de las creadas en este dispositivo y de las de la comunidad cercanas (nombre, categoría, ruta, posición, imagen). Las tuyas llevan la etiqueta «Creada por ti» y las publicadas por otros, «De la comunidad» (fase 7.2).
 - **Salidas:** abrir ruta → `/routes/:routeId`; filtrar (Libre/Reto/A pie/Bici); alternar Lista/Mapa; tocar un marcador → popup → "Ver ruta".
 - **Layout:**
   - Cabecera con el wordmark. Sin chip de ciudad: Rumbo sirve donde esté el usuario, no solo en Leiria (se quitó el 2026-10-09, tras la prueba en un iPhone).
   - **SegmentedControl Lista | Mapa.**
   - Chips de filtro: Todas · Libre · Reto · A pie · Bici.
-  - **Lista:** RouteCards apiladas.
+  - **Lista:** RouteCards apiladas: las curadas y las tuyas; después, si se conoce tu posición, la sección **«De la comunidad, cerca de ti»** (fase 7.2) con las rutas que otros publicaron a 30 km o menos, cada una con la etiqueta «De la comunidad» (las tuyas publicadas no se repiten). Mientras carga, un skeleton; si no hay ninguna, «Aún no hay rutas de la comunidad cerca de ti.»; si falla, «No pudimos cargar las rutas de la comunidad.» con [Reintentar]. Sin posición, una tarjeta invita a buscarlas: «Toca «Mi ubicación» para ver las rutas de la comunidad que hay cerca de ti.» [Mi ubicación]. Sin conexión no se muestra.
   - **Mapa:** mapa a pantalla completa con **más de 20 marcadores** (color por ruta + icono de categoría), botón Filtro que abre el FilterPanel (por ruta, categoría y modo, con leyenda) y popup al tocar.
-  - **Mi ubicación** (botón flotante con la mirilla): al tocarlo, lee la posición una vez (el permiso se pide entonces, nunca antes), la marca con el punto azul y su círculo de precisión, y centra el mapa en ella (zoom 16), esté donde esté el usuario. La posición solo mueve el mapa: no se guarda ni se envía. Si se niega el permiso: «No podemos ver tu ubicación. Activa el permiso de ubicación en el navegador.»; si falla: «No pudimos obtener tu ubicación. Inténtalo de nuevo.». No se ve si el navegador no tiene geolocalización.
+  - **Mi ubicación** (botón flotante con la mirilla): al tocarlo, lee la posición una vez (el permiso se pide entonces, nunca antes), la marca con el punto azul y su círculo de precisión, y centra el mapa en ella (zoom 16), esté donde esté el usuario. La posición no se guarda; solo sale del dispositivo redondeada a unos 110 m, para pedir las rutas de la comunidad cercanas. Si se niega el permiso: «No podemos ver tu ubicación. Activa el permiso de ubicación en el navegador.»; si falla: «No pudimos obtener tu ubicación. Inténtalo de nuevo.». No se ve si el navegador no tiene geolocalización.
+  - **Si el permiso de ubicación ya estaba concedido** (fase 7.2), Explorar lee la posición al abrir, una vez y sin preguntar nada, para mostrar el punto azul y pedir las rutas de la comunidad. El mapa abre entonces sobre las rutas a 30 km o menos, o sobre el usuario (zoom 14) si no hay ninguna. Si el permiso no está concedido, espera al toque.
 - **Estados:** carga (skeletons), sin conexión (rutas guardadas + banner), vacío ("Aún no hay rutas en esta zona" + "Crea la tuya") y error.
 - Si hay un recorrido activo: **MiniRunBar** encima de la navegación.
 
@@ -452,7 +453,7 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
 - **Salidas:** abrir → detalle; Iniciar; **Nueva ruta** (→ creador); **Editar** (→ creador, con la ruta cargada), un botón a la vista en cada tarjeta; Eliminar (diálogo destructivo, en el menú ⋯).
 - **Layout:**
   - Cabecera con «Nueva ruta».
-  - Lista de RouteCards, la más nueva primero, con la etiqueta "Creada por ti", su línea de estado, un botón secundario **Editar** (con lápiz; `aria-label` «Editar: {nombre}») y un menú ⋯ (Editar, Eliminar), los dos fuera del enlace de la tarjeta. Una tarjeta cuya subida falló lleva en su lugar el botón de estado (Reintentar o Editar), así que nunca tiene dos botones. Una ruta ilegible solo ofrece Eliminar.
+  - Lista de RouteCards, la más nueva primero, con la etiqueta "Creada por ti" (y «Publicada» si está publicada para la comunidad, fase 7.2), su línea de estado, un botón secundario **Editar** (con lápiz; `aria-label` «Editar: {nombre}») y un menú ⋯ (Editar, Eliminar), los dos fuera del enlace de la tarjeta. Una tarjeta cuya subida falló lleva en su lugar el botón de estado (Reintentar o Editar), así que nunca tiene dos botones. Una ruta ilegible solo ofrece Eliminar.
 - **Estado de subida** (una línea bajo la tarjeta):
   - ya subida: sin línea de estado;
   - pendiente: «Solo en este dispositivo · se subirá al conectar»;
@@ -475,14 +476,18 @@ Diseñada en el mockup (`docs/design/mockup/Idioma.dc.html`).
     - Título `h1`.
     - ModeBadge + ActivityBadge.
     - Fila de StatChips: distancia, duración, nº de puntos y, en reto, límite de tiempo.
-    - **Solo en rutas propias:** una fila con dos botones de borde, **Editar ruta** (lápiz) y **Eliminar ruta** (papelera, texto rojo). Se apilan a 320 px y se desactivan mientras corre una acción. Van a la vista y no en un menú ⋯ porque en la prueba con un iPhone no se encontraba, y no en el pie fijo, para que la barra de «Iniciar ruta» siga siendo fina.
+    - **Solo en rutas propias:** una línea que dice quién la ve (fase 7.2) y una fila de botones de borde: **Publicar** o **Dejar de publicar** (globo u ojo tachado), **Editar ruta** (lápiz) y **Eliminar ruta** (papelera, texto rojo). En un móvil, Publicar ocupa su propia fila y los otros dos comparten la siguiente; se apilan a 320 px y se desactivan mientras corre una acción. Van a la vista y no en un menú ⋯ porque en la prueba con un iPhone no se encontraba, y no en el pie fijo, para que la barra de «Iniciar ruta» siga siendo fina.
+      - La línea: «Privada: solo tú la ves.» (candado), «Publicada: la ven quienes usen Rumbo cerca.» (globo), «Se publicará cuando vuelva la conexión.» (publicada en el dispositivo, sin subir y sin conexión), «Oculta por reportes: la revisaremos.» u «Retirada por moderación.» (estas dos en el tono de aviso). La moderación se pregunta a la API al abrir el detalle de una ruta publicada, una vez por visita.
+    - **Rutas de la comunidad** (fase 7.2): la etiqueta **«De la comunidad»** (con borde, junto a ModeBadge y ActivityBadge) y, si la ruta no está en el idioma de la app, «Esta ruta está en {idioma}.». Al final de la lista de puntos, discreto (texto atenuado con una bandera), **Reportar ruta**.
     - Descripción expandible.
     - **Caja de reglas en modo Reto:** "Orden obligatorio · Límite 1 h 30 · Pasa por los 9 checkpoints".
     - **Lista ordenada de puntos** (PointListItem con la distancia desde el anterior).
   - **CTA fija abajo:** "Iniciar ruta". Debajo, en pequeño: "✓ Disponible sin conexión", o el progreso de la descarga.
 - **Editar ruta:** como en Mis rutas (S02): si hay otro borrador con contenido, pide confirmar que se descarta, y abre el creador (C1). La flecha atrás del creador vuelve al detalle.
 - **Eliminar ruta:** diálogo destructivo con el nombre de la ruta, como en S02. Si la ruta es el recorrido en curso, lo termina. Confirma con «Ruta eliminada» y vuelve a Mis rutas (con atrás en el historial si venía de ahí; si no, lo reemplaza), sin pasar por «No encontramos esta ruta.».
-- **Estados:** carga, error, ruta sin portada y ruta curada o desconocida (sin los dos botones).
+- **Publicar:** antes pide confirmar, con el aviso del creador: «¿Publicar para la comunidad?» · «Quien use Rumbo cerca podrá verla y recorrerla, sin saber quién la creó.» · «Lo verán desconocidos: no incluyas tu casa ni datos personales.» · [Publicar] [Cancelar]. Confirma con «Ruta publicada para la comunidad». **Dejar de publicar** no pregunta y confirma con «Ahora solo tú ves esta ruta». Las dos funcionan sin conexión: la ruta se sube cuando vuelve.
+- **Reportar ruta:** una hoja «Reportar ruta» con «¿Qué le pasa a esta ruta?» y seis motivos en una lista de radio (Spam o publicidad · Contenido ofensivo · Lugar peligroso o de acceso prohibido · Expone datos personales o una vivienda · Información falsa o lugares que no existen · Otro motivo), [Cancelar] y [Enviar] (desactivado hasta elegir uno). Confirma con «Gracias. La revisaremos.». El dispositivo recuerda las rutas que reportó y no lo vuelve a ofrecer en ellas.
+- **Estados:** carga, error, ruta sin portada, ruta curada o desconocida (sin los botones de las propias) y ruta de la comunidad (sin ellos, con Reportar).
 
 ### S04 · Preparación y permisos (`/routes/:routeId/prepare`)
 
@@ -738,6 +743,7 @@ La app prepara con la IA una ficha de cada lugar y **no la enseña**: lo bueno d
     - ⚠ mientras haya fichas en preparación: «{n} fichas aún en preparación: si guardas ahora, usarán la ficha básica.», con [Ver fichas], que vuelve a Fichas;
     - en Reto, ⚠ si el límite de tiempo es menor que la duración estimada;
     - una línea de error bloqueante («La ruta tiene errores: revisa los pasos anteriores») si la ruta no se puede construir o sus acciones no son válidas.
+  - **Publicar para la comunidad** (fase 7.2): una tarjeta con globo, el título, la ayuda «Quien use Rumbo cerca podrá verla y recorrerla, sin saber quién la creó.» y un interruptor, **apagado por defecto** (al editar, con el valor de la ruta). Encendido, la tarjeta toma el borde primario y muestra el aviso «Lo verán desconocidos: no incluyas tu casa ni datos personales.».
   - Botones: **Probar ruta** (secundario, tono de simulación) con la ayuda «La recorres en simulación; no se guarda nada», y **Guardar ruta** (primario; «Guardando…» mientras se escribe en el dispositivo).
 - **Probar ruta:**
   - Siempre en simulación, aunque Ajustes la tenga desactivada, y con la ruta tal como está en el borrador (con sus fichas), sin guardarla.
@@ -750,6 +756,7 @@ La app prepara con la IA una ficha de cada lugar y **no la enseña**: lo bueno d
 
 - "Tu ruta está lista" + RouteCard. Queda fuera del Stepper, y la flecha atrás lleva a Mis rutas.
 - Una línea de estado, que cambia sola cuando termina la subida: «Guardada. Puedes recorrerla cuando quieras.» o, si aún no se ha subido, «Guardada en este dispositivo. La subiremos cuando vuelva la conexión.»
+- Si se publicó (fase 7.2), otra línea con globo: «Publicada para la comunidad.» o, si aún no se ha subido, «Se publicará para la comunidad cuando vuelva la conexión.»
 - [Iniciar ahora] → `/routes/:routeId/prepare` · [Ver mis rutas] · Compartir enlace *(futuro)*.
 - **Si la ruta guardada es la del recorrido en curso** (se editó desde S05), el recorrido ya usa los cambios: sale la línea «Tu recorrido en curso ya usa estos cambios. Lo que visitaste se mantiene.» y el botón principal es **Volver al recorrido** (→ `/run`) en lugar de [Iniciar ahora]. Si guardar dejó el recorrido sin nada que visitar, este termina y la pantalla pasa directa al resumen (S10).
 
@@ -953,6 +960,18 @@ Los textos de la fase 7 (`create.details.*`, `create.interests.*`, `create.sugge
 | `explore.empty.title` / `.body` | Aún no hay rutas en esta zona / Elige los lugares que quieres ver y preparamos la guía por ti. |
 | `explore.locate` | Mi ubicación |
 | `explore.locationDenied` / `.locationFailed` | No podemos ver tu ubicación. Activa el permiso de ubicación en el navegador. / No pudimos obtener tu ubicación. Inténtalo de nuevo. |
+| `explore.community.title` | De la comunidad, cerca de ti |
+| `explore.community.invite` | Toca «Mi ubicación» para ver las rutas de la comunidad que hay cerca de ti. |
+| `explore.community.empty` / `.error` | Aún no hay rutas de la comunidad cerca de ti. / No pudimos cargar las rutas de la comunidad. |
+| `route.community` / `route.published` | De la comunidad / Publicada |
+| `route.otherLanguage` | Esta ruta está en {language}. |
+| `route.publish` / `route.unpublish` / `route.publishConfirm` | Publicar / Dejar de publicar / ¿Publicar para la comunidad? |
+| `route.publishedToast` / `route.unpublishedToast` | Ruta publicada para la comunidad / Ahora solo tú ves esta ruta |
+| `route.status.private` / `.public` / `.pending` | Privada: solo tú la ves. / Publicada: la ven quienes usen Rumbo cerca. / Se publicará cuando vuelva la conexión. |
+| `route.status.hidden` / `.blocked` | Oculta por reportes: la revisaremos. / Retirada por moderación. |
+| `route.report.button` / `.intro` / `.send` / `.thanks` | Reportar ruta / ¿Qué le pasa a esta ruta? / Enviar / Gracias. La revisaremos. |
+| `create.review.publish.label` / `.help` / `.warning` | Publicar para la comunidad / Quien use Rumbo cerca podrá verla y recorrerla, sin saber quién la creó. / Lo verán desconocidos: no incluyas tu casa ni datos personales. |
+| `create.done.published` / `.publishPending` | Publicada para la comunidad. / Se publicará para la comunidad cuando vuelva la conexión. |
 | `popup.distance` | a {distance} de ti |
 | `route.downloaded` | Descargada |
 | `prepare.ready` | Todo listo. Guarda el móvil y camina. |

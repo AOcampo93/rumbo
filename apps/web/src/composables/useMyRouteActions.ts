@@ -2,14 +2,15 @@ import { LOCALES, type Locale, type LocalizedText } from '@rumbo/route-spec';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { deleteMyRoute, retryMyRoute } from '../services/myRoutes.ts';
+import { track } from '../services/analytics.ts';
+import { deleteMyRoute, retryMyRoute, setMyRouteVisibility } from '../services/myRoutes.ts';
 import { useCreatorStore } from '../stores/creator.ts';
 import { useRunStore } from '../stores/run.ts';
 import { useUiStore } from '../stores/ui.ts';
 
-// What Edit, Delete and Retry do to a route made with the creator. My routes
-// (S02) and the route detail (S03) both offer them, so the confirmations, the
-// warnings about a run in progress and the clean-up after a delete live here.
+// What Edit, Delete, Retry and Publish do to a route made with the creator. My
+// routes (S02) and the route detail (S03) both offer them, so the confirmations,
+// the warnings about a run in progress and the clean-up after a delete live here.
 // Call it from a component's setup: it needs the router, the stores and i18n.
 
 /** The route an action is about, as its dialogs need it. */
@@ -125,5 +126,42 @@ export function useMyRouteActions() {
     }
   }
 
-  return { busy, edit, remove, retry };
+  /**
+   * "Publicar" / "Dejar de publicar" (phase 7.2): the route becomes public for
+   * the community (after a confirmation that repeats the creator's privacy
+   * warning), or private again. It is an edit like any other: it works offline
+   * and uploads on its own. Resolves true when it changed.
+   */
+  async function setPublished(id: string, published: boolean): Promise<boolean> {
+    if (busy.value) return false;
+    // Strangers will see it: the creator's warning again, before it goes public.
+    if (published) {
+      const confirmed = await ui.confirm({
+        title: { key: 'route.publishConfirm' },
+        body: paragraphs(['create.review.publish.help', 'create.review.publish.warning']),
+        confirmLabel: { key: 'route.publish' },
+        cancelLabel: { key: 'common.cancel' },
+      });
+      if (!confirmed || busy.value) return false;
+    }
+    busy.value = id;
+    try {
+      if (!(await setMyRouteVisibility(id, published ? 'public' : 'private'))) return false;
+      // No props: nothing that tells which route it was.
+      track(published ? 'route_published' : 'route_unpublished');
+      ui.toast(
+        { key: published ? 'route.publishedToast' : 'route.unpublishedToast' },
+        { tone: 'success' },
+      );
+      return true;
+    } catch (error) {
+      console.warn('my routes: the visibility could not be changed', error);
+      ui.toast({ key: 'errors.generic' }, { tone: 'warning' });
+      return false;
+    } finally {
+      busy.value = null;
+    }
+  }
+
+  return { busy, edit, remove, retry, setPublished };
 }

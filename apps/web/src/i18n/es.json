@@ -81,7 +81,13 @@
     },
     "locate": "Mi ubicación",
     "locationDenied": "No podemos ver tu ubicación. Activa el permiso de ubicación en el navegador.",
-    "locationFailed": "No pudimos obtener tu ubicación. Inténtalo de nuevo."
+    "locationFailed": "No pudimos obtener tu ubicación. Inténtalo de nuevo.",
+    "community": {
+      "title": "De la comunidad, cerca de ti",
+      "invite": "Toca «Mi ubicación» para ver las rutas de la comunidad que hay cerca de ti.",
+      "empty": "Aún no hay rutas de la comunidad cerca de ti.",
+      "error": "No pudimos cargar las rutas de la comunidad."
+    }
   },
   "mode": {
     "free": "Libre",
@@ -141,7 +147,37 @@
     "exitFullscreen": "Reducir el mapa",
     "noCover": "Sin foto",
     "edit": "Editar ruta",
-    "delete": "Eliminar ruta"
+    "delete": "Eliminar ruta",
+    "community": "De la comunidad",
+    "published": "Publicada",
+    "otherLanguage": "Esta ruta está en {language}.",
+    "publish": "Publicar",
+    "unpublish": "Dejar de publicar",
+    "publishConfirm": "¿Publicar para la comunidad?",
+    "publishedToast": "Ruta publicada para la comunidad",
+    "unpublishedToast": "Ahora solo tú ves esta ruta",
+    "status": {
+      "private": "Privada: solo tú la ves.",
+      "public": "Publicada: la ven quienes usen Rumbo cerca.",
+      "pending": "Se publicará cuando vuelva la conexión.",
+      "hidden": "Oculta por reportes: la revisaremos.",
+      "blocked": "Retirada por moderación."
+    },
+    "report": {
+      "button": "Reportar ruta",
+      "title": "Reportar ruta",
+      "intro": "¿Qué le pasa a esta ruta?",
+      "reasons": {
+        "spam": "Spam o publicidad",
+        "offensive": "Contenido ofensivo",
+        "dangerous": "Lugar peligroso o de acceso prohibido",
+        "privacy": "Expone datos personales o una vivienda",
+        "wrong": "Información falsa o lugares que no existen",
+        "other": "Otro motivo"
+      },
+      "send": "Enviar",
+      "thanks": "Gracias. La revisaremos."
+    }
   },
   "popup": {
     "distance": "a {distance} de ti",
@@ -691,7 +727,12 @@
       "cardsBasic": "{n} básica | {n} básicas",
       "cardsPreparing": "{n} ficha aún en preparación: si guardas ahora, usará la ficha básica. | {n} fichas aún en preparación: si guardas ahora, usarán la ficha básica.",
       "fixCards": "Ver fichas",
-      "arrivalMix": "Al llegar: {mix}"
+      "arrivalMix": "Al llegar: {mix}",
+      "publish": {
+        "label": "Publicar para la comunidad",
+        "help": "Quien use Rumbo cerca podrá verla y recorrerla, sin saber quién la creó.",
+        "warning": "Lo verán desconocidos: no incluyas tu casa ni datos personales."
+      }
     },
     "trial": {
       "badge": "Prueba",
@@ -709,7 +750,9 @@
       "start": "Iniciar ahora",
       "myRoutes": "Ver mis rutas",
       "backToRun": "Volver al recorrido",
-      "runUpdated": "Tu recorrido en curso ya usa estos cambios. Lo que visitaste se mantiene."
+      "runUpdated": "Tu recorrido en curso ya usa estos cambios. Lo que visitaste se mantiene.",
+      "published": "Publicada para la comunidad.",
+      "publishPending": "Se publicará para la comunidad cuando vuelva la conexión."
     }
   },
   "errors": {

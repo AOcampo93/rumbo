@@ -16,7 +16,9 @@ import type { SyncState } from './myRoutes.ts';
 // Where routes come from (PROJECT_PLAN §10.6): the API when it answers
 // (phase 5), otherwise the curated routes bundled with the app from
 // data/routes. Both end up as validated RouteBundles. The user's own routes
-// come from this device (services/myRoutes.ts).
+// come from this device (services/myRoutes.ts), and the ones the community
+// published from the API too, when the catalog store asks for them
+// (services/community.ts).
 
 export interface CatalogRoute {
   id: string;
@@ -28,9 +30,21 @@ export interface CatalogRoute {
   locales: readonly Locale[];
   /** Shipped inside the app: always available offline. */
   bundled: boolean;
-  /** Made with the creator on this device ("Creada por ti"), with its upload state. */
-  mine?: { sync: SyncState; error?: string };
+  /**
+   * Made with the creator on this device ("Creada por ti"), with its upload
+   * state. `published`: the user made it public for the community (phase
+   * 7.2); left out while it is private.
+   */
+  mine?: { sync: SyncState; error?: string; published?: true };
 }
+
+/**
+ * A route another person made and published ("De la comunidad", phase 7.2):
+ * a user route that isn't in this device's registry. The user's own routes
+ * carry `mine`, and the curated ones aren't user routes.
+ */
+export const isCommunityRoute = (route: CatalogRoute): boolean =>
+  route.bundle.spec.source === 'user' && route.mine === undefined;
 
 export interface PoiLayer {
   id: string;

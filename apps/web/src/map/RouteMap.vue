@@ -53,6 +53,8 @@ const props = withDefaults(
     zones?: MapZoneItem[];
     /** Positions to show when the map opens (and on fitTo()). */
     fit?: LatLng[] | null;
+    /** Zoom for a `fit` that has no area (one position): by default a close-up (17; 15 while opening). */
+    fitZoom?: number;
     padding?: MapPadding;
     /** Keep the user centred (run screen). */
     follow?: boolean;
@@ -69,6 +71,7 @@ const props = withDefaults(
     zone: null,
     zones: () => [],
     fit: null,
+    fitZoom: undefined,
     padding: () => ({}),
     follow: false,
     basemap: 'streets',
@@ -393,9 +396,10 @@ async function fitTo(points: readonly LatLng[] | null = props.fit): Promise<void
   if (!view || !extent) return;
   try {
     // Positions without an area (one, or all in the same place): their centre, close up.
-    await view.goTo(hasArea(extent) ? extent.expand(1.25) : { target: extent.center, zoom: 17 }, {
-      animate: !reduceMotion,
-    });
+    await view.goTo(
+      hasArea(extent) ? extent.expand(1.25) : { target: extent.center, zoom: props.fitZoom ?? 17 },
+      { animate: !reduceMotion },
+    );
   } catch {
     // An interrupted animation is fine.
   }
@@ -516,7 +520,7 @@ onMounted(async () => {
       centre?.longitude != null && centre.latitude != null
         ? [centre.longitude, centre.latitude]
         : [-8.807, 39.744];
-    element.zoom = 15;
+    element.zoom = props.fitZoom ?? 15;
   }
 
   try {

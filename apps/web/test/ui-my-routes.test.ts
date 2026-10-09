@@ -147,6 +147,39 @@ describe('My routes', () => {
     expect(router.currentRoute.value.name).toBe('create');
   });
 
+  it('labels the routes that are public "Publicada", and only those', async () => {
+    await seed(
+      record('publica-0000000001', {
+        visibility: 'public',
+        createdAt: '2026-10-05T10:00:00.000Z',
+      }),
+      record('privada-0000000001', {
+        visibility: 'private',
+        createdAt: '2026-10-04T10:00:00.000Z',
+      }),
+      // Saved before routes could be published: private.
+      record('antigua-000000001', { createdAt: '2026-10-03T10:00:00.000Z' }),
+    );
+    const { view } = await setup();
+    const labels = view.findAll('.item').map((item) => ({
+      name: item.get('.card__title').text(),
+      published: item.findAll('.card__badge--shared').map((badge) => badge.text()),
+    }));
+    expect(labels).toEqual([
+      { name: 'Ruta publica-0000000001', published: ['Publicada'] },
+      { name: 'Ruta privada-0000000001', published: [] },
+      { name: 'Ruta antigua-000000001', published: [] },
+    ]);
+    // None of them is "De la comunidad": they are the user's own.
+    expect(view.text()).not.toContain('De la comunidad');
+    applyLocale('pt');
+    await view.vm.$nextTick();
+    expect(view.get('.card__badge--shared').text()).toBe('Publicada');
+    applyLocale('en');
+    await view.vm.$nextTick();
+    expect(view.get('.card__badge--shared').text()).toBe('Published');
+  });
+
   it('lists the routes newest first, with their upload state', async () => {
     await seed(
       record('synced-0000000001', { createdAt: '2026-10-05T10:00:00.000Z' }),

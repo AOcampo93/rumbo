@@ -4,6 +4,7 @@ import {
   CircleX,
   Clock,
   FlaskConical,
+  Globe,
   Info,
   LoaderCircle,
   MapPin,
@@ -31,6 +32,7 @@ import ActivityBadge from '../../components/ActivityBadge.vue';
 import AppButton from '../../components/AppButton.vue';
 import ModeBadge from '../../components/ModeBadge.vue';
 import StatChip from '../../components/StatChip.vue';
+import ToggleSwitch from '../../components/ToggleSwitch.vue';
 import { useFormat } from '../../i18n/useFormat.ts';
 import type { MapMarker, MapPadding, MapZoneItem } from '../../map/types.ts';
 import { unlockAudio } from '../../services/sound.ts';
@@ -44,7 +46,9 @@ import { useUiStore } from '../../stores/ui.ts';
 // a checklist (places, overlapping zones, how many places have an AI card,
 // what the others show on arrival, addresses of the places with the basic
 // sheet, a challenge's time limit and anything that keeps the route from
-// being built). "Probar ruta" walks it in simulation without saving anything;
+// being built). Under it, the switch "Publicar para la comunidad" (phase 7.2,
+// off for a new route): whoever saves it public is warned that strangers will
+// see it. "Probar ruta" walks it in simulation without saving anything;
 // "Guardar ruta" stores it on this device (the upload follows on its own) and
 // moves on to C5.
 
@@ -77,6 +81,7 @@ const settings = useSettingsStore();
 const ui = useUiStore();
 const format = useFormat();
 const checksId = useId();
+const publishId = useId();
 
 const mapState = ref<MapState>('loading');
 const mapMissing = ref(false);
@@ -96,6 +101,11 @@ let mapTimer: ReturnType<typeof setTimeout> | null = null;
 
 const saveError = ref(false);
 const draft = computed(() => creator.draft);
+
+const publish = computed({
+  get: () => draft.value?.publish ?? false,
+  set: (value: boolean) => void creator.update({ publish: value }),
+});
 
 /** The route as it would be saved, checked by the event system too (ux-8). */
 const built = computed(() => (draft.value ? creator.build() : null));
@@ -406,6 +416,31 @@ onBeforeUnmount(() => {
             </li>
           </ul>
         </section>
+
+        <section class="publish" :class="{ 'is-on': publish }">
+          <div class="publish__row">
+            <Globe :size="22" aria-hidden="true" class="publish__icon" />
+            <div class="publish__text">
+              <h2 class="publish__label">{{ t('create.review.publish.label') }}</h2>
+              <p :id="`${publishId}-help`" class="publish__help">
+                {{ t('create.review.publish.help') }}
+              </p>
+            </div>
+            <ToggleSwitch
+              v-model="publish"
+              :label="t('create.review.publish.label')"
+              :aria-describedby="`${publishId}-help`"
+            />
+          </div>
+          <!-- A live region that is always there, so the warning is read when it appears. -->
+          <div role="status">
+            <p v-if="publish" class="publish__warning">
+              <TriangleAlert :size="18" aria-hidden="true" />{{
+                t('create.review.publish.warning')
+              }}
+            </p>
+          </div>
+        </section>
       </div>
 
       <footer class="review__footer">
@@ -547,6 +582,59 @@ onBeforeUnmount(() => {
 }
 .check__fix {
   margin-left: 34px;
+}
+/* The switch of "Publicar para la comunidad": a card like the checklist, with the warning inside. */
+.publish {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: var(--control-border) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.publish.is-on {
+  border-color: var(--color-primary);
+}
+.publish__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.publish__icon {
+  flex: none;
+  color: var(--color-text-muted);
+}
+.publish.is-on .publish__icon {
+  color: var(--color-primary);
+}
+.publish__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.publish__label {
+  font: 600 16px/22px var(--font-ui);
+}
+.publish__help {
+  color: var(--color-text-muted);
+  font: 400 14px/20px var(--font-ui);
+}
+.publish__warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font: 600 14px/20px var(--font-ui);
+}
+.publish__warning svg {
+  flex: none;
+  margin-top: 1px;
 }
 .review__footer {
   position: sticky;
