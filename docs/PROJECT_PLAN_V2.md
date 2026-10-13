@@ -655,7 +655,7 @@ Un personaje 3D aparece en RA al llegar a un lugar y responde por voz con la IA,
 - **Personaje «artesano»:** GLB con dos animaciones (reposo y hablando) y la mandíbula movida por el volumen de la voz. Los modelos no están en git (licencias): viven en un volumen de Coolify.
 - **Voz:** Gemini Live (`gemini-3.8-live`, voz Charon) a través de un WebSocket de la API (`/v1/ra-test/voice`); la clave nunca sale del servidor. Pulsar para hablar, límites de sesión, de tiempo y por minuto, y un código de acceso (`RA_TEST_ACCESS_CODE`).
 - **Ficha de conocimiento:** `data/ra/<personaje>/{es,en,pt}.md`, con fuentes en `FUENTES.md`. El personaje solo contesta con ella; lo posterior a su época lo cuenta como «lo que dicen los viajeros».
-- **Acción de ruta `ar_character`** (`{ character }`): al llegar, una hoja explica la actividad en cuatro pasos y abre la página de RA en otra ventana, para que el recorrido siga vivo; al volver, «Continuar ruta». El creador la ofrece solo en dispositivos con el código (se desbloquea abriendo la app con `?ra_code=<código>`), y la API la acepta en las rutas de usuario.
+- **Acción de ruta `ar_character`** (`{ character }`): al llegar, una hoja explica la actividad en cuatro pasos y abre la página de RA en otra ventana, para que el recorrido siga vivo; al volver, «Continuar ruta». El creador la ofrece para cualquier lugar como «Personaje en RA (prueba)» y la API la acepta en las rutas de usuario; la voz sigue pidiendo el código, que la app guarda si se abre con `?ra_code=<código>`.
 
 **Pendiente antes de sacarla del prototipo:**
 

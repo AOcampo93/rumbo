@@ -1,6 +1,6 @@
-// The AR guide (version 2 prototype) is only for testers: whoever has the access code. The
-// code lives in this site's localStorage, so the app and the /ra_test/ page share it. It only
-// opens the voice (the API checks it); it is not a secret worth more than that.
+// The AR guide (version 2 prototype): its voice needs an access code (the API checks it, as the
+// voice costs money). The code lives in this site's localStorage, so the app and the /ra_test/
+// page share it and the App Clip gets it in its link; it is not a secret worth more than that.
 
 export const AR_CODE_KEY = 'ra_test_access_code';
 /** Query parameter that hands the code to the app or the AR page once (then it is removed). */
@@ -33,11 +33,6 @@ export function saveArCode(code: string, storage: StorageLike | null = localArea
   } catch {
     // Not remembered: the AR page asks again.
   }
-}
-
-/** A tester's device: the creator offers the AR guide as an arrival. */
-export function hasArAccess(storage: StorageLike | null = localArea()): boolean {
-  return readArCode(storage) !== '';
 }
 
 /**

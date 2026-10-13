@@ -6,7 +6,6 @@ import {
   AR_CODE_KEY,
   appClipUrl,
   arPageUrl,
-  hasArAccess,
   isIos,
   readArCode,
 } from '../src/ar/access.ts';
@@ -27,13 +26,11 @@ afterEach(() => {
 
 describe('access to the AR guide', () => {
   it('takes the code from a link once, keeps it and cleans the address', () => {
-    expect(hasArAccess()).toBe(false);
     expect(adoptArCodeFromUrl('https://rumbo.test/explore?x=1')).toBeNull();
     expect(adoptArCodeFromUrl('https://rumbo.test/explore?ra_code=%20abc%20&x=1#map')).toBe(
       '/explore?x=1#map',
     );
     expect(readArCode()).toBe('abc');
-    expect(hasArAccess()).toBe(true);
     // An empty code cleans the address without forgetting the one there was.
     expect(adoptArCodeFromUrl('https://rumbo.test/?ra_code=')).toBe('/');
     expect(readArCode()).toBe('abc');

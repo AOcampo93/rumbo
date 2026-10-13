@@ -47,7 +47,7 @@ export type ArrivalChoice =
 
 export type ArrivalType = ArrivalChoice['type'];
 
-/** In the order the creator lists them. `ar` is only offered to testers (version 2 prototype). */
+/** In the order the creator lists them. `ar` is the version 2 prototype (its voice needs a code). */
 export const ARRIVAL_TYPES = ['card', 'basic', 'quiz', 'video', 'link', 'check', 'ar'] as const;
 
 /**

@@ -16,7 +16,7 @@ import { applyLocale, detectLocale, i18n } from './i18n/index.ts';
 import { createAppRouter } from './router/index.ts';
 import { useSettingsStore } from './stores/settings.ts';
 
-// A tester's link (?ra_code=…) unlocks the AR guide prototype on this device; the code
+// A tester's link (?ra_code=…) keeps the AR guide's voice code on this device; the code
 // leaves the address before the router reads it.
 const withoutCode = adoptArCodeFromUrl(location.href);
 if (withoutCode !== null) history.replaceState(history.state, '', withoutCode);

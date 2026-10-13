@@ -7,7 +7,6 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { AR_CODE_KEY } from '../src/ar/access.ts';
 import PlaceEditorSheet, { type PlaceEditorValue } from '../src/components/PlaceEditorSheet.vue';
 import { applyLocale, i18n } from '../src/i18n/index.ts';
 import { getMyRoute, routeSyncIdle } from '../src/services/myRoutes.ts';
@@ -424,27 +423,14 @@ describe('PlaceEditorSheet · Al llegar', () => {
     await flushPromises();
   };
 
-  it("offers the AR guide only on a tester's device, or where a place already has it", async () => {
-    const AR_TITLE = 'Personaje en RA (prueba)';
-    const titles = (view: Editor) =>
-      view.findAll('.choice').map((choice) => choice.get('.choice__title').text());
-    const plain = mountEditor();
-    expect(titles(plain)).not.toContain(AR_TITLE);
-    plain.unmount();
-    localStorage.setItem(AR_CODE_KEY, 'tester-code');
-    try {
-      const tester = mountEditor();
-      expect(titles(tester).at(-1)).toBe(AR_TITLE);
-      await choose(tester, AR_TITLE);
-      expect(current(tester)).toEqual({ type: 'ar', character: 'artesano' });
-      tester.unmount();
-    } finally {
-      localStorage.removeItem(AR_CODE_KEY);
-    }
-    expect(titles(mountEditor({ type: 'ar', character: 'artesano' }))).toContain(AR_TITLE);
+  it('offers the AR guide (version 2 prototype) for any place, with no fields', async () => {
+    const view = mountEditor();
+    await choose(view, 'Personaje en RA (prueba)');
+    expect(current(view)).toEqual({ type: 'ar', character: 'artesano' });
+    expect(view.find('.arrival__fields').exists()).toBe(false);
   });
 
-  it('lists the six ways to greet the user, each with its help, and checks the current one', () => {
+  it('lists the seven ways to greet the user, each with its help, and checks the current one', () => {
     const view = mountEditor({ type: 'video', youtubeId: 'dQw4w9WgXcQ' });
     expect(view.get('legend').text()).toBe('Al llegar');
     const choices = view.findAll('.choice');
@@ -455,6 +441,7 @@ describe('PlaceEditorSheet · Al llegar', () => {
       'Un video de YouTube',
       'Un enlace web',
       'Solo un aviso',
+      'Personaje en RA (prueba)',
     ]);
     expect(choices[0]?.get('.choice__help').text()).toBe(
       'La ficha con IA si está lista; si no, el nombre y la dirección.',
@@ -465,6 +452,7 @@ describe('PlaceEditorSheet · Al llegar', () => {
       false,
       false,
       true,
+      false,
       false,
       false,
     ]);
@@ -644,7 +632,7 @@ describe('PlaceEditorSheet · Al llegar', () => {
     const view = mountEditor(QUIZ);
     expect(
       view.findAll('.choice input').map((radio) => (radio.element as HTMLInputElement).checked),
-    ).toEqual([false, false, true, false, false, false]);
+    ).toEqual([false, false, true, false, false, false, false]);
     expect((field(view, 'Pregunta').element as HTMLInputElement).value).toBe(
       QUIZ.type === 'quiz' ? QUIZ.question : '',
     );
