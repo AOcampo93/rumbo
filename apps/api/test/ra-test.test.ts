@@ -326,7 +326,7 @@ describe('the settings', () => {
   it('are off and bounded by default', () => {
     expect(loadConfig({})).toMatchObject({
       geminiApiKey: null,
-      geminiLiveModel: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      geminiLiveModel: 'gemini-3.8-live',
       raTestAccessCode: null,
       raTestSessionSeconds: 180,
       raTestMaxSessions: 3,
@@ -357,7 +357,7 @@ describe('the settings', () => {
     });
     expect(loadConfig({ GEMINI_API_KEY: '', GEMINI_LIVE_MODEL: '' })).toMatchObject({
       geminiApiKey: null,
-      geminiLiveModel: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      geminiLiveModel: 'gemini-3.8-live',
     });
   });
 });

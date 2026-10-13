@@ -142,7 +142,7 @@ const AI_EFFORTS = ['low', 'medium', 'high', 'none'] as const;
 export const DEFAULT_AI_MODEL = 'claude-sonnet-5-5';
 
 /** The Live model behind the AR voice prototype unless GEMINI_LIVE_MODEL says otherwise. */
-export const DEFAULT_GEMINI_LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
+export const DEFAULT_GEMINI_LIVE_MODEL = 'gemini-3.8-live';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const port = Number(env.PORT ?? 3000);
