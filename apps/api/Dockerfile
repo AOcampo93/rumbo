@@ -27,12 +27,13 @@ WORKDIR /repo
 # Keep pnpm's layout: apps/api/node_modules holds symlinks into node_modules/.pnpm.
 COPY --from=prod-deps /repo/node_modules ./node_modules
 COPY --from=prod-deps /repo/apps/api/node_modules ./apps/api/node_modules
-# The bundle (workspace packages compiled in), its SQL migrations, and the
-# curated routes it seeds on start.
+# The bundle (workspace packages compiled in), its SQL migrations, the
+# curated routes it seeds on start and the AR characters' knowledge sheets.
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/api/drizzle ./apps/api/drizzle
 COPY data/routes ./data/routes
+COPY data/ra ./data/ra
 WORKDIR /repo/apps/api
 USER node
 EXPOSE 3000

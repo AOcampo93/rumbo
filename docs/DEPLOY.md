@@ -278,6 +278,24 @@ Los usuarios pueden subir una foto como portada de su ruta. Cómo funciona: [`do
 - **Espacio:** `select pg_size_pretty(sum(bytes)) from media;` en `rumbo-db` (solo lectura). Las fotos entran en las copias diarias: si se acercan al tope, toca sacarlas a un volumen o a un almacenamiento de objetos.
 - **En el log:** `photo stored` (id y tamaños), `unused photos deleted` (cuántas, cada hora si hay) y `media deleted by the operator` (id).
 
+## Prototipo de guía en RA (`/ra_test`, versión 2)
+
+Página de pruebas, fuera de la app: un personaje 3D en realidad aumentada que contesta por voz con Gemini Live. La web la sirve en `/ra_test/` y la voz va por el WebSocket `GET /api/v1/ra-test/voice`.
+
+- **Variables de `rumbo-api`** (solo de ejecución, literales y leídas de `apps/api/.env` sin mostrarlas):
+  - `GEMINI_API_KEY` (secreto): sin ella, la voz responde `voice_unavailable`.
+  - `RA_TEST_ACCESS_CODE`: el código que piden la página y el WebSocket. Los probadores abren `https://rumbo.arturoocampo.com/ra_test/?code=<código>`; la página lo guarda y lo quita de la barra de direcciones.
+  - `GEMINI_LIVE_MODEL` (por defecto `gemini-3.8-live`) y los límites `RA_TEST_*` son opcionales.
+- **Los modelos 3D no están en git.** El repo es público y la licencia de un modelo puede no permitir redistribuirlo. Viven en el volumen persistente `r1nkasrwx0no5zwedufosucn-ra-test-models` de `rumbo-web`, montado en `/usr/share/nginx/html/ra_test/models`, y sobreviven a los despliegues. Para subir o cambiar uno:
+
+  ```bash
+  scp artesano.glb vmi:/tmp/rumbo-artesano.glb
+  ssh vmi 'c=$(docker ps -q --filter label=coolify.applicationId=20 | head -1); docker cp /tmp/rumbo-artesano.glb $c:/usr/share/nginx/html/ra_test/models/artesano.glb && docker exec $c chmod 644 /usr/share/nginx/html/ra_test/models/artesano.glb; rm /tmp/rumbo-artesano.glb'
+  ```
+
+- **Lo que sabe el personaje:** `data/ra/<personaje>/{es,en,pt}.md`, con sus fuentes en `FUENTES.md` (que no entra en la imagen). La API los lee al arrancar: tras cambiarlos hay que desplegar la API.
+- **Coste:** se paga por tokens de audio (orientativo: ~0,005 USD por minuto escuchado y ~0,018 USD por minuto hablado). Las sesiones duran como mucho `RA_TEST_SESSION_SECONDS` (180 s) y hay como mucho `RA_TEST_MAX_SESSIONS` (3) a la vez. En el log, `voice session ended` deja la duración y los tokens, nunca lo que se dijo.
+
 ## Base de datos: migraciones y datos iniciales
 
 Al arrancar, la API aplica las migraciones pendientes (`apps/api/drizzle`, generadas con `pnpm --filter @rumbo/api db:generate`). Después carga las rutas curadas de `data/routes`: inserta las nuevas, reemplaza las que cambiaron y deja igual el resto.

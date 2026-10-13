@@ -3,12 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { type AppConfig, loadConfig } from '../src/config.js';
-import {
-  castleFacts,
-  createCharacters,
-  loadCastleFacts,
-  systemInstruction,
-} from '../src/ra-test/characters.js';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { createCharacters, loadKnowledge, systemInstruction } from '../src/ra-test/characters.js';
 import type {
   LiveCallbacks,
   LiveClientContent,
@@ -22,7 +21,7 @@ import type {
 
 const KEY = ['made', 'up', 'key'].join('-');
 const CODE = ['open', 'sesame'].join('-');
-const ROUTE = new URL('../../../data/routes/leiria-historica.json', import.meta.url);
+const KNOWLEDGE = new URL('../../../data/ra/artesano/', import.meta.url);
 
 class FakeSession {
   realtime: LiveRealtimeInput[] = [];
@@ -222,7 +221,7 @@ describe('the Gemini session', () => {
       outputAudioTranscription: {},
       realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
     });
-    expect(String(request.config.systemInstruction)).toContain('Castelo de Leiria');
+    expect(String(request.config.systemInstruction)).toContain('## O que veio depois');
   });
 
   it('relays the visitor to Gemini: activityStart, audio as base64 PCM 16 kHz, activityEnd, text', async () => {
@@ -370,35 +369,58 @@ describe('the craftsman', () => {
     expect(createCharacters({ artesanoVoice: 'Orus' }).get('artesano')!.voiceName).toBe('Orus');
   });
 
-  it('gets the castle texts of the curated route in each language', async () => {
-    const facts = await loadCastleFacts(ROUTE);
-    expect(facts.es).toContain('Castillo medieval en lo alto de la colina');
-    expect(facts.en).toContain('A medieval castle on the hilltop');
-    expect(facts.pt).toContain('Castelo medieval no alto da colina');
+  it('has a knowledge sheet in each language, with the later times apart', async () => {
+    const facts = await loadKnowledge(KNOWLEDGE);
+    // The prompts point at these headings by name.
+    expect(facts.es).toContain('## Lo que vino después');
+    expect(facts.en).toContain('## What came later');
+    expect(facts.pt).toContain('## O que veio depois');
+    for (const text of Object.values(facts)) expect(text.length).toBeGreaterThan(1500);
   });
 
-  it('builds the prompt with the context and the rules in the language asked', async () => {
-    const facts = await loadCastleFacts(ROUTE);
+  it('reads the sheet per language and leaves a missing one empty', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rumbo-knowledge-'));
+    try {
+      await writeFile(join(dir, 'es.md'), '  El castillo es antiguo.\n');
+      await writeFile(join(dir, 'en.md'), 'The castle is old.');
+      const facts = await loadKnowledge(pathToFileURL(`${dir}/`));
+      expect(facts).toEqual({ es: 'El castillo es antiguo.', en: 'The castle is old.', pt: '' });
+      expect(systemInstruction(craftsman, 'pt', facts)).toContain('Não tens informação');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('builds the prompt with the context and the rules in the language asked', () => {
+    const facts = {
+      es: 'Hecho en español.',
+      en: 'A fact in English.',
+      pt: 'Um facto em português.',
+    };
     const es = systemInstruction(craftsman, 'es', facts);
     const en = systemInstruction(craftsman, 'en', facts);
     const pt = systemInstruction(craftsman, 'pt', facts);
-    expect(es).toContain('Castillo medieval en lo alto de la colina');
-    expect(es).not.toContain('A medieval castle');
-    expect(en).toContain('A medieval castle on the hilltop');
-    expect(pt).toContain('Castelo medieval no alto da colina');
+    expect(es).toContain('Hecho en español.');
+    expect(es).not.toContain('A fact in English.');
+    expect(en).toContain('A fact in English.');
+    expect(pt).toContain('Um facto em português.');
     expect(es).toMatch(/siglo XIV/);
     expect(es).toMatch(/SOLO con lo que dice el contexto/);
     expect(es).toMatch(/No inventes nunca fechas/);
+    expect(es).toContain('«Lo que vino después»');
     expect(en).toMatch(/14th-century/);
     expect(en).toMatch(/one to three sentences/);
     expect(en).toMatch(/Answer ONLY from the context/);
     expect(en).toMatch(/Never invent dates, names/);
+    expect(en).toContain('"What came later"');
     expect(pt).toMatch(/século XIV/);
     expect(pt).toMatch(/SÓ com o que diz o contexto/);
+    expect(pt).toContain('«O que veio depois»');
   });
 
-  it('says it has no information when the route has no castle', () => {
-    expect(castleFacts({})).toEqual({ es: '', en: '', pt: '' });
-    expect(systemInstruction(craftsman, 'en', castleFacts({}))).toContain('no information');
+  it('says it has no information when there is no sheet', () => {
+    expect(systemInstruction(craftsman, 'en', { es: '', en: '', pt: '' })).toContain(
+      'no information',
+    );
   });
 });

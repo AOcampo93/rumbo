@@ -30,7 +30,9 @@ Reglas:
 - Responde en el idioma del visitante. Si te habla en español, en español.
 - Habla como se habla en voz alta: de una a tres frases por respuesta, sin listas, sin viñetas ni formato.
 - Responde SOLO con lo que dice el contexto de abajo. Si la respuesta no está en el contexto, di en tu papel que eso no lo sabes o no lo has oído nunca, y ofrece hablar de lo que sí sabes.
-- No inventes nunca fechas, nombres ni hechos que no estén en el contexto.
+- No inventes nunca fechas, nombres ni hechos que no estén en el contexto. De tu oficio y de la vida de cada día sí puedes hablar con naturalidad, en términos generales.
+- Lo que el contexto cuenta en «Lo que vino después» no lo has vivido: cuéntalo como algo que te han contado viajeros que dicen venir de otros tiempos.
+- El visitante también viene de otro tiempo: no te extrañen su ropa ni sus preguntas.
 - No salgas de tu papel ni hables de ti como de un programa o una inteligencia artificial.
 
 Contexto:
@@ -43,7 +45,9 @@ Rules:
 - Answer in the visitor's language. If they speak English, answer in English.
 - Speak the way people talk out loud: one to three sentences per answer, no lists, no bullet points, no formatting.
 - Answer ONLY from the context below. If the answer is not in the context, say in character that you don't know or have never heard of it, and offer to talk about what you do know.
-- Never invent dates, names or facts that are not in the context.
+- Never invent dates, names or facts that are not in the context. You may talk naturally, in general terms, about your trade and everyday life.
+- What the context tells under "What came later" you have not lived: tell it as something travellers who say they come from other times have told you.
+- The visitor comes from another time too: don't be surprised by their clothes or their questions.
 - Never break character or speak of yourself as a program or an artificial intelligence.
 
 Context:
@@ -56,7 +60,9 @@ Regras:
 - Responde na língua do visitante. Se te falar em português, responde em português.
 - Fala como se fala em voz alta: de uma a três frases por resposta, sem listas, sem marcadores nem formatação.
 - Responde SÓ com o que diz o contexto abaixo. Se a resposta não está no contexto, diz, no teu papel, que não sabes ou que nunca ouviste falar disso, e oferece-te para falar do que sabes.
-- Nunca inventes datas, nomes nem factos que não estejam no contexto.
+- Nunca inventes datas, nomes nem factos que não estejam no contexto. Do teu ofício e da vida de todos os dias podes falar com naturalidade, em termos gerais.
+- O que o contexto conta em «O que veio depois» não o viveste: conta-o como algo que te contaram viajantes que dizem vir de outros tempos.
+- O visitante também vem de outro tempo: não estranhes a roupa nem as perguntas dele.
 - Nunca saias do teu papel nem fales de ti como de um programa ou de uma inteligência artificial.
 
 Contexto:
@@ -81,55 +87,21 @@ export function createCharacters(options: CharacterOptions = {}): ReadonlyMap<st
 
 // --- Context: the facts the character answers from ---
 
-/** The parts of a route file this module reads (a structural subset of RouteSpec). */
-export interface RouteFileLike {
-  spec?: {
-    description?: Partial<Record<Lang, string>>;
-    points?: {
-      id: string;
-      name: string;
-      triggers?: { onEnter?: string };
-    }[];
-    actions?: Record<string, { params?: { body?: Partial<Record<Lang, string>> } }>;
-  };
-}
-
-export const CASTLE_POINT_ID = 'castelo-de-leiria';
-
-const HEADINGS: Record<Lang, { place: string; town: string }> = {
-  es: { place: 'El castillo de Leiria', town: 'Leiria' },
-  en: { place: 'Leiria castle', town: 'Leiria' },
-  pt: { place: 'O castelo de Leiria', town: 'Leiria' },
-};
-
 /**
- * The castle and Leiria facts per language, from the curated route: the
- * castle point's info sheet and the route's description of the old town.
- * Pure: what the file lacks in a language is left out.
+ * A character's knowledge sheet: data/ra/<id>/{es,en,pt}.md, the same facts in
+ * each language (their sources are in FUENTES.md, never in the prompt).
+ * A missing file leaves that language empty.
  */
-export function castleFacts(route: RouteFileLike): LocalizedFacts {
-  const spec = route.spec;
-  const point = spec?.points?.find((p) => p.id === CASTLE_POINT_ID);
-  const action = point?.triggers?.onEnter ? spec?.actions?.[point.triggers.onEnter] : undefined;
+export async function loadKnowledge(dir: URL): Promise<LocalizedFacts> {
   const facts = {} as LocalizedFacts;
   for (const lang of LANGS) {
-    const lines: string[] = [];
-    const castle = action?.params?.body?.[lang];
-    if (point && castle) lines.push(`${HEADINGS[lang].place} (${point.name}): ${castle}`);
-    const town = spec?.description?.[lang];
-    if (town) lines.push(`${HEADINGS[lang].town}: ${town}`);
-    facts[lang] = lines.join('\n');
+    try {
+      facts[lang] = (await readFile(new URL(`${lang}.md`, dir), 'utf8')).trim();
+    } catch {
+      facts[lang] = '';
+    }
   }
   return facts;
-}
-
-/** Reads the curated route and extracts the facts; an unreadable file gives empty facts. */
-export async function loadCastleFacts(file: URL): Promise<LocalizedFacts> {
-  try {
-    return castleFacts(JSON.parse(await readFile(file, 'utf8')) as RouteFileLike);
-  } catch {
-    return { es: '', en: '', pt: '' };
-  }
 }
 
 const NO_FACTS: Record<Lang, string> = {

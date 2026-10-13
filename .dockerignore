@@ -10,3 +10,7 @@
 docs
 scripts
 **/*.md
+# …except the AR characters' knowledge sheets, which the API reads (FUENTES.md stays out).
+!data/ra/*/es.md
+!data/ra/*/en.md
+!data/ra/*/pt.md

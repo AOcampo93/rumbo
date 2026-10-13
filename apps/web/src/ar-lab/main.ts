@@ -63,6 +63,29 @@ const storage = {
   },
 };
 
+// A shared link may carry the access code and the language (?code=…&lang=en). The code is
+// remembered for the session and taken out of the address bar.
+const linkParams = new URLSearchParams(location.search);
+const LANGS = ['es', 'en', 'pt'] as const;
+const linkLang = linkParams.get('lang');
+const lang = (LANGS as readonly string[]).includes(linkLang ?? '') ? (linkLang as string) : 'es';
+const linkCode = linkParams.get('code')?.trim();
+if (linkCode) {
+  storage.set(linkCode);
+  linkParams.delete('code');
+  const query = linkParams.toString();
+  history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+}
+
+/** The App Clip opens this page in its own browser: hand it the code and the language too. */
+function refreshAppClipLink(): void {
+  const target = new URL(location.pathname, location.origin);
+  if (lang !== 'es') target.searchParams.set('lang', lang);
+  const code = storage.get();
+  if (code) target.searchParams.set('code', code);
+  els.appclip.href = `https://appclip.needle.tools/ar?url=${encodeURIComponent(target.href)}`;
+}
+
 // Taps on the controls must not place the character in AR.
 els.controls.addEventListener('beforexrselect', (e) => e.preventDefault());
 els.captions.addEventListener('beforexrselect', (e) => e.preventDefault());
@@ -116,7 +139,7 @@ void (async () => {
   arSupported = await isArSupported();
   els.ar.hidden = !arSupported;
   if (!arSupported && isIos()) {
-    els.appclip.href = `https://appclip.needle.tools/ar?url=${encodeURIComponent(location.href)}`;
+    refreshAppClipLink();
     els.appclip.hidden = false;
   }
   els.arHint.hidden = arSupported && location.protocol === 'https:';
@@ -211,6 +234,7 @@ const voice = new VoiceClient({
   sink: player,
   onEvent: onVoiceEvent,
   location,
+  lang,
   getCode: () => storage.get() || undefined,
 });
 
@@ -297,6 +321,7 @@ els.textForm.addEventListener('submit', (e) => {
 
 els.codeSave.addEventListener('click', () => {
   storage.set(els.code.value.trim());
+  refreshAppClipLink();
   els.codeRow.hidden = true;
   setStatus('Código guardado. Vuelve a intentarlo.');
 });
