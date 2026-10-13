@@ -130,7 +130,6 @@ export async function loadCharacter(url: string): Promise<Character> {
   const animator = new CharacterAnimator(mixer, gltf.animations, jaw);
   root.traverse((o) => {
     o.frustumCulled = false; // skinned bounds don't follow the animation
-    if ('isMesh' in o) o.castShadow = true;
   });
   animator.setState('idle');
   const size = new Vector3();

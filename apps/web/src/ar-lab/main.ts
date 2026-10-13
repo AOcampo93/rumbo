@@ -26,22 +26,27 @@ const $ = <T extends HTMLElement>(id: string): T => {
 const els = {
   canvas: $<HTMLCanvasElement>('stage'),
   overlay: $('overlay'),
+  top: $('top'),
+  bottom: $('bottom'),
   status: $('status'),
+  statusIcon: $('statusIcon'),
+  statusText: $('statusText'),
+  arGuide: $('arGuide'),
   debug: $('debug'),
   captions: $('captions'),
   subtitles: $('subtitles'),
   userText: $('userText'),
-  controls: $('controls'),
   ar: $<HTMLButtonElement>('ar'),
   appclip: $<HTMLAnchorElement>('appclip'),
   exitAr: $<HTMLButtonElement>('exitAr'),
+  advanced: $<HTMLDetailsElement>('advanced'),
   arHint: $('arHint'),
   demo: $<HTMLButtonElement>('demo'),
   debugToggle: $<HTMLButtonElement>('debugToggle'),
-  codeRow: $('codeRow'),
+  codeRow: $<HTMLFormElement>('codeRow'),
   code: $<HTMLInputElement>('code'),
-  codeSave: $<HTMLButtonElement>('codeSave'),
   talk: $<HTMLButtonElement>('talk'),
+  talkLabel: $('talkLabel'),
   textForm: $<HTMLFormElement>('textForm'),
   text: $<HTMLInputElement>('text'),
 };
@@ -87,15 +92,68 @@ function refreshAppClipLink(): void {
 }
 
 // Taps on the controls must not place the character in AR.
-els.controls.addEventListener('beforexrselect', (e) => e.preventDefault());
-els.captions.addEventListener('beforexrselect', (e) => e.preventDefault());
-
-let statusBase = 'Cargando…';
-function setStatus(text: string, kind: 'ok' | 'error' | 'busy' = 'ok'): void {
-  statusBase = text;
-  els.status.textContent = text;
-  els.status.dataset.kind = kind;
+for (const el of [els.top, els.bottom]) {
+  el.addEventListener('beforexrselect', (e) => e.preventDefault());
 }
+
+// Status: an icon while things go well; words only for an error or a passing message ----------
+
+type UiState =
+  'loading' | 'ready' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'info' | 'error';
+
+// Lucide icons (ISC). Constant markup, never built from user input.
+const ICONS: Record<UiState, string> = {
+  loading: '<svg viewBox="0 0 24 24" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>',
+  connecting: '<svg viewBox="0 0 24 24" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>',
+  ready: '<span class="dot"></span>',
+  listening:
+    '<svg viewBox="0 0 24 24"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>',
+  thinking:
+    '<svg viewBox="0 0 24 24" class="bounce"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  speaking:
+    '<svg viewBox="0 0 24 24" class="bars"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>',
+  info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+  error:
+    '<svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+};
+const STATE_TEXT: Record<Exclude<UiState, 'info' | 'error'>, string> = {
+  loading: 'Cargando…',
+  ready: 'Listo',
+  connecting: 'Conectando…',
+  listening: 'Escuchando…',
+  thinking: 'Pensando…',
+  speaking: 'Hablando',
+};
+/** The words under the microphone, for each state. */
+const TALK_HINT: Record<UiState, string> = {
+  loading: 'Cargando al guía…',
+  ready: 'Mantén pulsado para hablar',
+  connecting: 'Conectando…',
+  listening: 'Te escucho · suelta para enviar',
+  thinking: 'Pensando…',
+  speaking: 'Mantén pulsado para interrumpir',
+  info: 'Mantén pulsado para hablar',
+  error: 'Mantén pulsado para hablar',
+};
+/** A passing message folds back into the icon after this long. */
+const INFO_MS = 4000;
+
+let uiState: UiState = 'loading';
+let statusBase = STATE_TEXT.loading;
+let infoTimer: ReturnType<typeof setTimeout> | undefined;
+
+function setStatus(state: UiState, message?: string): void {
+  clearTimeout(infoTimer);
+  uiState = state;
+  statusBase = message ?? (state === 'info' || state === 'error' ? '' : STATE_TEXT[state]);
+  els.status.dataset.state = state;
+  els.statusIcon.innerHTML = ICONS[state];
+  els.statusText.textContent = statusBase;
+  els.talkLabel.textContent = TALK_HINT[state];
+  els.talk.classList.toggle('speaking', state === 'speaking');
+  if (state === 'info') infoTimer = setTimeout(() => setStatus('ready'), INFO_MS);
+}
+setStatus('loading');
 
 // Audio output and the character -------------------------------------------------------------
 
@@ -107,8 +165,8 @@ let modelBusy = false;
 const player = new PcmPlayer(audioCtx as unknown as AudioContextLike, {
   onState: (state) => {
     animator?.setState(state === 'speaking' ? 'talking' : 'idle');
-    if (state === 'speaking') setStatus('Hablando', 'busy');
-    else if (!talkingHeld) setStatus(stage.mode === 'ar' ? 'En RA' : 'Listo');
+    if (state === 'speaking') setStatus('speaking');
+    else if (!talkingHeld && uiState !== 'error') setStatus('ready');
   },
 });
 const unlockAudio = () => player.unlock().catch(() => undefined);
@@ -129,9 +187,13 @@ const stage = new Stage({
     document.documentElement.dataset.mode = mode;
     els.exitAr.hidden = !ar;
     els.ar.hidden = ar || !arSupported;
-    setStatus(ar ? 'En RA: apunta al suelo y toca para colocar al guía' : 'Listo');
+    els.arGuide.hidden = !ar;
+    els.advanced.open = false;
+    if (uiState !== 'error') setStatus('ready');
   },
-  onPlaced: () => setStatus('En RA'),
+  onPlaced: () => {
+    els.arGuide.hidden = true;
+  },
 });
 stage.resize();
 
@@ -143,8 +205,13 @@ void (async () => {
     refreshAppClipLink();
     els.appclip.hidden = false;
   }
-  els.arHint.hidden = arSupported && location.protocol === 'https:';
-  if (arSupported) els.arHint.textContent = 'La realidad aumentada necesita HTTPS.';
+  if (!arSupported && !isIos()) {
+    els.arHint.textContent = 'Este navegador no tiene realidad aumentada (WebXR).';
+    els.arHint.hidden = false;
+  } else if (arSupported && location.protocol !== 'https:') {
+    els.arHint.textContent = 'La realidad aumentada necesita HTTPS.';
+    els.arHint.hidden = false;
+  }
 })();
 
 function isIos(): boolean {
@@ -157,7 +224,7 @@ function isIos(): boolean {
 els.ar.addEventListener('click', () => {
   void unlockAudio();
   stage.startAr().catch((error: unknown) => {
-    setStatus(`No se pudo iniciar la RA: ${(error as Error).message}`, 'error');
+    setStatus('error', `No se pudo iniciar la RA: ${(error as Error).message}`);
   });
 });
 els.exitAr.addEventListener('click', () => void stage.endAr());
@@ -167,11 +234,13 @@ void loadCharacter(MODEL_URL).then(
     animator = character.animator;
     stage.setCharacter(character.root);
     els.demo.disabled = false;
-    setStatus('Listo');
+    els.talk.disabled = false;
+    setStatus('ready');
   },
   (error: unknown) => {
     console.error(error);
-    setStatus('Error: no se pudo cargar el modelo del guía', 'error');
+    els.talk.disabled = false; // the voice works without the 3D model
+    setStatus('error', 'No se pudo cargar el modelo del guía');
   },
 );
 
@@ -186,7 +255,7 @@ const userText = new TranscriptBuffer();
 const mic = new MicCapture();
 
 function showError(code: VoiceErrorCode): void {
-  setStatus(describeVoiceError(code), 'error');
+  setStatus('error', describeVoiceError(code));
   if (code === 'access_code_required') {
     els.codeRow.hidden = false;
     els.code.focus();
@@ -207,15 +276,16 @@ function onVoiceEvent(event: VoiceEvent): void {
       modelBusy = false;
       modelText.reset();
       userText.reset();
-      if (!player.isSpeaking && !talkingHeld) setStatus(stage.mode === 'ar' ? 'En RA' : 'Listo');
+      if (!player.isSpeaking && !talkingHeld) setStatus('ready');
       break;
     case 'interrupted':
       modelText.reset();
       break;
     case 'ended':
       setStatus(
+        'info',
         event.reason === 'time_limit'
-          ? 'La conversación terminó (límite de tiempo). Pulsa para empezar otra.'
+          ? 'Se acabó el tiempo de la conversación. Pulsa para empezar otra.'
           : 'La conversación terminó.',
       );
       mic.stop();
@@ -225,7 +295,7 @@ function onVoiceEvent(event: VoiceEvent): void {
       showError(event.code);
       break;
     case 'ready':
-      setStatus('Conectado');
+      setStatus('ready');
       break;
   }
 }
@@ -243,7 +313,7 @@ let connecting: Promise<void> | null = null;
 function ensureConnected(): Promise<void> {
   if (voice.connected) return Promise.resolve();
   if (!connecting) {
-    setStatus('Conectando…', 'busy');
+    setStatus('connecting');
     connecting = voice.connect().finally(() => {
       connecting = null;
     });
@@ -256,38 +326,56 @@ function errorCode(error: unknown): VoiceErrorCode {
   return message === 'mic_denied' || message === 'mic_unavailable' ? message : 'connection_lost';
 }
 
+/** RMS of a PCM16 frame, 0..~1: drives the halo around the microphone. */
+function frameLevel(frame: ArrayBuffer): number {
+  const samples = new Int16Array(frame);
+  if (!samples.length) return 0;
+  let sum = 0;
+  for (const s of samples) sum += s * s;
+  return Math.sqrt(sum / samples.length) / 32768;
+}
+let micLevel = 0;
+function showMicLevel(level: number): void {
+  micLevel += (Math.min(1, level * 5) - micLevel) * 0.5;
+  els.talk.style.setProperty('--level', micLevel.toFixed(3));
+}
+
 let talkSeq = 0;
 async function pressTalk(): Promise<void> {
   talkingHeld = true;
   const seq = ++talkSeq;
   els.talk.classList.add('held');
   void unlockAudio();
-  const micReady = mic.start((frame) => voice.sendAudio(frame));
+  const micReady = mic.start((frame) => {
+    voice.sendAudio(frame);
+    if (talkingHeld) showMicLevel(frameLevel(frame));
+  });
   try {
     await Promise.all([ensureConnected(), micReady]);
   } catch (error) {
     // Errors from the server were already shown through onVoiceEvent.
     const code = errorCode(error);
     if (code === 'mic_denied' || code === 'mic_unavailable') showError(code);
-    else if (!els.status.dataset.kind || els.status.dataset.kind !== 'error') showError(code);
+    else if (uiState !== 'error') showError(code);
     releaseTalk();
     return;
   }
   if (!talkingHeld || seq !== talkSeq) return;
   player.interrupt(); // barge-in: stop the model while the user speaks
   voice.startTalk();
-  setStatus('Escuchando…', 'busy');
+  setStatus('listening');
 }
 
 function releaseTalk(): void {
   if (!talkingHeld) return;
   talkingHeld = false;
   els.talk.classList.remove('held');
+  micLevel = 0;
+  els.talk.style.setProperty('--level', '0');
   voice.endTalk();
-  if (voice.connected) setStatus('Pensando…', 'busy');
+  if (voice.connected) setStatus('thinking');
 }
 
-els.talk.disabled = false;
 els.talk.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   els.talk.setPointerCapture(e.pointerId);
@@ -308,30 +396,33 @@ els.textForm.addEventListener('submit', (e) => {
       player.interrupt();
       voice.sendText(text);
       els.text.value = '';
+      els.text.blur();
       els.captions.hidden = false;
       els.userText.textContent = text;
       els.subtitles.textContent = '';
       modelText.reset();
-      setStatus('Pensando…', 'busy');
+      setStatus('thinking');
     },
     (error: unknown) => {
-      if (els.status.dataset.kind !== 'error') showError(errorCode(error));
+      if (uiState !== 'error') showError(errorCode(error));
     },
   );
 });
 
-els.codeSave.addEventListener('click', () => {
+els.codeRow.addEventListener('submit', (e) => {
+  e.preventDefault();
   storage.set(els.code.value.trim());
   refreshAppClipLink();
   els.codeRow.hidden = true;
-  setStatus('Código guardado. Vuelve a intentarlo.');
+  setStatus('info', 'Código guardado. Vuelve a intentarlo.');
 });
 els.code.value = storage.get();
 
-// Debug info ---------------------------------------------------------------------------------
+// Advanced options: test animation and debug info --------------------------------------------
 
 els.debugToggle.addEventListener('click', () => {
   els.debug.hidden = !els.debug.hidden;
+  els.debugToggle.setAttribute('aria-pressed', String(!els.debug.hidden));
 });
 setInterval(() => {
   if (els.debug.hidden) return;

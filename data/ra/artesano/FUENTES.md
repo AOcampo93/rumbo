@@ -16,6 +16,7 @@ Abreviaturas: PTW = https://pt.wikipedia.org/wiki/ · ENW = https://en.wikipedia
 - Fundación 1135, pérdidas y recuperación, fuero de 1142, capilla de la Pena, fuero de 1195 y murallas de Sancho I, Cortes de 1254, D. Dinis rehace la capilla y empieza la torre de homenaje el 8 de mayo de 1324, graneros del siglo XIII: PTW Castelo_de_Leiria (aviso de la propia página: contenido no siempre fuentado)
 - Murallas 1195, torre de 1324 terminada con D. Afonso IV, residencia de D. Dinis e Isabel, primeras Cortes de Afonso III: ENW Leiria_Castle
 - Fuero 1142 y Cortes 1254 (primeras con representantes de villas): PTW Leiria
+- Luchas por el castillo: asalto musulmán de 1137 durante la campaña de Afonso Henriques en Galicia, resistencia y retirada del alcaide Paio Guterres, nueva toma tras Ourique (1139) con muchas bajas y el alcaide prisionero, «2 vezes perdido e 2 vezes reconquistado», vuelta a Afonso Henriques en 1142: PTW Castelo_de_Leiria. La página atribuye el asalto de 1137 al «Califado Almóada», que aún no estaba en la Península: la ficha dice solo «los musulmanes».
 - Torre de 1324 por orden de D. Dinis y residencia real con mejoras en su tiempo: https://www.infopedia.pt/artigos/$castelo-de-leiria (vía resumen de búsqueda; la página dio 403 al abrirla) y https://www.visitportugal.com/de/node/134026
 - Feria anual, carta de 30 de abril de 1295 («la tradición liga»): PTW Leiria
 - Pinhal: Afonso III en el siglo XIII, ampliación por Dinis 1279–1325: PTW Pinhal_de_Leiria

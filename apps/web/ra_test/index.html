@@ -10,11 +10,21 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Rumbo · Prueba de guía en RA</title>
     <style>
+      /* Rumbo tokens (docs/DESIGN.md): Arena, Tinta, Terracota. Icons: Lucide (ISC). */
       :root {
         color-scheme: light;
-        --ink: #1f1b16;
-        --paper: rgba(247, 243, 236, 0.92);
-        --accent: #b4532a;
+        --ink: #16191d;
+        --muted: #5b6470;
+        --accent: #c4491f;
+        --accent-deep: #9e3a18;
+        --success: #1a7f45;
+        --danger: #c0362c;
+        --glass: rgba(255, 255, 255, 0.78);
+        --glass-strong: rgba(255, 255, 255, 0.92);
+        --glass-border: rgba(255, 255, 255, 0.7);
+        --shadow: 0 6px 18px rgba(22, 25, 29, 0.16);
+        --shadow-strong: 0 16px 40px rgba(22, 25, 29, 0.22);
+        --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       }
       * {
         box-sizing: border-box;
@@ -32,6 +42,7 @@
         color: var(--ink);
         background: #e9e4da;
         touch-action: none;
+        -webkit-tap-highlight-color: transparent;
       }
       /* In AR the camera is behind the page (the iOS App Clip draws it under the web view):
          nothing of the page may be opaque but the controls. */
@@ -46,6 +57,45 @@
         height: 100%;
         display: block;
       }
+      svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex: none;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+      .glass {
+        background: var(--glass);
+        -webkit-backdrop-filter: saturate(1.4) blur(18px);
+        backdrop-filter: saturate(1.4) blur(18px);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--shadow);
+      }
+      button,
+      input,
+      summary {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
       #overlay {
         position: fixed;
         inset: 0;
@@ -53,161 +103,596 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+        padding: max(12px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom));
       }
       #overlay > * {
         pointer-events: auto;
       }
-      .card {
-        background: var(--paper);
-        border-radius: 16px;
-        padding: 10px 14px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+
+      /* --- Top bar: status icon on the left, AR and advanced options on the right --- */
+      #top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
       }
+      .actions {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .icon-btn {
+        display: inline-grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 999px;
+        border: 1px solid var(--glass-border);
+        background: var(--glass);
+        -webkit-backdrop-filter: saturate(1.4) blur(18px);
+        backdrop-filter: saturate(1.4) blur(18px);
+        box-shadow: var(--shadow);
+        color: var(--ink);
+        text-decoration: none;
+        padding: 0;
+        transition: transform 120ms var(--ease);
+      }
+      .icon-btn:active {
+        transform: scale(0.94);
+      }
+      .icon-btn.primary {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+      .ar-icon svg {
+        width: 26px;
+        height: 26px;
+      }
+      .ar-icon text {
+        font:
+          700 7.5px system-ui,
+          -apple-system,
+          sans-serif;
+        fill: currentColor;
+        stroke: none;
+        letter-spacing: 0.3px;
+      }
+
       #status {
-        align-self: flex-start;
-        font-size: 15px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 46px;
+        height: 46px;
+        padding: 0 12px;
+        border-radius: 999px;
+        max-width: calc(100vw - 32px - 46px * 2 - 16px);
+        transition: background 200ms var(--ease);
+      }
+      #status .status__icon {
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+      }
+      #statusText {
+        font-size: 14px;
         font-weight: 600;
+        line-height: 1.25;
+        padding: 6px 4px 6px 0;
       }
-      #status[data-kind='error'] {
-        color: #a01818;
+      #status:not([data-state='error'], [data-state='info']) #statusText {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
       }
-      #status[data-kind='busy']::before {
-        content: '';
+      #status:not([data-state='error'], [data-state='info']) {
+        padding: 0;
+        justify-content: center;
+      }
+      #status[data-state='error'] {
+        color: var(--danger);
+        background: var(--glass-strong);
+      }
+      #status[data-state='listening'] {
+        color: var(--accent);
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: var(--success);
+        box-shadow: 0 0 0 4px rgba(26, 127, 69, 0.18);
+      }
+      .spin {
+        animation: spin 900ms linear infinite;
+      }
+      .bounce circle {
+        fill: currentColor;
+        stroke: none;
+        animation: bounce 1s var(--ease) infinite;
+      }
+      .bounce circle:nth-child(2) {
+        animation-delay: 150ms;
+      }
+      .bounce circle:nth-child(3) {
+        animation-delay: 300ms;
+      }
+      .bars path {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: bar 900ms ease-in-out infinite;
+      }
+      .bars path:nth-child(2n) {
+        animation-delay: 200ms;
+      }
+      .bars path:nth-child(3n) {
+        animation-delay: 400ms;
+      }
+
+      /* Advanced options: an accordion behind the sliders button. */
+      #advanced {
+        position: relative;
+      }
+      #advanced > summary {
+        list-style: none;
+      }
+      #advanced > summary::-webkit-details-marker {
+        display: none;
+      }
+      #advanced[open] > summary {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+      .panel {
+        position: absolute;
+        right: 0;
+        top: 54px;
+        width: min(280px, calc(100vw - 32px));
+        border-radius: 20px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: var(--glass-strong);
+        box-shadow: var(--shadow-strong);
+        animation: drop 200ms var(--ease);
+      }
+      .panel__title {
+        margin: 0 0 2px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .row-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 46px;
+        padding: 0 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(22, 25, 29, 0.12);
+        background: #fff;
+        font-weight: 600;
+        text-align: left;
+      }
+      .row-btn[aria-pressed='true'] {
+        border-color: var(--ink);
+      }
+      .row-btn:disabled {
+        opacity: 0.5;
       }
       #debug {
+        margin: 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(22, 25, 29, 0.06);
         font:
-          12px ui-monospace,
+          12px/1.45 ui-monospace,
           monospace;
-        white-space: pre;
-        align-self: flex-start;
-        margin-top: 6px;
+        white-space: pre-wrap;
       }
+      .hint {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--muted);
+      }
+
+      /* AR guidance, centred while nobody is placed yet. */
+      #arGuide {
+        position: fixed;
+        left: 50%;
+        top: 42%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        padding: 10px 16px;
+        border-radius: 999px;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+        width: max-content;
+        max-width: calc(100vw - 48px);
+        pointer-events: none;
+      }
+
+      /* --- Bottom: what is said, the microphone and the text box --- */
       #bottom {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        align-items: stretch;
+        gap: 12px;
+      }
+      #captions {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 34vh;
+        overflow-y: auto;
+      }
+      #userText {
+        align-self: flex-end;
+        margin: 0;
+        max-width: 85%;
+        padding: 8px 12px;
+        border-radius: 16px 16px 4px 16px;
+        background: rgba(22, 25, 29, 0.72);
+        color: #fff;
+        font-size: 14px;
+        line-height: 1.35;
       }
       #subtitles {
-        font-size: 18px;
-        line-height: 1.35;
-        min-height: 0;
+        align-self: flex-start;
+        margin: 0;
+        max-width: 92%;
+        padding: 12px 14px;
+        border-radius: 4px 18px 18px 18px;
+        font-size: 17px;
+        line-height: 1.4;
       }
+      #userText:empty,
       #subtitles:empty {
         display: none;
       }
-      #userText {
-        font-size: 12px;
-        opacity: 0.7;
-        margin-top: 4px;
-      }
-      #userText:empty {
-        display: none;
-      }
-      .row {
+      #codeRow {
         display: flex;
         gap: 8px;
-        flex-wrap: wrap;
+        padding: 8px;
+        border-radius: 999px;
       }
-      button,
-      input {
-        font: inherit;
-        min-height: 48px;
-        border-radius: 14px;
-        border: 1px solid rgba(0, 0, 0, 0.2);
-        padding: 0 16px;
+      #code {
+        flex: 1;
+        min-width: 0;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 999px;
+        background: #fff;
       }
-      button {
+      .pill-btn {
+        min-height: 44px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: 999px;
         background: var(--accent);
         color: #fff;
-        border: 0;
-        font-weight: 600;
-        touch-action: manipulation;
+        font-weight: 700;
       }
-      button.secondary {
-        background: #fff;
-        color: var(--ink);
-        border: 1px solid rgba(0, 0, 0, 0.2);
-      }
-      button:disabled {
-        opacity: 0.5;
+
+      .talk {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
       }
       #talk {
-        flex: 1 1 100%;
-        min-height: 64px;
-        font-size: 18px;
+        --level: 0;
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 80px;
+        height: 80px;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        box-shadow:
+          0 10px 24px rgba(196, 73, 31, 0.38),
+          inset 0 1px 0 rgba(255, 255, 255, 0.25);
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
+        transition:
+          transform 160ms var(--ease),
+          background 160ms var(--ease);
+      }
+      #talk svg {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        z-index: 1;
+      }
+      #talk:disabled {
+        background: #b9b1a4;
+        box-shadow: none;
       }
       #talk.held {
-        background: #1f7a4d;
+        background: var(--accent-deep);
+        transform: scale(1.06);
       }
-      #text,
-      #code {
-        flex: 1 1 140px;
-        min-width: 0;
-        background: #fff;
+      /* Listening: rings ripple out, and a halo follows the voice level. */
+      .halo,
+      .ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        pointer-events: none;
       }
-      a.button {
-        display: inline-flex;
+      .halo {
+        background: rgba(196, 73, 31, 0.28);
+        transform: scale(calc(1 + var(--level) * 0.55));
+        transition: transform 90ms linear;
+        opacity: 0;
+      }
+      .ring {
+        border: 2px solid rgba(196, 73, 31, 0.55);
+        opacity: 0;
+      }
+      #talk.held .halo {
+        opacity: 1;
+      }
+      #talk.held .ring {
+        animation: ripple 1.6s var(--ease) infinite;
+      }
+      #talk.held .ring + .ring {
+        animation-delay: 800ms;
+      }
+      /* The character talks: a calm breathing ring (press to interrupt). */
+      #talk.speaking .ring {
+        border-color: rgba(196, 73, 31, 0.4);
+        animation: breathe 1.8s ease-in-out infinite;
+      }
+      #talkLabel {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+        padding: 5px 12px;
+        border-radius: 999px;
+      }
+
+      #textForm {
+        display: flex;
         align-items: center;
-        min-height: 48px;
-        padding: 0 16px;
-        border-radius: 14px;
+        gap: 6px;
+        padding: 5px 5px 5px 16px;
+        border-radius: 999px;
+      }
+      #text {
+        flex: 1;
+        min-width: 0;
+        min-height: 42px;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        font-size: 16px;
+      }
+      #text::placeholder {
+        color: var(--muted);
+      }
+      #send {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
         background: var(--ink);
         color: #fff;
-        font-weight: 600;
-        text-decoration: none;
       }
-      .hint {
-        font-size: 12px;
-        opacity: 0.75;
-        margin: 0;
+      #send svg {
+        width: 20px;
+        height: 20px;
       }
-      [hidden] {
-        display: none !important;
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.5;
+        }
+        40% {
+          transform: translateY(-3px);
+          opacity: 1;
+        }
+      }
+      @keyframes bar {
+        0%,
+        100% {
+          transform: scaleY(0.45);
+        }
+        50% {
+          transform: scaleY(1);
+        }
+      }
+      @keyframes ripple {
+        from {
+          transform: scale(1);
+          opacity: 0.7;
+        }
+        to {
+          transform: scale(1.9);
+          opacity: 0;
+        }
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: scale(1.04);
+          opacity: 0.35;
+        }
+        50% {
+          transform: scale(1.22);
+          opacity: 0.8;
+        }
+      }
+      @keyframes drop {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 1ms !important;
+        }
       }
     </style>
   </head>
   <body>
     <canvas id="stage"></canvas>
     <div id="overlay">
-      <div id="top">
-        <div id="status" class="card" role="status" aria-live="polite">Cargando…</div>
-        <div id="debug" class="card" hidden></div>
-      </div>
-      <div id="bottom">
-        <div id="captions" class="card" hidden>
-          <div id="subtitles"></div>
-          <div id="userText"></div>
+      <header id="top">
+        <div id="status" class="glass" role="status" aria-live="polite" data-state="loading">
+          <span id="statusIcon" class="status__icon" aria-hidden="true"></span>
+          <span id="statusText">Cargando…</span>
         </div>
-        <div id="controls" class="card">
-          <div class="row">
-            <button id="ar" hidden>Ver en realidad aumentada</button>
-            <a id="appclip" class="button" hidden target="_blank" rel="noopener"
-              >Abrir con realidad aumentada (App Clip)</a
-            >
-            <button id="exitAr" class="secondary" hidden>Salir de RA</button>
-            <button id="demo" class="secondary" disabled>Probar animación</button>
-            <button id="debugToggle" class="secondary">Info</button>
-          </div>
-          <p id="arHint" class="hint" hidden>
-            La realidad aumentada necesita HTTPS (o localhost) y un móvil compatible.
-          </p>
-          <div class="row" id="codeRow" hidden>
-            <input id="code" type="password" placeholder="Código de acceso" autocomplete="off" />
-            <button id="codeSave">Usar código</button>
-          </div>
-          <div class="row" style="margin-top: 8px">
-            <button id="talk" disabled>Mantén pulsado para hablar</button>
-          </div>
-          <form id="textForm" class="row" style="margin-top: 8px">
-            <input id="text" type="text" placeholder="O escribe tu pregunta" autocomplete="off" />
-            <button id="send" type="submit">Enviar</button>
-          </form>
+        <div class="actions">
+          <button
+            id="ar"
+            class="icon-btn primary ar-icon"
+            hidden
+            aria-label="Ver en realidad aumentada"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+              <text x="12" y="14.7" text-anchor="middle">RA</text>
+            </svg>
+          </button>
+          <a
+            id="appclip"
+            class="icon-btn primary ar-icon"
+            hidden
+            target="_blank"
+            rel="noopener"
+            aria-label="Abrir en realidad aumentada (App Clip)"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+              <text x="12" y="14.7" text-anchor="middle">RA</text>
+            </svg>
+          </a>
+          <button id="exitAr" class="icon-btn" hidden aria-label="Salir de la realidad aumentada">
+            <svg viewBox="0 0 24 24">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+          <details id="advanced">
+            <summary class="icon-btn" aria-label="Opciones avanzadas">
+              <svg viewBox="0 0 24 24">
+                <path d="M10 5H3" />
+                <path d="M12 19H3" />
+                <path d="M14 3v4" />
+                <path d="M16 17v4" />
+                <path d="M21 12h-9" />
+                <path d="M21 19h-5" />
+                <path d="M21 5h-7" />
+                <path d="M8 10v4" />
+                <path d="M8 12H3" />
+              </svg>
+            </summary>
+            <div class="panel">
+              <p class="panel__title">Opciones avanzadas</p>
+              <button id="demo" class="row-btn" type="button" disabled>
+                <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3" /></svg>
+                Probar animación
+              </button>
+              <button id="debugToggle" class="row-btn" type="button" aria-pressed="false">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+                Info
+              </button>
+              <pre id="debug" hidden></pre>
+              <p id="arHint" class="hint" hidden></p>
+            </div>
+          </details>
         </div>
-      </div>
+      </header>
+
+      <p id="arGuide" class="glass" hidden>Apunta al suelo y toca para colocar al guía</p>
+
+      <footer id="bottom">
+        <div id="captions" hidden>
+          <p id="userText"></p>
+          <p id="subtitles" class="glass"></p>
+        </div>
+        <form id="codeRow" class="glass" hidden>
+          <input
+            id="code"
+            type="password"
+            placeholder="Código de acceso"
+            autocomplete="off"
+            aria-label="Código de acceso"
+          />
+          <button id="codeSave" class="pill-btn" type="submit">Usar</button>
+        </form>
+        <div class="talk">
+          <button id="talk" type="button" disabled aria-label="Mantén pulsado para hablar">
+            <span class="halo"></span>
+            <span class="ring"></span>
+            <span class="ring"></span>
+            <svg viewBox="0 0 24 24">
+              <path d="M12 19v3" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <rect x="9" y="2" width="6" height="13" rx="3" />
+            </svg>
+          </button>
+          <span id="talkLabel" class="glass">Cargando al guía…</span>
+        </div>
+        <form id="textForm" class="glass">
+          <input
+            id="text"
+            type="text"
+            placeholder="O escribe tu pregunta"
+            autocomplete="off"
+            enterkeyhint="send"
+            aria-label="Escribe tu pregunta"
+          />
+          <button id="send" type="submit" aria-label="Enviar">
+            <svg viewBox="0 0 24 24">
+              <path d="m5 12 7-7 7 7" />
+              <path d="M12 19V5" />
+            </svg>
+          </button>
+        </form>
+      </footer>
     </div>
     <script type="module" src="/src/ar-lab/main.ts"></script>
   </body>

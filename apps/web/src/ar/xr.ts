@@ -1,5 +1,6 @@
 import {
   AmbientLight,
+  CanvasTexture,
   CircleGeometry,
   Color,
   DirectionalLight,
@@ -8,11 +9,9 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
-  PCFShadowMap,
   PlaneGeometry,
   RingGeometry,
   Scene,
-  ShadowMaterial,
   Vector3,
   WebGLRenderer,
   MeshBasicMaterial,
@@ -35,6 +34,9 @@ export async function isArSupported(): Promise<boolean> {
 
 /** How far in front of the user the character appears when no floor point is known (metres). */
 export const PLACE_DISTANCE = 1.5;
+
+/** Width of the soft contact shadow under the character (metres). */
+export const CONTACT_SHADOW_SIZE = 0.9;
 
 /** Y rotation that makes something at `from` face `to` (the model faces +Z). */
 export function facingAngle(from: { x: number; z: number }, to: { x: number; z: number }): number {
@@ -68,6 +70,8 @@ export class Stage {
   private hitSource: XRHitTestSource | null = null;
   private refSpace: XRReferenceSpace | null = null;
   private reticleVisible = false;
+  /** In AR, once the character stands somewhere the reticle hides (a tap still moves him). */
+  private placed = false;
   private lastTime = 0;
   private fpsFrames = 0;
   private fpsStart = 0;
@@ -76,8 +80,7 @@ export class Stage {
   constructor(private readonly options: StageOptions) {
     const renderer = new WebGLRenderer({ canvas: options.canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = PCFShadowMap;
+    // No shadow maps: a fixed contact shadow is far cheaper on phones and never flickers.
     renderer.xr.enabled = true;
     renderer.xr.setReferenceSpaceType('local-floor');
     renderer.setClearColor(0x000000, 0);
@@ -86,26 +89,15 @@ export class Stage {
     this.scene.add(new HemisphereLight(0xffffff, 0x8a8478, 1.6), new AmbientLight(0xffffff, 0.4));
     const sun = new DirectionalLight(0xffffff, 2.2);
     sun.position.set(0.8, 3, 1.2);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = sun.shadow.camera.bottom = -1.5;
-    sun.shadow.camera.right = sun.shadow.camera.top = 1.5;
-    sun.shadow.camera.far = 8;
-    sun.shadow.radius = 4;
     this.anchor.add(sun, sun.target);
 
-    // Neutral floor for the 3D view (hidden in AR) and a shadow catcher that works in both.
+    // Neutral floor for the 3D view (hidden in AR) and a soft contact shadow for both.
     this.floor = new Mesh(
       new CircleGeometry(2.2, 48),
       new MeshStandardMaterial({ color: 0xd8d2c6, roughness: 1 }),
     );
     this.floor.rotation.x = -Math.PI / 2;
-    this.floor.receiveShadow = true;
-    const catcher = new Mesh(new PlaneGeometry(4, 4), new ShadowMaterial({ opacity: 0.28 }));
-    catcher.rotation.x = -Math.PI / 2;
-    catcher.position.y = 0.002;
-    catcher.receiveShadow = true;
-    this.anchor.add(this.floor, catcher);
+    this.anchor.add(this.floor, contactShadow());
     this.scene.add(this.anchor);
 
     this.reticle = new Mesh(
@@ -158,6 +150,7 @@ export class Stage {
     this.hitSource = (await session.requestHitTestSource?.({ space: viewer })) ?? null;
 
     this.mode = 'ar';
+    this.placed = false;
     this.controls.enabled = false;
     this.scene.background = null;
     this.floor.visible = false;
@@ -187,6 +180,8 @@ export class Stage {
     }
     this.anchor.position.copy(target);
     this.anchor.rotation.y = facingAngle(target, cameraPos);
+    this.placed = true;
+    this.reticle.visible = false;
     if (this.character) this.character.visible = true;
     this.options.onPlaced?.();
   }
@@ -230,10 +225,37 @@ export class Stage {
       const hit = frame.getHitTestResults(this.hitSource)[0];
       const pose = hit?.getPose(this.refSpace);
       this.reticleVisible = !!pose;
-      this.reticle.visible = !!pose;
+      this.reticle.visible = !!pose && !this.placed;
       if (pose) this.reticle.matrix.fromArray(pose.transform.matrix);
     }
     if (this.mode === 'fallback') this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+/**
+ * A soft dark ellipse under the feet, from a radial gradient. Drawn after the floor without
+ * writing depth, so it never fights with it (or with the real floor in AR).
+ */
+function contactShadow(): Mesh {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, 'rgba(0,0,0,0.55)');
+    g.addColorStop(0.45, 'rgba(0,0,0,0.3)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+  const shadow = new Mesh(
+    new PlaneGeometry(CONTACT_SHADOW_SIZE, CONTACT_SHADOW_SIZE * 0.75),
+    new MeshBasicMaterial({ map: new CanvasTexture(canvas), transparent: true, depthWrite: false }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.003;
+  shadow.renderOrder = 1;
+  return shadow;
 }
