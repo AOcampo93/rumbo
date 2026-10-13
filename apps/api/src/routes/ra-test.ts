@@ -41,6 +41,8 @@ export interface RaTestOptions {
 
 /** The largest binary frame a client may send (1 s of PCM16 16 kHz is 32 KB). */
 export const MAX_FRAME_BYTES = 64 * 1024;
+/** Checks of the page's setup box per address and minute (they open no Gemini session). */
+export const STATUS_RATE_LIMIT_PER_MINUTE = 20;
 /** Most characters of a typed question. */
 export const MAX_TEXT_CHARS = 500;
 /** Unsent bytes at the client after which it is too slow and the session ends. */
@@ -54,6 +56,11 @@ const QuerySchema = z.object({
   character: z.string().default('artesano'),
   code: z.string().optional(),
 });
+
+const StatusQuerySchema = z.object({ code: z.string().optional() });
+
+/** What the setup box shows about the voice, without opening a session. */
+export type VoiceStatus = 'ok' | 'unavailable' | 'code_required' | 'code_invalid';
 
 type ErrorCode =
   'voice_unavailable' | 'access_code_required' | 'rate_limited' | 'session_limit' | 'internal';
@@ -84,6 +91,11 @@ export const raTestRoutes: FastifyPluginAsync<RaTestOptions> = async (app, optio
   const { config } = options;
   const connectionLimit = app.createRateLimit({
     max: config.raTestRateLimitPerMinute,
+    timeWindow: '1 minute',
+    keyGenerator: clientAddress,
+  });
+  const statusLimit = app.createRateLimit({
+    max: STATUS_RATE_LIMIT_PER_MINUTE,
     timeWindow: '1 minute',
     keyGenerator: clientAddress,
   });
@@ -130,6 +142,20 @@ export const raTestRoutes: FastifyPluginAsync<RaTestOptions> = async (app, optio
       })().catch(() => refuse('internal'));
     },
   );
+
+  // The page's setup box: is the voice on, and is this code right? Free (no Gemini session)
+  // and rate-limited on its own, so the code can't be guessed through here either.
+  app.get('/v1/ra-test/status', async (request, reply) => {
+    const rate = await statusLimit(request);
+    if (!rate.isAllowed && rate.isExceeded) return reply.code(429).send({ code: 'rate_limited' });
+    const { code } = StatusQuerySchema.catch({}).parse(request.query ?? {});
+    let voice: VoiceStatus = 'ok';
+    if (!config.geminiApiKey || !options.connector) voice = 'unavailable';
+    else if (config.raTestAccessCode && !sameSecret(code, config.raTestAccessCode)) {
+      voice = code ? 'code_invalid' : 'code_required';
+    }
+    return reply.header('cache-control', 'no-store').send({ voice });
+  });
 
   function run(
     socket: WebSocket,

@@ -286,6 +286,7 @@ Página de pruebas, fuera de la app: un personaje 3D en realidad aumentada que c
   - `GEMINI_API_KEY` (secreto): sin ella, la voz responde `voice_unavailable`.
   - `RA_TEST_ACCESS_CODE`: el código que piden la página y el WebSocket. Los probadores abren `https://rumbo.arturoocampo.com/ra_test/?code=<código>`; la página lo guarda y lo quita de la barra de direcciones.
   - `GEMINI_LIVE_MODEL` (por defecto `gemini-3.8-live`) y los límites `RA_TEST_*` son opcionales.
+- **Comprobación de la página:** `GET /api/v1/ra-test/status?code=` responde `{ voice: 'ok' | 'unavailable' | 'code_required' | 'code_invalid' }` sin abrir sesión con Gemini (gratis). La usa el recuadro de estado de la página; tiene su propio límite de 20 por minuto y dirección.
 - **Los modelos 3D no están en git.** El repo es público y la licencia de un modelo puede no permitir redistribuirlo. Viven en el volumen persistente `r1nkasrwx0no5zwedufosucn-ra-test-models` de `rumbo-web`, montado en `/usr/share/nginx/html/ra_test/models`, y sobreviven a los despliegues. Para subir o cambiar uno:
 
   ```bash

@@ -19,6 +19,8 @@
         --accent-deep: #9e3a18;
         --success: #1a7f45;
         --danger: #c0362c;
+        --warn: #b07400;
+        --warn-text: #8a5a00;
         --glass: rgba(255, 255, 255, 0.78);
         --glass-strong: rgba(255, 255, 255, 0.92);
         --glass-border: rgba(255, 255, 255, 0.7);
@@ -111,6 +113,7 @@
 
       /* --- Top bar: status icon on the left, AR and advanced options on the right --- */
       #top {
+        position: relative;
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
@@ -120,6 +123,10 @@
         display: flex;
         gap: 8px;
         align-items: flex-start;
+      }
+      /* Inside Needle's App Clip its own button sits in the top-right corner: leave it a slot. */
+      html.appclip .actions {
+        margin-right: 54px;
       }
       .icon-btn {
         display: inline-grid;
@@ -160,6 +167,9 @@
       }
 
       #status {
+        cursor: pointer;
+        font: inherit;
+        color: var(--ink);
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -200,6 +210,21 @@
       }
       #status[data-state='listening'] {
         color: var(--accent);
+      }
+      #status[aria-expanded='true'] {
+        background: var(--glass-strong);
+        box-shadow:
+          0 0 0 3px rgba(22, 25, 29, 0.12),
+          var(--shadow);
+      }
+      .ok-icon {
+        color: var(--success);
+      }
+      .warn-icon {
+        color: var(--warn);
+      }
+      .note-icon {
+        color: var(--muted);
       }
       .dot {
         width: 12px;
@@ -263,6 +288,120 @@
         box-shadow: var(--shadow-strong);
         animation: drop 200ms var(--ease);
       }
+      .panel--left {
+        left: 0;
+        right: auto;
+      }
+      .setup__head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .setup__head h2 {
+        flex: 1;
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.25;
+      }
+      .setup__icon,
+      .check__icon {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        flex: none;
+      }
+      .close-btn {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        margin: -4px -4px -4px 0;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(22, 25, 29, 0.06);
+      }
+      .close-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      .checks {
+        list-style: none;
+        margin: 4px 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .checks li {
+        display: grid;
+        grid-template-columns: 24px 1fr;
+        column-gap: 10px;
+        align-items: start;
+        padding: 8px 4px;
+        border-top: 1px solid rgba(22, 25, 29, 0.08);
+      }
+      .checks li:first-child {
+        border-top: 0;
+      }
+      .check__icon svg {
+        width: 20px;
+        height: 20px;
+      }
+      .check__label {
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .check__detail {
+        grid-column: 2;
+        font-size: 13px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+      .checks li[data-health='warn'] .check__detail {
+        color: var(--warn-text);
+        font-weight: 600;
+      }
+      #codeRow {
+        display: flex;
+        gap: 8px;
+        padding: 6px;
+        border-radius: 999px;
+        background: rgba(22, 25, 29, 0.06);
+      }
+      .panel__label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .lang {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-top: 4px;
+      }
+      .seg {
+        display: inline-flex;
+        padding: 3px;
+        border-radius: 999px;
+        background: rgba(22, 25, 29, 0.08);
+      }
+      .seg button {
+        min-width: 46px;
+        min-height: 36px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .seg button[aria-pressed='true'] {
+        background: #fff;
+        box-shadow: var(--shadow);
+      }
       .panel__title {
         margin: 0 0 2px;
         font-size: 12px;
@@ -298,12 +437,6 @@
           12px/1.45 ui-monospace,
           monospace;
         white-space: pre-wrap;
-      }
-      .hint {
-        margin: 0;
-        font-size: 13px;
-        line-height: 1.4;
-        color: var(--muted);
       }
 
       /* AR guidance, centred while nobody is placed yet. */
@@ -360,12 +493,6 @@
       #userText:empty,
       #subtitles:empty {
         display: none;
-      }
-      #codeRow {
-        display: flex;
-        gap: 8px;
-        padding: 8px;
-        border-radius: 999px;
       }
       #code {
         flex: 1;
@@ -570,9 +697,72 @@
     <canvas id="stage"></canvas>
     <div id="overlay">
       <header id="top">
-        <div id="status" class="glass" role="status" aria-live="polite" data-state="loading">
+        <button
+          id="status"
+          class="glass"
+          type="button"
+          data-state="loading"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          aria-controls="setupBox"
+        >
           <span id="statusIcon" class="status__icon" aria-hidden="true"></span>
           <span id="statusText">Cargando…</span>
+        </button>
+        <span id="live" class="sr-only" role="status" aria-live="polite"></span>
+        <div
+          id="setupBox"
+          class="panel panel--left"
+          role="dialog"
+          aria-labelledby="setupTitle"
+          hidden
+        >
+          <div class="setup__head">
+            <span id="setupIcon" class="setup__icon" aria-hidden="true"></span>
+            <h2 id="setupTitle">Todo listo</h2>
+            <button
+              id="setupClose"
+              class="close-btn"
+              type="button"
+              aria-label="Cerrar"
+              data-t-aria="setup.close"
+            >
+              <svg viewBox="0 0 24 24">
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+          </div>
+          <ul class="checks">
+            <li data-check="model">
+              <span class="check__icon" aria-hidden="true"></span>
+              <span class="check__label"></span><span class="check__detail"></span>
+            </li>
+            <li data-check="voice">
+              <span class="check__icon" aria-hidden="true"></span>
+              <span class="check__label"></span><span class="check__detail"></span>
+            </li>
+            <li data-check="mic">
+              <span class="check__icon" aria-hidden="true"></span>
+              <span class="check__label"></span><span class="check__detail"></span>
+            </li>
+            <li data-check="xr">
+              <span class="check__icon" aria-hidden="true"></span>
+              <span class="check__label"></span><span class="check__detail"></span>
+            </li>
+          </ul>
+          <form id="codeRow" hidden>
+            <input
+              id="code"
+              type="password"
+              placeholder="Código de acceso"
+              autocomplete="off"
+              aria-label="Código de acceso"
+              data-t-aria="codePlaceholder"
+              data-t-placeholder="codePlaceholder"
+            />
+            <button id="codeSave" class="pill-btn" type="submit" data-t="codeUse">Usar</button>
+          </form>
         </div>
         <div class="actions">
           <button
@@ -580,6 +770,7 @@
             class="icon-btn primary ar-icon"
             hidden
             aria-label="Ver en realidad aumentada"
+            data-t-aria="ar"
           >
             <svg viewBox="0 0 24 24">
               <path d="M3 7V5a2 2 0 0 1 2-2h2" />
@@ -596,6 +787,7 @@
             target="_blank"
             rel="noopener"
             aria-label="Abrir en realidad aumentada (App Clip)"
+            data-t-aria="appclip"
           >
             <svg viewBox="0 0 24 24">
               <path d="M3 7V5a2 2 0 0 1 2-2h2" />
@@ -605,14 +797,20 @@
               <text x="12" y="14.7" text-anchor="middle">RA</text>
             </svg>
           </a>
-          <button id="exitAr" class="icon-btn" hidden aria-label="Salir de la realidad aumentada">
+          <button
+            id="exitAr"
+            class="icon-btn"
+            hidden
+            aria-label="Salir de la realidad aumentada"
+            data-t-aria="exitAr"
+          >
             <svg viewBox="0 0 24 24">
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
             </svg>
           </button>
           <details id="advanced">
-            <summary class="icon-btn" aria-label="Opciones avanzadas">
+            <summary class="icon-btn" aria-label="Opciones avanzadas" data-t-aria="advanced">
               <svg viewBox="0 0 24 24">
                 <path d="M10 5H3" />
                 <path d="M12 19H3" />
@@ -626,10 +824,10 @@
               </svg>
             </summary>
             <div class="panel">
-              <p class="panel__title">Opciones avanzadas</p>
+              <p class="panel__title" data-t="advancedTitle">Opciones avanzadas</p>
               <button id="demo" class="row-btn" type="button" disabled>
                 <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3" /></svg>
-                Probar animación
+                <span data-t="demo">Probar animación</span>
               </button>
               <button id="debugToggle" class="row-btn" type="button" aria-pressed="false">
                 <svg viewBox="0 0 24 24">
@@ -637,34 +835,39 @@
                   <path d="M12 16v-4" />
                   <path d="M12 8h.01" />
                 </svg>
-                Info
+                <span data-t="info">Info</span>
               </button>
               <pre id="debug" hidden></pre>
-              <p id="arHint" class="hint" hidden></p>
+              <div class="lang" role="group" aria-labelledby="langLabel">
+                <span id="langLabel" class="panel__label" data-t="language">Idioma</span>
+                <div class="seg">
+                  <button type="button" data-lang="es" lang="es">ES</button>
+                  <button type="button" data-lang="en" lang="en">EN</button>
+                  <button type="button" data-lang="pt" lang="pt">PT</button>
+                </div>
+              </div>
             </div>
           </details>
         </div>
       </header>
 
-      <p id="arGuide" class="glass" hidden>Apunta al suelo y toca para colocar al guía</p>
+      <p id="arGuide" class="glass" hidden data-t="arGuide">
+        Apunta al suelo y toca para colocar al guía
+      </p>
 
       <footer id="bottom">
         <div id="captions" hidden>
           <p id="userText"></p>
           <p id="subtitles" class="glass"></p>
         </div>
-        <form id="codeRow" class="glass" hidden>
-          <input
-            id="code"
-            type="password"
-            placeholder="Código de acceso"
-            autocomplete="off"
-            aria-label="Código de acceso"
-          />
-          <button id="codeSave" class="pill-btn" type="submit">Usar</button>
-        </form>
         <div class="talk">
-          <button id="talk" type="button" disabled aria-label="Mantén pulsado para hablar">
+          <button
+            id="talk"
+            type="button"
+            disabled
+            aria-label="Mantén pulsado para hablar"
+            data-t-aria="talk"
+          >
             <span class="halo"></span>
             <span class="ring"></span>
             <span class="ring"></span>
@@ -684,8 +887,10 @@
             autocomplete="off"
             enterkeyhint="send"
             aria-label="Escribe tu pregunta"
+            data-t-aria="textLabel"
+            data-t-placeholder="textPlaceholder"
           />
-          <button id="send" type="submit" aria-label="Enviar">
+          <button id="send" type="submit" aria-label="Enviar" data-t-aria="send">
             <svg viewBox="0 0 24 24">
               <path d="m5 12 7-7 7 7" />
               <path d="M12 19V5" />

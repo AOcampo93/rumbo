@@ -46,25 +46,67 @@ export function buildVoiceUrl(
   return `${scheme}://${location.host}/api/v1/ra-test/voice?${params.toString()}`;
 }
 
-/** User-facing (Spanish) text for each error. */
-export function describeVoiceError(code: VoiceErrorCode): string {
-  switch (code) {
-    case 'voice_unavailable':
-      return 'La voz no está disponible ahora mismo. Inténtalo más tarde.';
-    case 'access_code_required':
-      return 'Hace falta un código de acceso para hablar con el guía.';
-    case 'rate_limited':
-      return 'Demasiadas peticiones seguidas. Espera un momento.';
-    case 'session_limit':
-      return 'Hay demasiadas conversaciones abiertas. Inténtalo en unos minutos.';
-    case 'connection_lost':
-      return 'Se perdió la conexión. Pulsa de nuevo para reconectar.';
-    case 'mic_denied':
-      return 'No hay permiso para usar el micrófono. Actívalo en los ajustes del navegador.';
-    case 'mic_unavailable':
-      return 'No se pudo abrir el micrófono en este dispositivo.';
-    default:
-      return 'Algo ha fallado en el servidor. Inténtalo de nuevo.';
+type ErrorLang = 'es' | 'en' | 'pt';
+
+const ERROR_TEXT: Record<ErrorLang, Record<VoiceErrorCode, string>> = {
+  es: {
+    voice_unavailable: 'La voz no está disponible ahora mismo. Inténtalo más tarde.',
+    access_code_required: 'Hace falta un código de acceso para hablar con el guía.',
+    rate_limited: 'Demasiadas peticiones seguidas. Espera un momento.',
+    session_limit: 'Hay demasiadas conversaciones abiertas. Inténtalo en unos minutos.',
+    connection_lost: 'Se perdió la conexión. Pulsa de nuevo para reconectar.',
+    mic_denied: 'No hay permiso para usar el micrófono. Actívalo en los ajustes del navegador.',
+    mic_unavailable: 'No se pudo abrir el micrófono en este dispositivo.',
+    internal: 'Algo ha fallado en el servidor. Inténtalo de nuevo.',
+  },
+  en: {
+    voice_unavailable: 'The voice isn’t available right now. Try again later.',
+    access_code_required: 'You need an access code to talk to the guide.',
+    rate_limited: 'Too many requests in a row. Wait a moment.',
+    session_limit: 'Too many conversations are open. Try again in a few minutes.',
+    connection_lost: 'The connection was lost. Press again to reconnect.',
+    mic_denied: 'There’s no permission to use the microphone. Allow it in the browser settings.',
+    mic_unavailable: 'Couldn’t open the microphone on this device.',
+    internal: 'Something went wrong on the server. Try again.',
+  },
+  pt: {
+    voice_unavailable: 'A voz não está disponível agora. Tenta mais tarde.',
+    access_code_required: 'Precisas de um código de acesso para falar com o guia.',
+    rate_limited: 'Demasiados pedidos seguidos. Espera um momento.',
+    session_limit: 'Há demasiadas conversas abertas. Tenta daqui a uns minutos.',
+    connection_lost: 'A ligação perdeu-se. Prime de novo para voltar a ligar.',
+    mic_denied: 'Não há permissão para usar o microfone. Ativa-a nas definições do navegador.',
+    mic_unavailable: 'Não foi possível abrir o microfone neste dispositivo.',
+    internal: 'Algo falhou no servidor. Tenta de novo.',
+  },
+};
+
+/** User-facing text for each error, in the page language (Spanish by default). */
+export function describeVoiceError(code: VoiceErrorCode, lang: ErrorLang = 'es'): string {
+  return ERROR_TEXT[lang][code];
+}
+
+/** What GET /api/v1/ra-test/status says about the voice (it opens no session). */
+export type VoiceStatus = 'ok' | 'unavailable' | 'code_required' | 'code_invalid';
+
+/** Asks the API whether the voice is on and the code is right; 'unknown' on any failure. */
+export async function fetchVoiceStatus(
+  fetchFn: (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }>,
+  code: string | undefined,
+): Promise<VoiceStatus | 'unknown'> {
+  try {
+    const query = code ? `?code=${encodeURIComponent(code)}` : '';
+    const res = await fetchFn(`/api/v1/ra-test/status${query}`);
+    if (!res.ok) return 'unknown';
+    const voice = ((await res.json()) as { voice?: unknown }).voice;
+    return voice === 'ok' ||
+      voice === 'unavailable' ||
+      voice === 'code_required' ||
+      voice === 'code_invalid'
+      ? voice
+      : 'unknown';
+  } catch {
+    return 'unknown';
   }
 }
 
@@ -88,6 +130,8 @@ export class VoiceClient {
       onEvent: (event: VoiceEvent) => void;
       location?: { protocol: string; host: string };
       lang?: string;
+      /** Read on every connect, so the language can change between sessions. */
+      getLang?: () => string;
       character?: string;
       getCode?: () => string | undefined;
     },
@@ -103,7 +147,7 @@ export class VoiceClient {
     this.finished = false;
     const loc = this.options.location ?? { protocol: 'http:', host: 'localhost' };
     const url = buildVoiceUrl(loc, {
-      lang: this.options.lang,
+      lang: this.options.getLang?.() ?? this.options.lang,
       character: this.options.character,
       code: this.options.getCode?.(),
     });

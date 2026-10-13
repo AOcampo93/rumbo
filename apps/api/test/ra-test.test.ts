@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createCharacters, loadKnowledge, systemInstruction } from '../src/ra-test/characters.js';
+import { STATUS_RATE_LIMIT_PER_MINUTE } from '../src/routes/ra-test.js';
 import type {
   LiveCallbacks,
   LiveClientContent,
@@ -204,6 +205,46 @@ describe('the checks before Gemini opens', () => {
     await until(() => first.closed() !== undefined);
     const third = await open(server);
     expect(third.json()).toEqual([{ type: 'ready' }]);
+  });
+});
+
+describe('the status check of the setup box', () => {
+  const status = async (server: FastifyInstance, query = '') => {
+    const res = await server.inject({ method: 'GET', url: `/v1/ra-test/status${query}` });
+    return { status: res.statusCode, body: res.json<Record<string, unknown>>(), res };
+  };
+
+  it('says whether the voice is on and the code is right, without opening a session', async () => {
+    const { connector, sessions } = fakeConnector();
+    const off = await setup({ GEMINI_API_KEY: '' }, connector);
+    expect((await status(off)).body).toEqual({ voice: 'unavailable' });
+    await off.close();
+
+    const server = await setup({ RA_TEST_ACCESS_CODE: CODE }, connector);
+    expect((await status(server)).body).toEqual({ voice: 'code_required' });
+    expect((await status(server, '?code=nope')).body).toEqual({ voice: 'code_invalid' });
+    const ok = await status(server, `?code=${CODE}`);
+    expect(ok.status).toBe(200);
+    expect(ok.body).toEqual({ voice: 'ok' });
+    expect(ok.res.headers['cache-control']).toBe('no-store');
+    expect(sessions).toHaveLength(0);
+  });
+
+  it('needs no code when none is set', async () => {
+    const { connector } = fakeConnector();
+    const server = await setup({}, connector);
+    expect((await status(server)).body).toEqual({ voice: 'ok' });
+  });
+
+  it('is rate-limited per address, apart from the sessions', async () => {
+    const { connector } = fakeConnector();
+    const server = await setup({ RA_TEST_ACCESS_CODE: CODE }, connector);
+    for (let i = 0; i < STATUS_RATE_LIMIT_PER_MINUTE; i++) {
+      expect((await status(server, '?code=nope')).status).toBe(200);
+    }
+    const limited = await status(server, `?code=${CODE}`);
+    expect(limited.status).toBe(429);
+    expect(limited.body).toEqual({ code: 'rate_limited' });
   });
 });
 
