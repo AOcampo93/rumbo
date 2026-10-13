@@ -83,6 +83,20 @@ export interface AppConfig {
   mediaUploadsPerDevicePerDay: number;
   /** The most the stored photos may weigh in total, in MiB: past it, uploads answer 503. */
   mediaMaxTotalMb: number;
+  /** Gemini API key for the AR voice prototype (secret); null: the feature is off. Never logged. */
+  geminiApiKey: string | null;
+  /** The Live (realtime audio) model. */
+  geminiLiveModel: string;
+  /** When set, clients must send it to open a voice session (secret). */
+  raTestAccessCode: string | null;
+  /** A voice session ends after this many seconds. */
+  raTestSessionSeconds: number;
+  /** Voice sessions open at once on the whole server. */
+  raTestMaxSessions: number;
+  /** Voice connections per minute per client address. */
+  raTestRateLimitPerMinute: number;
+  /** Overrides the craftsman's Gemini voice. */
+  raTestVoiceArtesano: string | null;
 }
 
 /** A positive integer from the environment, or the default when unset or invalid. */
@@ -126,6 +140,9 @@ const AI_EFFORTS = ['low', 'medium', 'high', 'none'] as const;
 
 /** The model behind the cards and the suggestions unless AI_MODEL says otherwise. */
 export const DEFAULT_AI_MODEL = 'claude-sonnet-5-5';
+
+/** The Live model behind the AR voice prototype unless GEMINI_LIVE_MODEL says otherwise. */
+export const DEFAULT_GEMINI_LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const port = Number(env.PORT ?? 3000);
@@ -186,5 +203,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     mediaRateLimitPerMinute: positiveInteger(env.MEDIA_RATE_LIMIT_PER_MINUTE, 10),
     mediaUploadsPerDevicePerDay: positiveInteger(env.MEDIA_UPLOADS_PER_DEVICE_PER_DAY, 30),
     mediaMaxTotalMb: positiveNumber(env.MEDIA_MAX_TOTAL_MB, 300),
+    geminiApiKey: env.GEMINI_API_KEY?.trim() || null,
+    geminiLiveModel: env.GEMINI_LIVE_MODEL?.trim() || DEFAULT_GEMINI_LIVE_MODEL,
+    raTestAccessCode: env.RA_TEST_ACCESS_CODE?.trim() || null,
+    raTestSessionSeconds: positiveInteger(env.RA_TEST_SESSION_SECONDS, 180),
+    raTestMaxSessions: positiveInteger(env.RA_TEST_MAX_SESSIONS, 3),
+    raTestRateLimitPerMinute: positiveInteger(env.RA_TEST_RATE_LIMIT_PER_MINUTE, 5),
+    raTestVoiceArtesano: env.RA_TEST_VOICE_ARTESANO?.trim() || null,
   };
 }

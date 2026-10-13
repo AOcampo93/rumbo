@@ -17,6 +17,8 @@
     "@fastify/rate-limit": "^11.2.0",
     "@fastify/swagger": "^9.9.1",
     "@fastify/swagger-ui": "^6.1.1",
+    "@fastify/websocket": "^11.3.4",
+    "@google/genai": "^2.28.0",
     "@rumbo/api-contract": "workspace:*",
     "@rumbo/geo-utils": "workspace:*",
     "@rumbo/route-builder": "workspace:*",

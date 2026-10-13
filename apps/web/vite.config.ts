@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -18,6 +19,11 @@ const APP = /[\\/](apps[\\/]web[\\/]src|packages)[\\/]/;
 /** A chunk belongs to the SDK when it has SDK code and none of ours (virtual modules don't count). */
 const isSdkChunk = (ids: readonly string[]) =>
   ids.some((id) => SDK.test(id)) && !ids.some((id) => APP.test(id));
+
+/** The AR lab page (/ra_test/): three.js and our AR modules, apart from the app shell. */
+const LAB =
+  /[\\/]node_modules[\\/](\.pnpm[\\/])?three[\\/]|[\\/]apps[\\/]web[\\/]src[\\/]ar(-lab)?[\\/]/;
+const isLabChunk = (ids: readonly string[]) => ids.some((id) => LAB.test(id));
 
 export default defineConfig({
   plugins: [
@@ -72,11 +78,26 @@ export default defineConfig({
     // The map SDK's core is one ~1.2 MB chunk, loaded only by screens with a map.
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
+      // Two pages: the app and the AR lab (plain TypeScript, no Vue).
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        ra_test: fileURLToPath(new URL('./ra_test/index.html', import.meta.url)),
+      },
       output: {
+        // The lab's files live in assets/ra_test/, outside the service worker's precache
+        // (it only takes the top level of assets/).
+        entryFileNames: (chunk) =>
+          isLabChunk(chunk.moduleIds)
+            ? 'assets/ra_test/[name]-[hash].js'
+            : 'assets/[name]-[hash].js',
         // The map SDK's hundreds of chunks go to their own folder, so the
         // service worker precaches the app and leaves the SDK for later.
         chunkFileNames: (chunk) =>
-          isSdkChunk(chunk.moduleIds) ? 'assets/sdk/[name]-[hash].js' : 'assets/[name]-[hash].js',
+          isSdkChunk(chunk.moduleIds)
+            ? 'assets/sdk/[name]-[hash].js'
+            : isLabChunk(chunk.moduleIds)
+              ? 'assets/ra_test/[name]-[hash].js'
+              : 'assets/[name]-[hash].js',
         assetFileNames: (asset) =>
           (asset.originalFileNames ?? []).some((name) => SDK.test(name))
             ? 'assets/sdk/[name]-[hash][extname]'
@@ -87,6 +108,7 @@ export default defineConfig({
   server: {
     // Same origin everywhere: in production Traefik routes /api to the API,
     // in development Vite proxies it to the local Fastify server.
-    proxy: { '/api': 'http://localhost:3000' },
+    // ws: the AR lab's voice WebSocket goes through the same proxy.
+    proxy: { '/api': { target: 'http://localhost:3000', ws: true } },
   },
 });

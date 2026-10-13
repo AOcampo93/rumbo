@@ -27,6 +27,7 @@
     "idb-keyval": "^6.3.0",
     "lucide": "^1.52.0",
     "pinia": "^4.0.3",
+    "three": "^0.186.1",
     "vue": "^3.5.43",
     "vue-draggable-plus": "^0.6.1",
     "vue-i18n": "^11.4.13",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@playwright/test": "^1.64.0",
     "@types/node": "^24.19.1",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vue/test-utils": "^2.5.1",
     "fake-indexeddb": "^6.2.5",

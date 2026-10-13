@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Rumbo · Prueba de guía en RA</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1f1b16;
+        --paper: rgba(247, 243, 236, 0.92);
+        --accent: #b4532a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        color: var(--ink);
+        background: #e9e4da;
+        touch-action: none;
+      }
+      canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #overlay {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+      }
+      #overlay > * {
+        pointer-events: auto;
+      }
+      .card {
+        background: var(--paper);
+        border-radius: 16px;
+        padding: 10px 14px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+      }
+      #status {
+        align-self: flex-start;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      #status[data-kind='error'] {
+        color: #a01818;
+      }
+      #status[data-kind='busy']::before {
+        content: '';
+      }
+      #debug {
+        font:
+          12px ui-monospace,
+          monospace;
+        white-space: pre;
+        align-self: flex-start;
+        margin-top: 6px;
+      }
+      #bottom {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #subtitles {
+        font-size: 18px;
+        line-height: 1.35;
+        min-height: 0;
+      }
+      #subtitles:empty {
+        display: none;
+      }
+      #userText {
+        font-size: 12px;
+        opacity: 0.7;
+        margin-top: 4px;
+      }
+      #userText:empty {
+        display: none;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      button,
+      input {
+        font: inherit;
+        min-height: 48px;
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        padding: 0 16px;
+      }
+      button {
+        background: var(--accent);
+        color: #fff;
+        border: 0;
+        font-weight: 600;
+        touch-action: manipulation;
+      }
+      button.secondary {
+        background: #fff;
+        color: var(--ink);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      #talk {
+        flex: 1 1 100%;
+        min-height: 64px;
+        font-size: 18px;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      #talk.held {
+        background: #1f7a4d;
+      }
+      #text,
+      #code {
+        flex: 1 1 140px;
+        min-width: 0;
+        background: #fff;
+      }
+      a.button {
+        display: inline-flex;
+        align-items: center;
+        min-height: 48px;
+        padding: 0 16px;
+        border-radius: 14px;
+        background: var(--ink);
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .hint {
+        font-size: 12px;
+        opacity: 0.75;
+        margin: 0;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <div id="overlay">
+      <div id="top">
+        <div id="status" class="card" role="status" aria-live="polite">Cargando…</div>
+        <div id="debug" class="card" hidden></div>
+      </div>
+      <div id="bottom">
+        <div id="captions" class="card" hidden>
+          <div id="subtitles"></div>
+          <div id="userText"></div>
+        </div>
+        <div id="controls" class="card">
+          <div class="row">
+            <button id="ar" hidden>Ver en realidad aumentada</button>
+            <a id="appclip" class="button" hidden target="_blank" rel="noopener"
+              >Abrir con realidad aumentada (App Clip)</a
+            >
+            <button id="exitAr" class="secondary" hidden>Salir de RA</button>
+            <button id="demo" class="secondary" disabled>Probar animación</button>
+            <button id="debugToggle" class="secondary">Info</button>
+          </div>
+          <p id="arHint" class="hint" hidden>
+            La realidad aumentada necesita HTTPS (o localhost) y un móvil compatible.
+          </p>
+          <div class="row" id="codeRow" hidden>
+            <input id="code" type="password" placeholder="Código de acceso" autocomplete="off" />
+            <button id="codeSave">Usar código</button>
+          </div>
+          <div class="row" style="margin-top: 8px">
+            <button id="talk" disabled>Mantén pulsado para hablar</button>
+          </div>
+          <form id="textForm" class="row" style="margin-top: 8px">
+            <input id="text" type="text" placeholder="O escribe tu pregunta" autocomplete="off" />
+            <button id="send" type="submit">Enviar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/ar-lab/main.ts"></script>
+  </body>
+</html>

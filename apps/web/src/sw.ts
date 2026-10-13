@@ -31,7 +31,7 @@ clientsClaim();
 // Every in-app URL opens the SPA shell, offline too.
 registerRoute(
   new NavigationRoute(createHandlerBoundToURL('/index.html'), {
-    denylist: [/^\/api\//, /^\/version\.json$/],
+    denylist: [/^\/api\//, /^\/version\.json$/, /^\/ra_test/],
   }),
 );
 

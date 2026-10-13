@@ -10,6 +10,8 @@ allowBuilds:
   cpu-features: false
   ssh2: false
   protobufjs: false
+  # The Gemini SDK's only install script is a preinstall that echoes "no-op".
+  '@google/genai': false
 minimumReleaseAgeExclude:
   - '@arcgis/core@5.1.27'
   - vue-router@5.4.0

@@ -19,3 +19,6 @@ playwright-report/
 *.p12
 *.pfx
 secrets/
+
+# AR test characters (phase 2 prototype): kept out of the public repo until their owner decides.
+apps/web/public/ra_test/models/

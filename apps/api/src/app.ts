@@ -2,6 +2,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import websocket from '@fastify/websocket';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   jsonSchemaTransform,
@@ -27,7 +28,10 @@ import { geoRoutes } from './routes/geo.js';
 import { healthRoutes } from './routes/health.js';
 import { mediaRoutes } from './routes/media.js';
 import { moderationRoutes } from './routes/moderation.js';
+import { createCharacters, loadCastleFacts } from './ra-test/characters.js';
+import { createGeminiLiveConnector, type LiveConnector } from './ra-test/live.js';
 import { pushRoutes } from './routes/push.js';
+import { MAX_FRAME_BYTES, raTestRoutes } from './routes/ra-test.js';
 import { reportRoutes } from './routes/reports.js';
 import { routeRoutes } from './routes/routes.js';
 import { runRoutes } from './routes/runs.js';
@@ -46,12 +50,17 @@ export interface AppDeps {
   grounding?: Grounding;
   /** How Web Push messages reach the push services; the real ones unless a test brings its own. */
   pushTransport?: PushTransport;
+  /** Gemini Live for the AR voice prototype; the real one when the config has a key, unless a test brings its own. */
+  liveConnector?: LiveConnector | null;
 }
 
 export interface BuildOptions {
   /** Tests turn logging off; production logs JSON lines (never coordinates). */
   logger?: boolean;
 }
+
+/** The curated route whose castle texts are the voice character's knowledge. */
+const CASTLE_ROUTE = new URL('../../../data/routes/leiria-historica.json', import.meta.url);
 
 /** Public mount point: clients always call /api/v1/…, on the web's own origin. */
 export const PUBLIC_PREFIX = '/api';
@@ -184,6 +193,21 @@ export async function buildApp(
     push,
     admin,
     rateLimitPerMinute: config.pushRateLimitPerMinute,
+  });
+
+  // AR prototype: a character that answers by voice (Gemini Live). Off without a key.
+  await app.register(websocket, { options: { maxPayload: MAX_FRAME_BYTES } });
+  await app.register(raTestRoutes, {
+    config,
+    connector:
+      deps.liveConnector !== undefined
+        ? deps.liveConnector
+        : config.geminiApiKey
+          ? createGeminiLiveConnector(config.geminiApiKey)
+          : null,
+    characters: createCharacters({ artesanoVoice: config.raTestVoiceArtesano }),
+    facts: await loadCastleFacts(CASTLE_ROUTE),
+    allowLocalOrigins: process.env.NODE_ENV !== 'production',
   });
   return app;
 }
