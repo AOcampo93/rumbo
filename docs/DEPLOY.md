@@ -290,7 +290,7 @@ Página de pruebas, fuera de la app: un personaje 3D en realidad aumentada que c
 
   ```bash
   scp artesano.glb vmi:/tmp/rumbo-artesano.glb
-  ssh vmi 'c=$(docker ps -q --filter label=coolify.applicationId=20 | head -1); docker cp /tmp/rumbo-artesano.glb $c:/usr/share/nginx/html/ra_test/models/artesano.glb && docker exec $c chmod 644 /usr/share/nginx/html/ra_test/models/artesano.glb; rm /tmp/rumbo-artesano.glb'
+  ssh vmi 'c=$(docker ps -q --filter name=r1nkasrwx0no5zwedufosucn | head -1); docker cp /tmp/rumbo-artesano.glb $c:/usr/share/nginx/html/ra_test/models/artesano.glb && docker exec $c chmod 644 /usr/share/nginx/html/ra_test/models/artesano.glb; rm /tmp/rumbo-artesano.glb'
   ```
 
 - **Lo que sabe el personaje:** `data/ra/<personaje>/{es,en,pt}.md`, con sus fuentes en `FUENTES.md` (que no entra en la imagen). La API los lee al arrancar: tras cambiarlos hay que desplegar la API.

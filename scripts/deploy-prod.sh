@@ -83,8 +83,10 @@ plan "Web" "$WEB_SERVES" "$DEPLOY_WEB"
 
 # The Coolify API is reached through an SSH tunnel to the server: one already
 # listening is reused, and one opened here is closed on exit.
-coolify() { # $1 = path under /api/v1
-  curl -fsS --max-time 30 -H @"$AUTH_HEADER" "http://127.0.0.1:$COOLIFY_PORT/api/v1$1"
+coolify() { # $1 = path under /api/v1, then extra curl options (e.g. -X POST)
+  local path=$1
+  shift
+  curl -fsS --max-time 30 -H @"$AUTH_HEADER" "$@" "http://127.0.0.1:$COOLIFY_PORT/api/v1$path"
 }
 TUNNEL=""
 close_tunnel() {
@@ -122,7 +124,8 @@ fi
 # Coolify builds the head of `production`, which is now $SHA.
 deploy() { # $1 = label, $2 = Coolify app uuid; prints the deployment uuid
   local id
-  id=$(coolify "/deploy?uuid=$2" | sed -nE 's/.*"deployment_uuid":"([a-z0-9]+)".*/\1/p') || true
+  # POST since Coolify 4.4 (a GET answers 405).
+  id=$(coolify "/deploy?uuid=$2" -X POST | sed -nE 's/.*"deployment_uuid":"([a-z0-9]+)".*/\1/p') || true
   [[ -n "$id" ]] || fail "Coolify didn't queue the $1 deploy."
   echo "$id"
 }
