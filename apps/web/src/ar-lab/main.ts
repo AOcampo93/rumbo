@@ -12,6 +12,7 @@ import {
   type VoiceEvent,
 } from '../ar/voice.ts';
 import { isArSupported, Stage } from '../ar/xr.ts';
+import { AR_CODE_KEY, appClipUrl, arPageUrl, isIos, readArCode, saveArCode } from '../ar/access.ts';
 import { tapHaptic } from './haptics.ts';
 import {
   type Health,
@@ -31,7 +32,8 @@ import {
 // optional voice chat. Plain TypeScript + DOM on purpose (no Vue) to keep the page light.
 
 const MODEL_URL = '/ra_test/models/artesano.glb';
-const CODE_KEY = 'ra_test_access_code';
+/** The characters this page knows (the API holds their voice and knowledge). */
+const CHARACTERS = ['artesano'] as const;
 const LANG_KEY = 'ra_test_lang';
 const APP_SETTINGS_KEY = 'rumbo.settings';
 
@@ -62,6 +64,7 @@ const els = {
   appclip: $<HTMLAnchorElement>('appclip'),
   exitAr: $<HTMLButtonElement>('exitAr'),
   advanced: $<HTMLDetailsElement>('advanced'),
+  back: $<HTMLButtonElement>('back'),
   demo: $<HTMLButtonElement>('demo'),
   debugToggle: $<HTMLButtonElement>('debugToggle'),
   codeRow: $<HTMLFormElement>('codeRow'),
@@ -98,19 +101,27 @@ const session = store('session');
 const local = store('local');
 
 // A shared link may carry the access code and the language (?code=…&lang=en). The code is
-// remembered for the session and taken out of the address bar.
+// kept in this site's localStorage, shared with the app, and taken out of the address bar.
 const linkParams = new URLSearchParams(location.search);
-const linkCode = linkParams.get('code')?.trim();
+const linkCode = (linkParams.get('code') ?? linkParams.get('ra_code'))?.trim();
 if (linkCode) {
-  session.set(CODE_KEY, linkCode);
+  saveArCode(linkCode);
   linkParams.delete('code');
+  linkParams.delete('ra_code');
   replaceQuery();
+} else if (!readArCode() && session.get(AR_CODE_KEY)) {
+  saveArCode(session.get(AR_CODE_KEY)); // kept per tab before
 }
+const character = (CHARACTERS as readonly string[]).includes(linkParams.get('character') ?? '')
+  ? (linkParams.get('character') as string)
+  : 'artesano';
+/** Opened from a route's arrival: offer the way back to it. */
+const fromRoute = linkParams.get('from') === 'route';
 function replaceQuery(): void {
   const query = linkParams.toString();
   history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
 }
-const accessCode = (): string | undefined => session.get(CODE_KEY) || undefined;
+const accessCode = (): string | undefined => readArCode() || undefined;
 
 let lang: Lang = resolveLang({
   linkLang: linkParams.get('lang'),
@@ -122,12 +133,21 @@ let t: Strings = STRINGS[lang];
 
 /** The App Clip opens this page in its own browser: hand it the code and the language too. */
 function refreshAppClipLink(): void {
-  const target = new URL(location.pathname, location.origin);
-  if (lang !== 'es') target.searchParams.set('lang', lang);
   const code = accessCode();
-  if (code) target.searchParams.set('code', code);
-  els.appclip.href = `https://appclip.needle.tools/ar?url=${encodeURIComponent(target.href)}`;
+  els.appclip.href = appClipUrl(
+    arPageUrl(location.origin, { character, lang, fromRoute, ...(code ? { code } : {}) }),
+  );
 }
+
+// Back to the route: this page was opened in a window of its own, so closing it shows the
+// run again; if the browser won't close it, go to the app (it picks the run up).
+els.back.hidden = !fromRoute;
+els.back.addEventListener('click', () => {
+  voice.close();
+  mic.stop();
+  window.close();
+  setTimeout(() => location.assign('/'), 300);
+});
 
 // Taps on the controls must not place the character in AR.
 for (const el of [els.top, els.bottom]) {
@@ -365,7 +385,7 @@ stage.resize();
 let arSupported = false;
 void (async () => {
   arSupported = await isArSupported();
-  const ios = isIos();
+  const ios = isIos(navigator);
   els.ar.hidden = !arSupported;
   // Safari has no WebXR, so an iPhone that has it is inside Needle's App Clip.
   document.documentElement.classList.toggle('appclip', arSupported && ios);
@@ -383,13 +403,6 @@ void (async () => {
         : 'none';
   renderSetup();
 })();
-
-function isIos(): boolean {
-  return (
-    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
-}
 
 els.ar.addEventListener('click', () => {
   void unlockAudio();
@@ -485,6 +498,7 @@ const voice = new VoiceClient({
   onEvent: onVoiceEvent,
   location,
   getLang: () => lang,
+  character,
   getCode: accessCode,
 });
 
@@ -595,7 +609,7 @@ els.textForm.addEventListener('submit', (e) => {
 
 els.codeRow.addEventListener('submit', (e) => {
   e.preventDefault();
-  session.set(CODE_KEY, els.code.value.trim());
+  saveArCode(els.code.value);
   refreshAppClipLink();
   setStatus('info', t.codeSaved);
   void checkVoice();

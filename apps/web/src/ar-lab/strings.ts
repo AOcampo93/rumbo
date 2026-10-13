@@ -26,6 +26,7 @@ export interface Strings {
   ar: string;
   appclip: string;
   exitAr: string;
+  back: string;
   advanced: string;
   advancedTitle: string;
   demo: string;
@@ -79,6 +80,7 @@ export const STRINGS: Record<Lang, Strings> = {
     ar: 'Ver en realidad aumentada',
     appclip: 'Abrir en realidad aumentada (App Clip)',
     exitAr: 'Salir de la realidad aumentada',
+    back: 'Volver a la ruta',
     advanced: 'Opciones avanzadas',
     advancedTitle: 'Opciones avanzadas',
     demo: 'Probar animación',
@@ -154,6 +156,7 @@ export const STRINGS: Record<Lang, Strings> = {
     ar: 'View in augmented reality',
     appclip: 'Open in augmented reality (App Clip)',
     exitAr: 'Leave augmented reality',
+    back: 'Back to the route',
     advanced: 'Advanced options',
     advancedTitle: 'Advanced options',
     demo: 'Test animation',
@@ -229,6 +232,7 @@ export const STRINGS: Record<Lang, Strings> = {
     ar: 'Ver em realidade aumentada',
     appclip: 'Abrir em realidade aumentada (App Clip)',
     exitAr: 'Sair da realidade aumentada',
+    back: 'Voltar à rota',
     advanced: 'Opções avançadas',
     advancedTitle: 'Opções avançadas',
     demo: 'Testar animação',

@@ -1,6 +1,8 @@
 import {
   ACTION_LIMITS,
   type ActionDef,
+  type ArCharacter,
+  ArCharacterParamsSchema,
   type Locale,
   type LocalizedText,
   QuizParamsSchema,
@@ -39,12 +41,14 @@ export type ArrivalChoice =
   /** A web page, opened in the browser after the user confirms. */
   | { type: 'link'; url: string; label: string }
   /** Only a short notice ("Llegaste a …"): no sheet, the route goes on. */
-  | { type: 'check' };
+  | { type: 'check' }
+  /** Version 2 prototype: a 3D guide in augmented reality who answers by voice. */
+  | { type: 'ar'; character: ArCharacter };
 
 export type ArrivalType = ArrivalChoice['type'];
 
-/** In the order the creator lists them. */
-export const ARRIVAL_TYPES = ['card', 'basic', 'quiz', 'video', 'link', 'check'] as const;
+/** In the order the creator lists them. `ar` is only offered to testers (version 2 prototype). */
+export const ARRIVAL_TYPES = ['card', 'basic', 'quiz', 'video', 'link', 'check', 'ar'] as const;
 
 /**
  * The i18n key of the notice a `check` shows. The toast handler gives it the
@@ -77,6 +81,8 @@ export function emptyArrival(type: ArrivalType): ArrivalChoice {
       return { type, youtubeId: '' };
     case 'link':
       return { type, url: '', label: '' };
+    case 'ar':
+      return { type, character: 'artesano' };
     default:
       return { type };
   }
@@ -167,7 +173,7 @@ export function validateArrival(arrival: ArrivalChoice | undefined): ArrivalIssu
 }
 
 /**
- * The action a quiz, video, link or check becomes; null for `card` and
+ * The action a quiz, video, link, check or AR guide becomes; null for `card` and
  * `basic`, which show a sheet of the place itself (buildRouteSpec makes it).
  * Texts are cleaned; the arrival has to pass validateArrival first.
  */
@@ -200,6 +206,8 @@ export function ownArrivalAction(arrival: ArrivalChoice): ActionDef | null {
       };
     case 'check':
       return { type: 'toast', params: { messageKey: CHECK_MESSAGE_KEY } };
+    case 'ar':
+      return { type: 'ar_character', params: { character: arrival.character } };
     default:
       return null;
   }
@@ -250,6 +258,10 @@ export function arrivalFromAction(
       return toast.success && toast.data.messageKey === CHECK_MESSAGE_KEY
         ? { type: 'check' }
         : undefined;
+    }
+    case 'ar_character': {
+      const ar = ArCharacterParamsSchema.safeParse(params);
+      return ar.success ? { type: 'ar', character: ar.data.character } : undefined;
     }
     default:
       return undefined;

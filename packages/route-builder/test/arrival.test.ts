@@ -74,7 +74,8 @@ const LINK: ArrivalChoice = {
   label: 'Agenda de Leiria',
 };
 const CHECK: ArrivalChoice = { type: 'check' };
-const ALL: ArrivalChoice[] = [{ type: 'card' }, { type: 'basic' }, QUIZ, VIDEO, LINK, CHECK];
+const AR: ArrivalChoice = { type: 'ar', character: 'artesano' };
+const ALL: ArrivalChoice[] = [{ type: 'card' }, { type: 'basic' }, QUIZ, VIDEO, LINK, CHECK, AR];
 
 describe('parseYoutubeId', () => {
   const ID = 'dQw4w9WgXcQ';
@@ -140,6 +141,7 @@ describe('emptyArrival and arrivalTypeOf', () => {
       { type: 'video', youtubeId: '' },
       { type: 'link', url: '', label: '' },
       { type: 'check' },
+      { type: 'ar', character: 'artesano' },
     ]);
     expect(ARRIVAL_TYPES.map((type) => validateArrival(emptyArrival(type)).length > 0)).toEqual([
       false,
@@ -147,6 +149,7 @@ describe('emptyArrival and arrivalTypeOf', () => {
       true,
       true,
       true,
+      false,
       false,
     ]);
   });
@@ -283,6 +286,13 @@ describe('buildRouteSpec: what each arrival becomes', () => {
     });
   });
 
+  it('an AR guide becomes ar_character with its character', () => {
+    expect(actionOf(build(draft([AR])).spec, 0)).toEqual({
+      type: 'ar_character',
+      params: { character: 'artesano' },
+    });
+  });
+
   it('"basic" is the sheet with the name and the address, without the card', () => {
     const basic = places(2, [{ type: 'basic' }]).map((place) => ({
       ...place,
@@ -359,6 +369,7 @@ describe('buildRouteSpec: what each arrival becomes', () => {
       'video',
       'redirect',
       'toast',
+      'ar_character',
     ]);
   });
 
@@ -406,7 +417,7 @@ describe('draftFromSpec: what an arrival reads back as', () => {
     expect(validateRouteSpec(again).ok).toBe(true);
   });
 
-  it('brings the quiz, the video, the link and the check back as the choices', () => {
+  it('brings the quiz, the video, the link, the check and the AR guide back as the choices', () => {
     const { spec } = build(draft(ALL));
     const result = draftFromSpec(spec);
     // A card and a basic sheet can't be told apart in a saved route: both read back as the default.
@@ -417,6 +428,7 @@ describe('draftFromSpec: what an arrival reads back as', () => {
       VIDEO,
       LINK,
       CHECK,
+      AR,
     ]);
     expect(result.places[0]).not.toHaveProperty('arrival');
   });

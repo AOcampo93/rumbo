@@ -1,4 +1,6 @@
 import {
+  type ArCharacterParams,
+  ArCharacterParamsSchema,
   type QuizParams,
   QuizParamsSchema,
   type RedirectParams,
@@ -72,6 +74,24 @@ export const redirectHandler: ActionHandler<RedirectParams> = {
     if (!confirmed || context.signal.aborted) return { status: 'dismissed' };
     context.ui.openExternal(params.url);
     return { status: 'done' };
+  },
+};
+
+/**
+ * A 3D guide in augmented reality who answers by voice (version 2 prototype). The view
+ * explains the activity, opens the AR page and resolves when the visitor is back: done once
+ * they started it, dismissed when they chose "not now".
+ */
+export const arCharacterHandler: ActionHandler<ArCharacterParams> = {
+  type: 'ar_character',
+  paramsSchema: ArCharacterParamsSchema,
+  async run(params, context) {
+    const outcome = await context.ui.present<ViewOutcome>(
+      'ar_character',
+      { ...pointProps(context), ...params },
+      { variant: 'sheet', signal: context.signal },
+    );
+    return fromOutcome(outcome);
   },
 };
 

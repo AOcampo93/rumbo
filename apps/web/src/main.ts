@@ -11,9 +11,15 @@ import '@fontsource/inter/latin-700.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import App from './App.vue';
+import { adoptArCodeFromUrl } from './ar/access.ts';
 import { applyLocale, detectLocale, i18n } from './i18n/index.ts';
 import { createAppRouter } from './router/index.ts';
 import { useSettingsStore } from './stores/settings.ts';
+
+// A tester's link (?ra_code=…) unlocks the AR guide prototype on this device; the code
+// leaves the address before the router reads it.
+const withoutCode = adoptArCodeFromUrl(location.href);
+if (withoutCode !== null) history.replaceState(history.state, '', withoutCode);
 
 const app = createApp(App);
 const pinia = createPinia();

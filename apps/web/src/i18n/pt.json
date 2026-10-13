@@ -663,6 +663,10 @@
         "check": {
           "title": "Só um aviso",
           "help": "Um breve «Chegaste a…» e a rota segue, sem ficha."
+        },
+        "ar": {
+          "title": "Personagem em RA (teste)",
+          "help": "O artesão de Leiria aparece em realidade aumentada e responde por voz. Só para testes."
         }
       },
       "quiz": {
@@ -708,14 +712,16 @@
         "video": "Vídeo do YouTube",
         "videoTitled": "Vídeo do YouTube: «{title}»",
         "link": "Link: {label} · {host}",
-        "check": "Só um aviso ao chegar"
+        "check": "Só um aviso ao chegar",
+        "ar": "Personagem em realidade aumentada"
       },
       "mix": {
         "basic": "{n} com nome e morada | {n} com nome e morada",
         "quiz": "{n} pergunta própria | {n} perguntas próprias",
         "video": "{n} vídeo | {n} vídeos",
         "link": "{n} link | {n} links",
-        "check": "{n} aviso | {n} avisos"
+        "check": "{n} aviso | {n} avisos",
+        "ar": "{n} personagem em RA | {n} personagens em RA"
       }
     },
     "review": {
@@ -893,5 +899,36 @@
   "time": {
     "today": "hoje, {time}",
     "date": "{date}, {time}"
+  },
+  "arCharacter": {
+    "title": "Fala com o artesão",
+    "lead": "Um artesão da Leiria do século XIV aparece ao teu lado em realidade aumentada e responde-te em voz alta.",
+    "how": "Como funciona",
+    "steps": {
+      "camera": {
+        "title": "A câmara abre-se",
+        "text": "Procura um sítio livre e aponta para o chão até veres um anel branco."
+      },
+      "place": {
+        "title": "Toca para o colocar",
+        "text": "O artesão aparece onde tocaste. Se voltares a tocar no chão, ele muda-se para lá."
+      },
+      "talk": {
+        "title": "Mantém premido para falar",
+        "text": "Pergunta-lhe pelo castelo, pelo ofício ou pela Leiria do tempo dele. Solta e ele responde."
+      },
+      "back": {
+        "title": "Volta à rota",
+        "text": "Quando acabares, fecha a realidade aumentada e toca em «Continuar rota»."
+      }
+    },
+    "iphone": "No iPhone abre-se com uma App Clip: não precisas de instalar nada. Para voltar, fecha-a deslizando para cima.",
+    "tips": "Aumenta o volume ou usa auscultadores. Cada conversa dura até 3 minutos.",
+    "start": "Começar",
+    "later": "Agora não",
+    "opened": "O artesão espera-te noutra janela",
+    "openedText": "Quando acabares, volta aqui e segue a rota.",
+    "openedAppClip": "Quando acabares, fecha a App Clip e segue a rota aqui.",
+    "reopen": "Abrir de novo"
   }
 }

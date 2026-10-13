@@ -7,6 +7,7 @@ import {
   CircleQuestionMark,
   ExternalLink,
   FileText,
+  PersonStanding,
   Plus,
   Sparkles,
   TriangleAlert,
@@ -26,6 +27,7 @@ import {
 import { type PointCategory, USER_QUIZ_POINTS } from '@rumbo/route-spec';
 import { type Component, computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { hasArAccess } from '../ar/access.ts';
 import AppButton from './AppButton.vue';
 import ChipGroup from './ChipGroup.vue';
 import { CATEGORY_ICONS } from './PlaceListItem.vue';
@@ -71,6 +73,7 @@ const ARRIVAL_ICONS: Record<ArrivalType, Component> = {
   video: Video,
   link: ExternalLink,
   check: BellRing,
+  ar: PersonStanding,
 };
 
 const model = defineModel<PlaceEditorValue>({ required: true });
@@ -130,6 +133,10 @@ const required = computed({
 // ---------------------------------------------------------------- Al llegar
 
 const arrival = computed(() => model.value.arrival);
+/** The AR guide (version 2 prototype) only shows on testers' devices, or where it is already set. */
+const arrivalTypes = computed(() =>
+  ARRIVAL_TYPES.filter((type) => type !== 'ar' || hasArAccess() || arrival.value.type === 'ar'),
+);
 const quiz = computed<QuizChoice | null>(() =>
   arrival.value.type === 'quiz' ? arrival.value : null,
 );
@@ -396,7 +403,7 @@ onBeforeUnmount(() => observer?.disconnect());
           <div class="arrival__body">
             <div class="arrival__list">
               <label
-                v-for="type in ARRIVAL_TYPES"
+                v-for="type in arrivalTypes"
                 :key="type"
                 class="choice"
                 :class="{ 'is-on': arrival.type === type }"

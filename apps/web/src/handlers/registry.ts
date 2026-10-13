@@ -10,6 +10,7 @@ const VIEWS: Record<string, () => Promise<{ default: Component }>> = {
   video: () => import('./VideoSheet.vue'),
   decision: () => import('./DecisionSheet.vue'),
   coming_soon: () => import('./ComingSoonView.vue'),
+  ar_character: () => import('./ArCharacterSheet.vue'),
   error: () => import('./ErrorSheet.vue'),
 };
 

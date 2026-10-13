@@ -118,6 +118,16 @@ export const ToastParamsSchema = z
     message: 'Give either messageKey or message',
   });
 
+/** The characters the AR guide can bring; the API holds each one's voice and knowledge. */
+export const AR_CHARACTERS = ['artesano'] as const;
+export type ArCharacter = (typeof AR_CHARACTERS)[number];
+
+/**
+ * `ar_character` (version 2 prototype): a 3D guide in augmented reality who answers by
+ * voice. The arrival sheet explains how it works and opens the AR page (/ra_test/).
+ */
+export const ArCharacterParamsSchema = z.strictObject({ character: z.enum(AR_CHARACTERS) });
+
 export type InfoSheetParams = z.infer<typeof InfoSheetParamsSchema>;
 export type AiTemplateParams = z.infer<typeof AiTemplateParamsSchema>;
 export type DecisionParams = z.infer<typeof DecisionParamsSchema>;
@@ -125,3 +135,4 @@ export type QuizParams = z.infer<typeof QuizParamsSchema>;
 export type VideoParams = z.infer<typeof VideoParamsSchema>;
 export type RedirectParams = z.infer<typeof RedirectParamsSchema>;
 export type ToastParams = z.infer<typeof ToastParamsSchema>;
+export type ArCharacterParams = z.infer<typeof ArCharacterParamsSchema>;

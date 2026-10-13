@@ -170,7 +170,7 @@ describe('checkUserRoute: refuses what the creator never makes', () => {
       {
         path: 'spec.actions.content_se-de-leiria.type',
         message:
-          'User routes only use info_sheet, ai_template, quiz, video, redirect, toast and decision',
+          'User routes only use info_sheet, ai_template, quiz, video, redirect, toast, decision and ar_character',
       },
     ]);
   });
@@ -512,6 +512,24 @@ describe('checkUserRoute: what a place shows on arrival', () => {
       expect(checkUserRoute(bundle)).toHaveLength(1);
       delete paramsOf(bundle)['label'];
       expect(checkUserRoute(bundle)).toHaveLength(1);
+    });
+  });
+
+  describe('ar_character', () => {
+    it('takes the AR guide with a character the API knows, and nothing else', () => {
+      const bundle = withArrivals({ type: 'ar', character: 'artesano' });
+      expect(validateRouteBundle(bundle).errors).toEqual([]);
+      expect(checkUserRoute(bundle)).toEqual([]);
+      expect(bundle.spec.actions[FIRST]).toEqual({
+        type: 'ar_character',
+        params: { character: 'artesano' },
+      });
+      const other = withArrivals({ type: 'ar', character: 'artesano' });
+      Object.assign(paramsOf(other), { character: 'pirata' });
+      expect(paths(other)).toEqual(['spec.actions.content_castelo-de-leiria.params.character']);
+      const extra = withArrivals({ type: 'ar', character: 'artesano' });
+      Object.assign(paramsOf(extra), { model: 'https://example.com/x.glb' });
+      expect(paths(extra)).toEqual(['spec.actions.content_castelo-de-leiria.params']);
     });
   });
 

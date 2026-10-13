@@ -1,6 +1,7 @@
 export { createEventSystem } from './dispatcher.ts';
 export {
   aiTemplateHandler,
+  arCharacterHandler,
   BUILTIN_ACTION_TYPES,
   CARD_QUIZ_POINTS,
   builtinHandlers,

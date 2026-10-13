@@ -1,11 +1,23 @@
 import { formatPath, type Issue, type RouteSpec } from '@rumbo/route-spec';
 import type { AnyActionHandler } from '../types.ts';
 import { aiTemplateHandler, infoSheetHandler } from './cards.ts';
-import { quizHandler, redirectHandler, threeSceneHandler, videoHandler } from './media.ts';
+import {
+  arCharacterHandler,
+  quizHandler,
+  redirectHandler,
+  threeSceneHandler,
+  videoHandler,
+} from './media.ts';
 import { decisionHandler, toastHandler } from './notices.ts';
 
 export { aiTemplateHandler, CARD_QUIZ_POINTS, infoSheetHandler } from './cards.ts';
-export { quizHandler, redirectHandler, threeSceneHandler, videoHandler } from './media.ts';
+export {
+  arCharacterHandler,
+  quizHandler,
+  redirectHandler,
+  threeSceneHandler,
+  videoHandler,
+} from './media.ts';
 export { decisionHandler, toastHandler } from './notices.ts';
 
 /**
@@ -21,6 +33,7 @@ export const builtinHandlers: readonly AnyActionHandler[] = [
   toastHandler,
   decisionHandler,
   threeSceneHandler,
+  arCharacterHandler,
 ];
 
 export const BUILTIN_ACTION_TYPES: readonly string[] = builtinHandlers.map((h) => h.type);

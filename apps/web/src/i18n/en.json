@@ -663,6 +663,10 @@
         "check": {
           "title": "Just a notice",
           "help": "A brief “You've arrived at…” and the route moves on, no sheet."
+        },
+        "ar": {
+          "title": "AR character (test)",
+          "help": "The Leiria craftsman appears in augmented reality and answers by voice. Testing only."
         }
       },
       "quiz": {
@@ -708,14 +712,16 @@
         "video": "YouTube video",
         "videoTitled": "YouTube video: “{title}”",
         "link": "Link: {label} · {host}",
-        "check": "Just a notice on arrival"
+        "check": "Just a notice on arrival",
+        "ar": "Character in augmented reality"
       },
       "mix": {
         "basic": "{n} with name and address | {n} with name and address",
         "quiz": "{n} own question | {n} own questions",
         "video": "{n} video | {n} videos",
         "link": "{n} link | {n} links",
-        "check": "{n} notice | {n} notices"
+        "check": "{n} notice | {n} notices",
+        "ar": "{n} AR character | {n} AR characters"
       }
     },
     "review": {
@@ -893,5 +899,36 @@
   "time": {
     "today": "today, {time}",
     "date": "{date}, {time}"
+  },
+  "arCharacter": {
+    "title": "Talk to the craftsman",
+    "lead": "A craftsman from 14th-century Leiria appears beside you in augmented reality and answers out loud.",
+    "how": "How it works",
+    "steps": {
+      "camera": {
+        "title": "The camera opens",
+        "text": "Find a clear spot and point at the floor until you see a white ring."
+      },
+      "place": {
+        "title": "Tap to place him",
+        "text": "The craftsman appears where you tapped. Tap the floor again to move him there."
+      },
+      "talk": {
+        "title": "Press and hold to talk",
+        "text": "Ask him about the castle, his trade or the Leiria of his time. Let go and he answers."
+      },
+      "back": {
+        "title": "Back to the route",
+        "text": "When you’re done, close augmented reality and tap “Continue route”."
+      }
+    },
+    "iphone": "On iPhone it opens as an App Clip: nothing to install. To come back, swipe up to close it.",
+    "tips": "Turn the volume up or use headphones. Each conversation lasts up to 3 minutes.",
+    "start": "Start",
+    "later": "Not now",
+    "opened": "The craftsman is waiting in another window",
+    "openedText": "When you’re done, come back here and carry on with the route.",
+    "openedAppClip": "When you’re done, close the App Clip and carry on with the route here.",
+    "reopen": "Open again"
   }
 }

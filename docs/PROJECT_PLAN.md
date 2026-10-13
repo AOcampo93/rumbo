@@ -981,11 +981,11 @@ Los textos de esta tabla son la referencia en español. En el código, cada noti
 | `toast` | Aviso breve no bloqueante | `{ messageKey \| message, icon?, durationMs? }` |
 | `decision` | Interrupciones: Continuar / Pausar / Terminar | `{ preset: 'deviation' \| 'idle' \| 'out_of_order' \| 'timeout' } \| { title, body?, primaryLabel? }` |
 | `three_scene` | *(Futuro)* Escena Three.js | Stub en v1, registrado con `load()` diferido |
-| `ar_scene` | *(Futuro)* RA (WebXR / model-viewer) | No se implementa en v1 |
+| `ar_character` | *(Prototipo v2)* Guía 3D en RA que responde por voz | `{ character: 'artesano' }` → hoja con instrucciones que abre `/ra_test/` en otra ventana ([PROJECT_PLAN_V2](PROJECT_PLAN_V2.md) §17) |
 
 **Acciones personalizadas en 3 idiomas:** los textos de los `params` son `LocalizedText`. Eso incluye la pregunta, las opciones y la explicación del quiz; el `label` del redirect; el `title` y el `body` de `info_sheet`; y el `message` del toast. Así, una acción escrita por nosotros (no por la IA) puede traer español, inglés y portugués, y el handler muestra el idioma activo.
 
-**Esquemas compartidos:** los esquemas de `params` de `info_sheet`, `ai_template`, `decision`, `quiz`, `video`, `redirect` y `toast`, la lista `INTERRUPTIONS` y los límites de texto (`ACTION_LIMITS`) se definen en `route-spec` (`src/actions.ts`). Los handlers de este paquete los importan de ahí (y este paquete reexporta `INTERRUPTIONS`). La API los usa para validar las rutas de usuario (§11.3), así que hay una sola definición. Para las rutas de usuario, el creador produce `quiz` (10 puntos), `video` (solo YouTube), `redirect` (solo `https://`) y `toast` (§7), y la API los acepta con parámetros más estrictos que los de las rutas curadas.
+**Esquemas compartidos:** los esquemas de `params` de `info_sheet`, `ai_template`, `decision`, `quiz`, `video`, `redirect`, `toast` y `ar_character`, la lista `INTERRUPTIONS` y los límites de texto (`ACTION_LIMITS`) se definen en `route-spec` (`src/actions.ts`). Los handlers de este paquete los importan de ahí (y este paquete reexporta `INTERRUPTIONS`). La API los usa para validar las rutas de usuario (§11.3), así que hay una sola definición. Para las rutas de usuario, el creador produce `quiz` (10 puntos), `video` (solo YouTube), `redirect` (solo `https://`), `toast` (§7) y, solo para probadores, `ar_character`, y la API los acepta con parámetros más estrictos que los de las rutas curadas.
 
 **Añadir un tipo nuevo** consiste en escribir su `ActionHandler` (con su `paramsSchema`), pasarlo en `handlers` y crear en la web el componente de su vista. **El motor no se toca.**
 
@@ -2241,7 +2241,7 @@ La pidió el responsable del proyecto tras probar la 7.2: una foto de portada pa
 - [ ] Eventos y rutas de otros usuarios en la guía: descubrirlos y compartirlos (compartir necesita un token de lectura aparte, C5).
 - [ ] Panel B2B para negocios (rutas por suscripción).
 - [ ] Editor visual avanzado.
-- [ ] Handlers `three_scene` y `ar_scene` (Three.js / WebXR / model-viewer).
+- [ ] Handler `three_scene` (Three.js). La guía en RA ya existe como prototipo (`ar_character`, [PROJECT_PLAN_V2](PROJECT_PLAN_V2.md) §17).
 - [ ] Rankings y antitrampas (trazas con opt-in y validación en servidor).
 - [x] Web Push para recordatorios (adelantado a la fase 7.1).
 - [ ] App nativa (Capacitor) para geocercas en segundo plano: avisos de llegada con la pantalla apagada, que la web no puede dar.

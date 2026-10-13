@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   type ActionHandler,
   aiTemplateHandler,
+  arCharacterHandler,
   BUILTIN_ACTION_TYPES,
   CARD_QUIZ_POINTS,
   decisionHandler,
@@ -298,6 +299,27 @@ describe('redirect', () => {
   });
 });
 
+describe('ar_character', () => {
+  it('opens its sheet with the point and the character; done once started, dismissed on "not now"', async () => {
+    const started = setup({ outcome: { status: 'done' } });
+    const params = parse(arCharacterHandler, { character: 'artesano' });
+    expect(await arCharacterHandler.run(params, started.context)).toEqual({ status: 'done' });
+    expect(started.opened[0]).toMatchObject({
+      view: 'ar_character',
+      variant: 'sheet',
+      props: { name: 'P1', character: 'artesano' },
+    });
+    const later = setup({ outcome: { status: 'dismissed' } });
+    expect(await arCharacterHandler.run(params, later.context)).toEqual({ status: 'dismissed' });
+  });
+
+  it('only knows the characters the API has', () => {
+    expect(accepts(arCharacterHandler, { character: 'artesano' })).toBe(true);
+    expect(accepts(arCharacterHandler, { character: 'pirata' })).toBe(false);
+    expect(accepts(arCharacterHandler, {})).toBe(false);
+  });
+});
+
 describe('three_scene', () => {
   it('shows "coming soon" for now and counts as done', async () => {
     const t = setup({ outcome: undefined });
@@ -459,6 +481,7 @@ describe('validateActionParams', () => {
       'toast',
       'decision',
       'three_scene',
+      'ar_character',
     ]);
   });
 });

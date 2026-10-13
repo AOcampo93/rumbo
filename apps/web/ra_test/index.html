@@ -124,6 +124,15 @@
         gap: 8px;
         align-items: flex-start;
       }
+      .lead {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      /* In the App Clip one closes the clip to go back, so no back button there. */
+      html.appclip #back {
+        display: none !important;
+      }
       /* Inside Needle's App Clip its own button sits in the top-right corner: leave it a slot. */
       html.appclip .actions {
         margin-right: 54px;
@@ -697,18 +706,33 @@
     <canvas id="stage"></canvas>
     <div id="overlay">
       <header id="top">
-        <button
-          id="status"
-          class="glass"
-          type="button"
-          data-state="loading"
-          aria-haspopup="dialog"
-          aria-expanded="false"
-          aria-controls="setupBox"
-        >
-          <span id="statusIcon" class="status__icon" aria-hidden="true"></span>
-          <span id="statusText">Cargando…</span>
-        </button>
+        <div class="lead">
+          <button
+            id="back"
+            class="icon-btn"
+            type="button"
+            hidden
+            aria-label="Volver a la ruta"
+            data-t-aria="back"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="m12 19-7-7 7-7" />
+              <path d="M19 12H5" />
+            </svg>
+          </button>
+          <button
+            id="status"
+            class="glass"
+            type="button"
+            data-state="loading"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-controls="setupBox"
+          >
+            <span id="statusIcon" class="status__icon" aria-hidden="true"></span>
+            <span id="statusText">Cargando…</span>
+          </button>
+        </div>
         <span id="live" class="sr-only" role="status" aria-live="polite"></span>
         <div
           id="setupBox"

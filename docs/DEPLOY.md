@@ -294,6 +294,7 @@ Página de pruebas, fuera de la app: un personaje 3D en realidad aumentada que c
   ssh vmi 'c=$(docker ps -q --filter name=r1nkasrwx0no5zwedufosucn | head -1); docker cp /tmp/rumbo-artesano.glb $c:/usr/share/nginx/html/ra_test/models/artesano.glb && docker exec $c chmod 644 /usr/share/nginx/html/ra_test/models/artesano.glb; rm /tmp/rumbo-artesano.glb'
   ```
 
+- **Como acción de una ruta (`ar_character`):** al llegar, una hoja explica la actividad y abre `/ra_test/?character=…&lang=…&from=route` en otra ventana (en iPhone, por el App Clip, con el código). El creador ofrece «Personaje en RA (prueba)» solo en dispositivos de probadores: se desbloquea abriendo cualquier página de la app con `?ra_code=<código>`, que se guarda en el `localStorage` del sitio (lo comparten la app y la página de RA) y se quita de la dirección. En el iPhone, Safari y la app instalada en la pantalla de inicio tienen almacenamientos distintos: hay que abrir el enlace en el que se vaya a usar.
 - **Lo que sabe el personaje:** `data/ra/<personaje>/{es,en,pt}.md`, con sus fuentes en `FUENTES.md` (que no entra en la imagen). La API los lee al arrancar: tras cambiarlos hay que desplegar la API.
 - **Coste:** se paga por tokens de audio (orientativo: ~0,005 USD por minuto escuchado y ~0,018 USD por minuto hablado). Las sesiones duran como mucho `RA_TEST_SESSION_SECONDS` (180 s) y hay como mucho `RA_TEST_MAX_SESSIONS` (3) a la vez. En el log, `voice session ended` deja la duración y los tokens, nunca lo que se dijo.
 

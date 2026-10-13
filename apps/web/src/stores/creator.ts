@@ -715,7 +715,7 @@ export const useCreatorStore = defineStore('creator', () => {
       pending: 0,
       generating: 0,
       error: 0,
-      arrivals: { basic: 0, quiz: 0, video: 0, link: 0, check: 0 },
+      arrivals: { basic: 0, quiz: 0, video: 0, link: 0, check: 0, ar: 0 },
     };
     const current = draft.value;
     if (!current) return stats;

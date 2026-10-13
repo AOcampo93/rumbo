@@ -644,3 +644,24 @@ Los mockups se diseñan antes de cada fase con el sistema de diseño de la v1 ([
 - **Puntos Rumbo:** la suma de los mejores intentos válidos de una cuenta.
 - **En revisión:** un intento que las reglas antitrampas marcaron y que el anfitrión debe validar o anular.
 - **Ruta en orden:** una ruta de Explorar con los puntos en orden y tiempo, sin clasificación (lo que eran las rutas de reto de la v1, según D7).
+
+## 17. Guía en realidad aumentada (prototipo)
+
+Un personaje 3D aparece en RA al llegar a un lugar y responde por voz con la IA, a partir de una ficha de conocimiento. Hoy es un prototipo abierto solo a probadores; decidir si entra en la versión 2 y cómo es una decisión pendiente.
+
+**Lo que ya existe** (detalle de despliegue en [DEPLOY](DEPLOY.md), «Prototipo de guía en RA»):
+
+- **Página `/ra_test/`**, fuera de la app (Three.js, sin Vue): WebXR en Android; en iPhone, el App Clip de Needle, porque Safari no tiene WebXR; en el ordenador, vista 3D. Botón redondo para hablar, recuadro de estado (verde «Todo listo», amarillo si algo falla), opciones avanzadas e interfaz en es/en/pt.
+- **Personaje «artesano»:** GLB con dos animaciones (reposo y hablando) y la mandíbula movida por el volumen de la voz. Los modelos no están en git (licencias): viven en un volumen de Coolify.
+- **Voz:** Gemini Live (`gemini-3.8-live`, voz Charon) a través de un WebSocket de la API (`/v1/ra-test/voice`); la clave nunca sale del servidor. Pulsar para hablar, límites de sesión, de tiempo y por minuto, y un código de acceso (`RA_TEST_ACCESS_CODE`).
+- **Ficha de conocimiento:** `data/ra/<personaje>/{es,en,pt}.md`, con fuentes en `FUENTES.md`. El personaje solo contesta con ella; lo posterior a su época lo cuenta como «lo que dicen los viajeros».
+- **Acción de ruta `ar_character`** (`{ character }`): al llegar, una hoja explica la actividad en cuatro pasos y abre la página de RA en otra ventana, para que el recorrido siga vivo; al volver, «Continuar ruta». El creador la ofrece solo en dispositivos con el código (se desbloquea abriendo la app con `?ra_code=<código>`), y la API la acepta en las rutas de usuario.
+
+**Pendiente antes de sacarla del prototipo:**
+
+- Cambiar el código de acceso por las cuentas de la versión 2 (§4) y decidir si es un extra de los retos o de Explorar.
+- **Privacidad:** la voz del visitante viaja a Google (Gemini Live). Hay que añadir a Google como encargado en §8.7, avisarlo antes de la primera conversación y no guardar audio ni transcripciones (hoy no se guardan).
+- Más personajes y animaciones (saludo, señalar, desaparecer) y escenas narradas (animación en bucle con su audio, también por AR Quick Look en iPhone).
+- La ficha de conocimiento por lugar, no solo por personaje, y la revisión de sus fuentes por una persona.
+- Coste por sesión (unos céntimos con los límites de hoy) y un tope diario como el de la IA de las fichas.
+

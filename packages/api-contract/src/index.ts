@@ -3,6 +3,7 @@ import {
   ACTION_LIMITS,
   ActivitySchema,
   AiTemplateParamsSchema,
+  ArCharacterParamsSchema,
   canonicalJson,
   DecisionParamsSchema,
   formatPath,
@@ -335,6 +336,8 @@ const USER_ACTION_PARAMS = new Map<string, z.ZodType>([
   ['redirect', USER_REDIRECT_PARAMS],
   ['toast', USER_TOAST_PARAMS],
   ['decision', DecisionParamsSchema],
+  // Version 2 prototype: the AR guide, offered by the creator only to testers.
+  ['ar_character', ArCharacterParamsSchema],
 ]);
 const USER_ROUTE_TRIGGERS = new Set(['onDeviation', 'onIdle', 'onOutOfOrder', 'onTimeout']);
 const USER_POINT_TRIGGERS = new Set(['onEnter']);
@@ -374,8 +377,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *   that it generated each one: unverified_content);
  * - route meta: only `interests`; point meta: only `address` and `externalId` (a QID);
  * - at most points + 8 actions (one per point plus the decisions), all of them info_sheet (no
- *   image), ai_template, decision or what a place shows on arrival: quiz, video, redirect and
- *   toast, each with the params the creator writes (plain texts in one language, YouTube ids, full
+ *   image), ai_template, decision or what a place shows on arrival: quiz, video, redirect,
+ *   toast and ar_character, each with the params the creator writes (plain texts in one language, YouTube ids, full
  *   https:// links, an i18n key or plain text); no `presentation` or `feedback`;
  * - route triggers only onDeviation/onIdle/onOutOfOrder/onTimeout; point triggers only onEnter;
  * - storable: nested at most 8 deep, no controls or lone surrogates in any text or key;
@@ -429,7 +432,7 @@ export function checkUserRoute(bundle: unknown): ErrorDetail[] {
     else {
       add(
         [...path, 'type'],
-        'User routes only use info_sheet, ai_template, quiz, video, redirect, toast and decision',
+        'User routes only use info_sheet, ai_template, quiz, video, redirect, toast, decision and ar_character',
       );
     }
     for (const key of ['presentation', 'feedback']) {
