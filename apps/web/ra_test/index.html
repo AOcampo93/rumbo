@@ -33,6 +33,12 @@
         background: #e9e4da;
         touch-action: none;
       }
+      /* In AR the camera is behind the page (the iOS App Clip draws it under the web view):
+         nothing of the page may be opaque but the controls. */
+      html[data-mode='ar'],
+      html[data-mode='ar'] body {
+        background: transparent;
+      }
       canvas {
         position: fixed;
         inset: 0;

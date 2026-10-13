@@ -126,6 +126,7 @@ const stage = new Stage({
   },
   onModeChange: (mode) => {
     const ar = mode === 'ar';
+    document.documentElement.dataset.mode = mode;
     els.exitAr.hidden = !ar;
     els.ar.hidden = ar || !arSupported;
     setStatus(ar ? 'En RA: apunta al suelo y toca para colocar al guía' : 'Listo');
