@@ -14,6 +14,7 @@ import {
   Trash2,
   Video,
   X,
+  ChevronDown,
 } from '@lucide/vue';
 import {
   ARRIVAL_TYPES,
@@ -559,12 +560,21 @@ onBeforeUnmount(() => observer?.disconnect());
               </template>
 
               <div v-else-if="arScene" class="editor__group">
-                <p class="editor__label" aria-hidden="true">{{ t('create.arrival.ar.scene') }}</p>
-                <ChipGroup
-                  v-model="scene"
-                  :options="sceneOptions"
-                  :label="t('create.arrival.ar.scene')"
-                />
+                <label :for="`${id}-scene`" class="editor__label">{{
+                  t('create.arrival.ar.scene')
+                }}</label>
+                <div class="select">
+                  <select :id="`${id}-scene`" v-model="scene" class="select__input">
+                    <option
+                      v-for="option in sceneOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                  <ChevronDown class="select__icon" :size="20" aria-hidden="true" />
+                </div>
               </div>
             </div>
             <p v-if="generalError" class="arrival__error" role="alert">{{ generalError }}</p>
@@ -618,6 +628,34 @@ onBeforeUnmount(() => observer?.disconnect());
 }
 .editor__label {
   font: 600 15px/20px var(--font-ui);
+}
+/* A native select (the phone's own picker), dressed like the text fields. */
+.select {
+  position: relative;
+}
+.select__input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 44px 12px 14px;
+  border: var(--control-border) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  /* 16 px or more: iOS never zooms into the field. */
+  font: 400 16px/24px var(--font-ui);
+  appearance: none;
+  transition: border-color var(--motion-fast);
+}
+.select__input:focus {
+  border-color: var(--color-primary);
+}
+.select__icon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 .editor__hint {
   color: var(--color-text-muted);

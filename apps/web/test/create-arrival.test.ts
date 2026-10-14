@@ -423,16 +423,17 @@ describe('PlaceEditorSheet · Al llegar', () => {
     await flushPromises();
   };
 
-  it('offers an AR scene (version 2 prototype) for any place, with a scene to pick', async () => {
+  it('offers an AR scene (version 2 prototype) for any place, picked in a select', async () => {
     const view = mountEditor();
     await choose(view, 'Escena en RA (prueba)');
     expect(current(view)).toEqual({ type: 'ar', scene: 'artesano' });
-    const scenes = view.get('.arrival__fields').findAll('[role="radio"]');
-    expect(scenes.map((chip) => chip.text())).toEqual([
+    const select = field(view, 'Escena');
+    expect(select.element.tagName).toBe('SELECT');
+    expect(select.findAll('option').map((option) => option.text())).toEqual([
       'El artesano (siglo XIV)',
       'El asalto de 1140 (dos soldados)',
     ]);
-    await scenes[1]!.trigger('click');
+    await select.setValue('asalto_1140');
     expect(current(view)).toEqual({ type: 'ar', scene: 'asalto_1140' });
   });
 
