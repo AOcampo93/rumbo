@@ -1,8 +1,9 @@
 import {
   ACTION_LIMITS,
   type ActionDef,
-  type ArCharacter,
+  type ArScene,
   ArCharacterParamsSchema,
+  arSceneOf,
   type Locale,
   type LocalizedText,
   QuizParamsSchema,
@@ -42,8 +43,8 @@ export type ArrivalChoice =
   | { type: 'link'; url: string; label: string }
   /** Only a short notice ("Llegaste a …"): no sheet, the route goes on. */
   | { type: 'check' }
-  /** Version 2 prototype: a 3D guide in augmented reality who answers by voice. */
-  | { type: 'ar'; character: ArCharacter };
+  /** Version 2 prototype: an AR scene whose characters answer by voice. */
+  | { type: 'ar'; scene: ArScene };
 
 export type ArrivalType = ArrivalChoice['type'];
 
@@ -82,7 +83,7 @@ export function emptyArrival(type: ArrivalType): ArrivalChoice {
     case 'link':
       return { type, url: '', label: '' };
     case 'ar':
-      return { type, character: 'artesano' };
+      return { type, scene: 'artesano' };
     default:
       return { type };
   }
@@ -207,7 +208,7 @@ export function ownArrivalAction(arrival: ArrivalChoice): ActionDef | null {
     case 'check':
       return { type: 'toast', params: { messageKey: CHECK_MESSAGE_KEY } };
     case 'ar':
-      return { type: 'ar_character', params: { character: arrival.character } };
+      return { type: 'ar_character', params: { scene: arrival.scene } };
     default:
       return null;
   }
@@ -261,7 +262,7 @@ export function arrivalFromAction(
     }
     case 'ar_character': {
       const ar = ArCharacterParamsSchema.safeParse(params);
-      return ar.success ? { type: 'ar', character: ar.data.character } : undefined;
+      return ar.success ? { type: 'ar', scene: arSceneOf(ar.data) } : undefined;
     }
     default:
       return undefined;

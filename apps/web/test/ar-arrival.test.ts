@@ -38,19 +38,17 @@ describe('access to the AR guide', () => {
 
   it('builds the AR page and App Clip links', () => {
     const page = arPageUrl('https://rumbo.test', {
-      character: 'artesano',
+      scene: 'artesano',
       lang: 'pt',
       fromRoute: true,
       code: 'a&b',
     });
-    expect(page).toBe(
-      'https://rumbo.test/ra_test/?character=artesano&lang=pt&from=route&code=a%26b',
-    );
+    expect(page).toBe('https://rumbo.test/ra_test/?scene=artesano&lang=pt&from=route&code=a%26b');
     expect(appClipUrl(page)).toBe(
       `https://appclip.needle.tools/ar?url=${encodeURIComponent(page)}`,
     );
-    expect(arPageUrl('https://rumbo.test', { character: 'artesano', lang: 'es' })).toBe(
-      'https://rumbo.test/ra_test/?character=artesano&lang=es',
+    expect(arPageUrl('https://rumbo.test', { scene: 'asalto_1140', lang: 'es' })).toBe(
+      'https://rumbo.test/ra_test/?scene=asalto_1140&lang=es',
     );
   });
 
@@ -68,9 +66,9 @@ describe('access to the AR guide', () => {
 });
 
 describe('the AR guide arrival sheet', () => {
-  const mountSheet = () =>
+  const mountSheet = (scene = 'artesano') =>
     mount(ArCharacterSheet, {
-      props: { sourceLocale: 'es', name: 'Parque', order: 1, total: 1, character: 'artesano' },
+      props: { sourceLocale: 'es', name: 'Parque', order: 1, total: 1, scene },
       global: { plugins: [i18n] },
     });
   const press = (view: ReturnType<typeof mountSheet>, label: string) =>
@@ -96,13 +94,33 @@ describe('the AR guide arrival sheet', () => {
     expect(view.emitted('close')).toEqual([[{ status: 'dismissed' }]]);
   });
 
+  it('tells the assault scene with its own texts and opens it with ?scene=asalto_1140', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const view = mountSheet('asalto_1140');
+    expect(view.get('h2').text()).toBe('Interrumpe la batalla');
+    expect(view.text()).toContain('Un defensor portugués y un guerrero almorávide');
+    expect(view.findAll('ol li').map((step) => step.get('.t-body-strong').text())).toEqual([
+      'Se abre la cámara',
+      'Toca para colocar la escena',
+      'Acércate a uno y toca «Hablar»',
+      'Vuelve a la ruta',
+    ]);
+    await press(view, 'Empezar');
+    expect(open).toHaveBeenCalledWith(
+      `${location.origin}/ra_test/?scene=asalto_1140&lang=es&from=route`,
+      '_blank',
+      'noopener',
+    );
+    expect(view.text()).toContain('Los soldados te esperan en otra ventana');
+  });
+
   it('opens the AR page in another window, in the app language, then offers to go on', async () => {
     applyLocale('en');
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
     const view = mountSheet();
     await press(view, 'Start');
     expect(open).toHaveBeenCalledWith(
-      `${location.origin}/ra_test/?character=artesano&lang=en&from=route`,
+      `${location.origin}/ra_test/?scene=artesano&lang=en&from=route`,
       '_blank',
       'noopener',
     );
@@ -122,7 +140,7 @@ describe('the AR guide arrival sheet', () => {
     const view = mountSheet();
     expect(view.text()).toContain('En iPhone se abre con un App Clip');
     await press(view, 'Empezar');
-    const page = `${location.origin}/ra_test/?character=artesano&lang=es&from=route&code=abc`;
+    const page = `${location.origin}/ra_test/?scene=artesano&lang=es&from=route&code=abc`;
     expect(open).toHaveBeenCalledWith(appClipUrl(page), '_blank', 'noopener');
     expect(view.text()).toContain('cierra el App Clip');
   });

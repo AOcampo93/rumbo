@@ -17,7 +17,7 @@ const props = defineProps<{
   name?: LocalizedText | null;
   order?: number | null;
   total?: number;
-  character: string;
+  scene: string;
 }>();
 const emit = defineEmits<{ close: [outcome?: ViewOutcome] }>();
 const { t, locale } = useI18n();
@@ -35,7 +35,7 @@ const STEPS = [
 const started = ref(false);
 const target = computed(() => {
   const page = arPageUrl(location.origin, {
-    character: props.character,
+    scene: props.scene,
     lang: locale.value,
     fromRoute: true,
     ...(viaAppClip ? { code: readArCode() } : {}),
@@ -59,8 +59,8 @@ function start(): void {
       <section class="ar-sheet__hero">
         <span class="ar-sheet__badge" aria-hidden="true"><PersonStanding :size="28" /></span>
         <div>
-          <h2 class="t-h2">{{ t('arCharacter.title') }}</h2>
-          <p class="t-body t-muted">{{ t('arCharacter.lead') }}</p>
+          <h2 class="t-h2">{{ t(`arCharacter.scenes.${scene}.title`) }}</h2>
+          <p class="t-body t-muted">{{ t(`arCharacter.scenes.${scene}.lead`) }}</p>
         </div>
       </section>
 
@@ -71,9 +71,11 @@ function start(): void {
             <span class="ar-sheet__num" aria-hidden="true">{{ i + 1 }}</span>
             <component :is="step.icon" class="ar-sheet__icon" :size="20" aria-hidden="true" />
             <span>
-              <span class="t-body-strong">{{ t(`arCharacter.steps.${step.key}.title`) }}</span>
+              <span class="t-body-strong">{{
+                t(`arCharacter.scenes.${scene}.steps.${step.key}.title`)
+              }}</span>
               <span class="t-small t-muted ar-sheet__help">{{
-                t(`arCharacter.steps.${step.key}.text`)
+                t(`arCharacter.scenes.${scene}.steps.${step.key}.text`)
               }}</span>
             </span>
           </li>
@@ -83,7 +85,7 @@ function start(): void {
       </template>
 
       <section v-else class="ar-sheet__opened" role="status">
-        <h3 class="t-title">{{ t('arCharacter.opened') }}</h3>
+        <h3 class="t-title">{{ t(`arCharacter.scenes.${scene}.opened`) }}</h3>
         <p class="t-body t-muted">
           {{ t(viaAppClip ? 'arCharacter.openedAppClip' : 'arCharacter.openedText') }}
         </p>

@@ -133,6 +133,8 @@ export class VoiceClient {
       /** Read on every connect, so the language can change between sessions. */
       getLang?: () => string;
       character?: string;
+      /** Read on every connect, so a scene can switch who answers. */
+      getCharacter?: () => string;
       getCode?: () => string | undefined;
     },
   ) {}
@@ -148,7 +150,7 @@ export class VoiceClient {
     const loc = this.options.location ?? { protocol: 'http:', host: 'localhost' };
     const url = buildVoiceUrl(loc, {
       lang: this.options.getLang?.() ?? this.options.lang,
-      character: this.options.character,
+      character: this.options.getCharacter?.() ?? this.options.character,
       code: this.options.getCode?.(),
     });
     const socket = this.options.createSocket(url);

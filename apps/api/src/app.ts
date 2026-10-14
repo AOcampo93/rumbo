@@ -28,7 +28,7 @@ import { geoRoutes } from './routes/geo.js';
 import { healthRoutes } from './routes/health.js';
 import { mediaRoutes } from './routes/media.js';
 import { moderationRoutes } from './routes/moderation.js';
-import { createCharacters, loadKnowledge } from './ra-test/characters.js';
+import { createCharacters, loadAllKnowledge } from './ra-test/characters.js';
 import { createGeminiLiveConnector, type LiveConnector } from './ra-test/live.js';
 import { pushRoutes } from './routes/push.js';
 import { MAX_FRAME_BYTES, raTestRoutes } from './routes/ra-test.js';
@@ -59,8 +59,8 @@ export interface BuildOptions {
   logger?: boolean;
 }
 
-/** The craftsman's knowledge sheet (data/ra/artesano/{es,en,pt}.md). */
-const ARTESANO_KNOWLEDGE = new URL('../../../data/ra/artesano/', import.meta.url);
+/** The AR characters' knowledge sheets: data/ra/<character>/{es,en,pt}.md. */
+const AR_KNOWLEDGE = new URL('../../../data/ra/', import.meta.url);
 
 /** Public mount point: clients always call /api/v1/…, on the web's own origin. */
 export const PUBLIC_PREFIX = '/api';
@@ -206,7 +206,7 @@ export async function buildApp(
           ? createGeminiLiveConnector(config.geminiApiKey)
           : null,
     characters: createCharacters({ artesanoVoice: config.raTestVoiceArtesano }),
-    facts: await loadKnowledge(ARTESANO_KNOWLEDGE),
+    knowledge: await loadAllKnowledge(AR_KNOWLEDGE),
     allowLocalOrigins: process.env.NODE_ENV !== 'production',
   });
   return app;

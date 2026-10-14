@@ -1,0 +1,44 @@
+{
+  "spec": {
+    "specVersion": 1,
+    "id": "e2e-guia-ra-asalto",
+    "name": {
+      "es": "Guía en RA",
+      "en": "AR guide",
+      "pt": "Guia em RA"
+    },
+    "summary": {
+      "es": "Ruta de prueba",
+      "en": "Test route",
+      "pt": "Rota de teste"
+    },
+    "locale": "es",
+    "mode": "free",
+    "activity": "walk",
+    "source": "curated",
+    "points": [
+      {
+        "id": "castelo",
+        "name": "Castelo de Leiria",
+        "position": {
+          "lat": 39.7476,
+          "lng": -8.8076
+        },
+        "order": 1,
+        "category": "monument",
+        "triggers": {
+          "onEnter": "guia"
+        }
+      }
+    ],
+    "actions": {
+      "guia": {
+        "type": "ar_character",
+        "params": {
+          "scene": "asalto_1140"
+        }
+      }
+    }
+  },
+  "contents": {}
+}

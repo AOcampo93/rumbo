@@ -118,15 +118,23 @@ export const ToastParamsSchema = z
     message: 'Give either messageKey or message',
   });
 
-/** The characters the AR guide can bring; the API holds each one's voice and knowledge. */
+/** The characters of the first AR version (`{ character }`); still read, as a scene of the same name. */
 export const AR_CHARACTERS = ['artesano'] as const;
 export type ArCharacter = (typeof AR_CHARACTERS)[number];
 
+/** The AR scenes a place can open: one guide, or several characters together. The API holds each voice and knowledge. */
+export const AR_SCENES = ['artesano', 'asalto_1140'] as const;
+export type ArScene = (typeof AR_SCENES)[number];
+
 /**
- * `ar_character` (version 2 prototype): a 3D guide in augmented reality who answers by
- * voice. The arrival sheet explains how it works and opens the AR page (/ra_test/).
+ * `ar_character` (version 2 prototype): an AR scene whose characters answer by voice. The
+ * arrival sheet explains how it works and opens the AR page (/ra_test/). `{ character }` is
+ * the first version's form and means the scene of that name.
  */
-export const ArCharacterParamsSchema = z.strictObject({ character: z.enum(AR_CHARACTERS) });
+export const ArCharacterParamsSchema = z.union([
+  z.strictObject({ scene: z.enum(AR_SCENES) }),
+  z.strictObject({ character: z.enum(AR_CHARACTERS) }),
+]);
 
 export type InfoSheetParams = z.infer<typeof InfoSheetParamsSchema>;
 export type AiTemplateParams = z.infer<typeof AiTemplateParamsSchema>;
@@ -136,3 +144,8 @@ export type VideoParams = z.infer<typeof VideoParamsSchema>;
 export type RedirectParams = z.infer<typeof RedirectParamsSchema>;
 export type ToastParams = z.infer<typeof ToastParamsSchema>;
 export type ArCharacterParams = z.infer<typeof ArCharacterParamsSchema>;
+
+/** The scene an `ar_character` action opens, whichever form its params use. */
+export function arSceneOf(params: ArCharacterParams): ArScene {
+  return 'scene' in params ? params.scene : params.character;
+}

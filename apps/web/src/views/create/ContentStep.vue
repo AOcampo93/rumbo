@@ -126,7 +126,11 @@ function choiceRow(place: DraftPlace, index: number): Row | null {
     case 'check':
       return { ...row, icon: BellRing, text: t('create.arrival.row.check') };
     case 'ar':
-      return { ...row, icon: PersonStanding, text: t('create.arrival.row.ar') };
+      return {
+        ...row,
+        icon: PersonStanding,
+        text: t('create.arrival.row.ar', { scene: t(`create.arrival.ar.names.${arrival.scene}`) }),
+      };
     default:
       return { ...row, icon: FileText, text: t('create.arrival.row.basic') };
   }

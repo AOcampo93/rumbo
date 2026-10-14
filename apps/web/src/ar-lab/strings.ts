@@ -33,7 +33,18 @@ export interface Strings {
   info: string;
   language: string;
   arGuide: string;
+  /** The same, when a whole scene is placed. */
+  arGuideScene: string;
   status: string;
+  /** Encounters: the button that stops the fight to talk to one of them. */
+  talkWith: (name: string) => string;
+  /** Encounters in AR, while nobody is close enough. */
+  approach: string;
+  talkingWith: (name: string) => string;
+  /** Ends the talk; they go back to the fight. */
+  endTalk: string;
+  /** Sent to the character, never shown: he greets the visitor first. */
+  greet: string;
   codePlaceholder: string;
   codeUse: string;
   codeSaved: string;
@@ -87,7 +98,14 @@ export const STRINGS: Record<Lang, Strings> = {
     info: 'Info',
     language: 'Idioma',
     arGuide: 'Apunta al suelo y toca para colocar al guía',
+    arGuideScene: 'Apunta al suelo y toca para colocar la escena',
     status: 'Estado de la configuración',
+    talkWith: (name) => `Hablar con ${name}`,
+    approach: 'Acércate a uno de los dos para hablar con él',
+    talkingWith: (name) => `Hablas con ${name}`,
+    endTalk: 'Dejar que sigan luchando',
+    greet:
+      '(Un visitante de otro tiempo se acerca y os interrumpe. Salúdale en tu papel con una frase corta y pregúntale qué quiere saber.)',
     codePlaceholder: 'Código de acceso',
     codeUse: 'Usar',
     codeSaved: 'Código guardado.',
@@ -163,7 +181,14 @@ export const STRINGS: Record<Lang, Strings> = {
     info: 'Info',
     language: 'Language',
     arGuide: 'Point at the floor and tap to place the guide',
+    arGuideScene: 'Point at the floor and tap to place the scene',
     status: 'Setup status',
+    talkWith: (name) => `Talk to ${name}`,
+    approach: 'Walk up to one of them to talk to him',
+    talkingWith: (name) => `Talking to ${name}`,
+    endTalk: 'Let them fight on',
+    greet:
+      '(A visitor from another time walks up and interrupts you. Greet them in character in one short sentence and ask what they want to know.)',
     codePlaceholder: 'Access code',
     codeUse: 'Use',
     codeSaved: 'Code saved.',
@@ -239,7 +264,14 @@ export const STRINGS: Record<Lang, Strings> = {
     info: 'Info',
     language: 'Idioma',
     arGuide: 'Aponta para o chão e toca para colocar o guia',
+    arGuideScene: 'Aponta para o chão e toca para colocar a cena',
     status: 'Estado da configuração',
+    talkWith: (name) => `Falar com ${name}`,
+    approach: 'Aproxima-te de um deles para falares com ele',
+    talkingWith: (name) => `Estás a falar com ${name}`,
+    endTalk: 'Deixá-los continuar a lutar',
+    greet:
+      '(Um visitante de outro tempo aproxima-se e interrompe-vos. Cumprimenta-o no teu papel com uma frase curta e pergunta-lhe o que quer saber.)',
     codePlaceholder: 'Código de acesso',
     codeUse: 'Usar',
     codeSaved: 'Código guardado.',

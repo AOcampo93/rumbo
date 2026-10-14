@@ -5,3 +5,5 @@ pnpm-lock.yaml
 **/playwright-report/
 # Hand-written Spanish docs and the exported mockups keep their own formatting.
 docs/
+# three.js's Draco decoder, copied as is for the AR page.
+apps/web/public/ra_test/draco/

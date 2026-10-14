@@ -14,6 +14,8 @@ export default defineConfig(
       '**/test-results/**',
       '**/playwright-report/**',
       'docs/**',
+      // three.js's Draco decoder, copied as is for the AR page.
+      'apps/web/public/ra_test/draco/**',
     ],
   },
 

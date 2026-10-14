@@ -24,7 +24,7 @@ import {
   parseYoutubeId,
   validateArrival,
 } from '@rumbo/route-builder';
-import { type PointCategory, USER_QUIZ_POINTS } from '@rumbo/route-spec';
+import { AR_SCENES, type ArScene, type PointCategory, USER_QUIZ_POINTS } from '@rumbo/route-spec';
 import { type Component, computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppButton from './AppButton.vue';
@@ -141,6 +141,19 @@ const video = computed<VideoChoice | null>(() =>
 const link = computed<LinkChoice | null>(() =>
   arrival.value.type === 'link' ? arrival.value : null,
 );
+
+const arScene = computed<ArScene | null>(() =>
+  arrival.value.type === 'ar' ? arrival.value.scene : null,
+);
+const sceneOptions = computed(() =>
+  AR_SCENES.map((value) => ({ value, label: t(`create.arrival.ar.scenes.${value}`) })),
+);
+const scene = computed<ArScene>({
+  get: () => arScene.value ?? 'artesano',
+  set: (value) => {
+    if (arScene.value) setArrival({ type: 'ar', scene: value });
+  },
+});
 
 /** What was typed in each type before another was picked, so going back finds it again. */
 const stash: Partial<Record<ArrivalType, ArrivalChoice>> = {};
@@ -430,7 +443,11 @@ onBeforeUnmount(() => observer?.disconnect());
               </label>
             </div>
 
-            <div v-if="quiz || video || link" ref="arrivalFields" class="arrival__fields">
+            <div
+              v-if="quiz || video || link || arScene"
+              ref="arrivalFields"
+              class="arrival__fields"
+            >
               <template v-if="quiz">
                 <p class="editor__hint">
                   {{ t('create.arrival.quiz.points', { points: USER_QUIZ_POINTS }) }}
@@ -540,6 +557,15 @@ onBeforeUnmount(() => observer?.disconnect());
                   required
                 />
               </template>
+
+              <div v-else-if="arScene" class="editor__group">
+                <p class="editor__label" aria-hidden="true">{{ t('create.arrival.ar.scene') }}</p>
+                <ChipGroup
+                  v-model="scene"
+                  :options="sceneOptions"
+                  :label="t('create.arrival.ar.scene')"
+                />
+              </div>
             </div>
             <p v-if="generalError" class="arrival__error" role="alert">{{ generalError }}</p>
           </div>

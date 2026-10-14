@@ -35,7 +35,7 @@
       "guia": {
         "type": "ar_character",
         "params": {
-          "character": "artesano"
+          "scene": "artesano"
         }
       }
     }

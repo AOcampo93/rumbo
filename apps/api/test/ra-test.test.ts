@@ -7,7 +7,14 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createCharacters, loadKnowledge, systemInstruction } from '../src/ra-test/characters.js';
+import {
+  CHARACTER_IDS,
+  createCharacters,
+  DEFAULT_VOICES,
+  loadAllKnowledge,
+  loadKnowledge,
+  systemInstruction,
+} from '../src/ra-test/characters.js';
 import { STATUS_RATE_LIMIT_PER_MINUTE } from '../src/routes/ra-test.js';
 import type {
   LiveCallbacks,
@@ -265,6 +272,29 @@ describe('the Gemini session', () => {
     expect(String(request.config.systemInstruction)).toContain('## O que veio depois');
   });
 
+  it('talks as the character asked for, with his own voice and sheet', async () => {
+    const { connector, sessions } = fakeConnector();
+    const server = await setup({}, connector);
+    await open(server, '?lang=es&character=soldado_almoravide');
+    const { request } = sessions[0]!;
+    expect(request.config.speechConfig).toEqual({
+      voiceConfig: { prebuiltVoiceConfig: { voiceName: DEFAULT_VOICES.soldado_almoravide } },
+    });
+    const prompt = String(request.config.systemInstruction);
+    expect(prompt).toMatch(/^Eres un guerrero almorávide/);
+    expect(prompt).toContain('## Lo que vino después');
+    expect(prompt).not.toContain('artesano del siglo XIV');
+  });
+
+  it('refuses a character it does not know', async () => {
+    const { connector, sessions } = fakeConnector();
+    const server = await setup({}, connector);
+    const client = await connect(server, '?lang=es&character=pirata');
+    await until(() => client.closed() !== undefined);
+    expect(client.json()).toEqual([{ type: 'error', code: 'internal' }]);
+    expect(sessions).toHaveLength(0);
+  });
+
   it('relays the visitor to Gemini: activityStart, audio as base64 PCM 16 kHz, activityEnd, text', async () => {
     const { connector, sessions } = fakeConnector();
     const server = await setup({}, connector);
@@ -457,6 +487,34 @@ describe('the craftsman', () => {
     expect(pt).toMatch(/século XIV/);
     expect(pt).toMatch(/SÓ com o que diz o contexto/);
     expect(pt).toContain('«O que veio depois»');
+  });
+
+  it('loads a sheet for every character', async () => {
+    const knowledge = await loadAllKnowledge(new URL('../../../data/ra/', import.meta.url));
+    expect([...knowledge.keys()]).toEqual([...CHARACTER_IDS]);
+    for (const [id, facts] of knowledge) {
+      for (const lang of ['es', 'en', 'pt'] as const) {
+        expect(facts[lang].length, `${id} ${lang}`).toBeGreaterThan(1500);
+      }
+      expect(facts.es, id).toContain('## Lo que vino después');
+      expect(facts.en, id).toContain('## What came later');
+      expect(facts.pt, id).toContain('## O que veio depois');
+    }
+  });
+
+  it('gives each one his own voice and persona, with the same rules', () => {
+    const characters = createCharacters();
+    expect(new Set(CHARACTER_IDS.map((id) => characters.get(id)!.voiceName)).size).toBe(3);
+    const facts = { es: 'Hecho.', en: 'Fact.', pt: 'Facto.' };
+    const soldier = systemInstruction(characters.get('soldado_portugues')!, 'es', facts);
+    expect(soldier).toMatch(/^Eres un soldado de la guarnición del castillo de Leiria/);
+    expect(soldier).toContain('Paio Guterres');
+    expect(soldier).toMatch(/SOLO con lo que dice el contexto/);
+    expect(soldier).toContain('«Lo que vino después»');
+    expect(soldier.endsWith('Contexto:\nHecho.')).toBe(true);
+    const warrior = systemInstruction(characters.get('soldado_almoravide')!, 'en', facts);
+    expect(warrior).toMatch(/^You are an Almoravid warrior/);
+    expect(warrior).toMatch(/Answer ONLY from the context/);
   });
 
   it('says it has no information when there is no sheet', () => {

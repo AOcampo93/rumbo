@@ -596,6 +596,70 @@
         border-color: rgba(196, 73, 31, 0.4);
         animation: breathe 1.8s ease-in-out infinite;
       }
+      /* Encounters: choose who to talk to; then the talk controls, with who answers. */
+      #choices,
+      #speaker {
+        display: none;
+      }
+      html[data-scene='encounter'][data-talk='closed'] #choices {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      html[data-scene='encounter'][data-talk='closed'] .talk,
+      html[data-scene='encounter'][data-talk='closed'] #textForm {
+        display: none;
+      }
+      html[data-scene='encounter'][data-talk='open'] #speaker {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        align-self: center;
+        padding: 6px 6px 6px 14px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+      #speaker #speakerName {
+        color: var(--ink);
+      }
+      #choiceHint {
+        margin: 0;
+        padding: 10px 16px;
+        border-radius: 999px;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: center;
+      }
+      #choiceButtons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+        align-items: center;
+      }
+      .choice-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 56px;
+        max-width: 100%;
+        padding: 0 22px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        box-shadow: 0 10px 24px rgba(196, 73, 31, 0.38);
+        animation: drop 200ms var(--ease);
+      }
+      .choice-btn:active {
+        transform: scale(0.97);
+      }
       #talkLabel {
         font-size: 13px;
         font-weight: 600;
@@ -883,6 +947,33 @@
         <div id="captions" hidden>
           <p id="userText"></p>
           <p id="subtitles" class="glass"></p>
+        </div>
+        <div id="choices">
+          <p id="choiceHint" class="glass" hidden></p>
+          <div id="choiceButtons"></div>
+        </div>
+        <div id="speaker" class="glass">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2 10v3" />
+            <path d="M6 6v11" />
+            <path d="M10 3v18" />
+            <path d="M14 8v7" />
+            <path d="M18 5v13" />
+            <path d="M22 10v3" />
+          </svg>
+          <span id="speakerName"></span>
+          <button
+            id="endTalk"
+            class="close-btn"
+            type="button"
+            aria-label="Dejar que sigan luchando"
+            data-t-aria="endTalk"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
         </div>
         <div class="talk">
           <button

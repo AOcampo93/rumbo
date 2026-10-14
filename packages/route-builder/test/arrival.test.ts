@@ -10,6 +10,7 @@ import {
   VideoParamsSchema,
 } from '@rumbo/route-spec';
 import { describe, expect, it } from 'vitest';
+import { arrivalFromAction } from '../src/arrival.ts';
 import {
   ARRIVAL_LIMITS,
   ARRIVAL_TYPES,
@@ -74,7 +75,7 @@ const LINK: ArrivalChoice = {
   label: 'Agenda de Leiria',
 };
 const CHECK: ArrivalChoice = { type: 'check' };
-const AR: ArrivalChoice = { type: 'ar', character: 'artesano' };
+const AR: ArrivalChoice = { type: 'ar', scene: 'artesano' };
 const ALL: ArrivalChoice[] = [{ type: 'card' }, { type: 'basic' }, QUIZ, VIDEO, LINK, CHECK, AR];
 
 describe('parseYoutubeId', () => {
@@ -141,7 +142,7 @@ describe('emptyArrival and arrivalTypeOf', () => {
       { type: 'video', youtubeId: '' },
       { type: 'link', url: '', label: '' },
       { type: 'check' },
-      { type: 'ar', character: 'artesano' },
+      { type: 'ar', scene: 'artesano' },
     ]);
     expect(ARRIVAL_TYPES.map((type) => validateArrival(emptyArrival(type)).length > 0)).toEqual([
       false,
@@ -286,11 +287,25 @@ describe('buildRouteSpec: what each arrival becomes', () => {
     });
   });
 
-  it('an AR guide becomes ar_character with its character', () => {
+  it('an AR scene becomes ar_character with its scene', () => {
     expect(actionOf(build(draft([AR])).spec, 0)).toEqual({
       type: 'ar_character',
-      params: { character: 'artesano' },
+      params: { scene: 'artesano' },
     });
+    const assault: ArrivalChoice = { type: 'ar', scene: 'asalto_1140' };
+    expect(actionOf(build(draft([assault])).spec, 0)).toEqual({
+      type: 'ar_character',
+      params: { scene: 'asalto_1140' },
+    });
+  });
+
+  it("reads both scenes and the first version's character back", () => {
+    const read = (params: Record<string, unknown>) =>
+      arrivalFromAction({ type: 'ar_character', params }, 'es');
+    expect(read({ scene: 'artesano' })).toEqual({ type: 'ar', scene: 'artesano' });
+    expect(read({ scene: 'asalto_1140' })).toEqual({ type: 'ar', scene: 'asalto_1140' });
+    expect(read({ character: 'artesano' })).toEqual({ type: 'ar', scene: 'artesano' });
+    expect(read({ scene: 'pirata' })).toBeUndefined();
   });
 
   it('"basic" is the sheet with the name and the address, without the card', () => {

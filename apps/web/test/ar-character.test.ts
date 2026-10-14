@@ -1,4 +1,4 @@
-import { AnimationClip, Quaternion } from 'three';
+import { AnimationClip, LoopOnce, Quaternion } from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   CharacterAnimator,
@@ -17,7 +17,12 @@ const DEG = Math.PI / 180;
 
 class FakeAction implements ActionLike {
   calls: string[] = [];
+  clampWhenFinished = false;
   constructor(readonly name: string) {}
+  setLoop(mode: number, repetitions: number) {
+    this.calls.push(`setLoop:${mode === LoopOnce ? 'once' : mode}:${repetitions}`);
+    return this;
+  }
   reset() {
     this.calls.push('reset');
     return this;
@@ -31,7 +36,7 @@ class FakeAction implements ActionLike {
     return this;
   }
   crossFadeFrom(from: ActionLike, s: number, warp: boolean) {
-    this.calls.push(`crossFadeFrom:${(from as FakeAction).name}:${s}:${warp}`);
+    this.calls.push(`crossFadeFrom:${(from as unknown as FakeAction).name}:${s}:${warp}`);
     return this;
   }
 }
@@ -50,7 +55,7 @@ class FakeMixer implements MixerLike {
 
 const clips = [
   new AnimationClip(CLIP_NAMES.idle, 1, []),
-  new AnimationClip(CLIP_NAMES.talking, 1, []),
+  new AnimationClip(CLIP_NAMES.talking!, 1, []),
 ];
 
 function setup() {
@@ -94,12 +99,12 @@ describe('character state machine', () => {
     animator.setState('idle');
     animator.setState('talking');
     animator.setState('talking');
-    const talking = mixer.actions.get(CLIP_NAMES.talking)!;
+    const talking = mixer.actions.get(CLIP_NAMES.talking!)!;
     expect(CROSSFADE_SECONDS).toBeCloseTo(0.3);
     expect(talking.calls).toEqual(['reset', 'play', `crossFadeFrom:${CLIP_NAMES.idle}:0.3:false`]);
     animator.setState('idle');
     expect(mixer.actions.get(CLIP_NAMES.idle)!.calls.at(-1)).toBe(
-      `crossFadeFrom:${CLIP_NAMES.talking}:0.3:false`,
+      `crossFadeFrom:${CLIP_NAMES.talking!}:0.3:false`,
     );
   });
 
@@ -145,5 +150,72 @@ describe('character state machine', () => {
     animator.setMouthOpen(1);
     animator.update(0.016);
     expect(jaw.quaternion.angleTo(rest)).toBeCloseTo(IDLE_CLOSE_DEG * DEG, 6);
+  });
+});
+
+describe('the soldiers: fight, sheathe and draw', () => {
+  const SOLDIER = {
+    idle: 'Idle',
+    talking: 'Hablando',
+    fight: 'Luchando',
+    draw: 'Desenvainar',
+    sheathe: 'Envainar',
+  };
+  const soldierClips = [
+    new AnimationClip('Idle', 10, []),
+    new AnimationClip('Hablando', 4, []),
+    new AnimationClip('Luchando', 2.2, []),
+    new AnimationClip('Desenvainar', 1.2, []),
+    new AnimationClip('Envainar', 1.2, []),
+  ];
+
+  it('plays the sword in and out once, holding the last frame, and reports when done', () => {
+    const mixer = new FakeMixer();
+    const animator = new CharacterAnimator(mixer, soldierClips, null, SOLDIER);
+    expect(mixer.actions.get('Envainar')!.calls).toEqual(['setLoop:once:1']);
+    expect(mixer.actions.get('Envainar')!.clampWhenFinished).toBe(true);
+    expect(mixer.actions.get('Luchando')!.clampWhenFinished).toBe(false);
+    animator.setState('fight');
+    let done = 0;
+    animator.setState('sheathe', () => (done += 1));
+    animator.update(1);
+    expect(done).toBe(0);
+    animator.update(0.25);
+    expect(done).toBe(1);
+    animator.update(5);
+    expect(done).toBe(1);
+  });
+
+  it('a new state drops the report of an unfinished one', () => {
+    const animator = new CharacterAnimator(new FakeMixer(), soldierClips, null, SOLDIER);
+    let sheathed = false;
+    animator.setState('sheathe', () => (sheathed = true));
+    animator.update(0.5);
+    animator.setState('fight');
+    animator.update(5);
+    expect(sheathed).toBe(false);
+    expect(animator.state).toBe('fight');
+  });
+
+  it("skips what the model lacks: the craftsman can't draw, but the sequence goes on", () => {
+    const animator = new CharacterAnimator(new FakeMixer(), clips, null);
+    let drawn = false;
+    animator.setState('draw', () => (drawn = true));
+    expect(drawn).toBe(true);
+    expect(animator.has('fight')).toBe(false);
+    expect(animator.has('idle')).toBe(true);
+  });
+
+  it('leaves the jaw to the clip while fighting', () => {
+    const jaw = { quaternion: new Quaternion().setFromAxisAngle(JAW_AXIS, 2) };
+    const animator = new CharacterAnimator(new FakeMixer(), soldierClips, jaw, SOLDIER);
+    animator.setState('idle');
+    animator.update(0.016);
+    animator.setState('fight');
+    const fromClip = new Quaternion().setFromAxisAngle(JAW_AXIS, 0.3);
+    jaw.quaternion.copy(fromClip);
+    animator.setMouthOpen(1);
+    animator.update(0.016);
+    expect(jaw.quaternion.angleTo(fromClip)).toBeLessThan(1e-6);
   });
 });

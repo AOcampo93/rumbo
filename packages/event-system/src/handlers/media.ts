@@ -1,6 +1,7 @@
 import {
   type ArCharacterParams,
   ArCharacterParamsSchema,
+  arSceneOf,
   type QuizParams,
   QuizParamsSchema,
   type RedirectParams,
@@ -78,7 +79,7 @@ export const redirectHandler: ActionHandler<RedirectParams> = {
 };
 
 /**
- * A 3D guide in augmented reality who answers by voice (version 2 prototype). The view
+ * An AR scene whose characters answer by voice (version 2 prototype). The view
  * explains the activity, opens the AR page and resolves when the visitor is back: done once
  * they started it, dismissed when they chose "not now".
  */
@@ -88,7 +89,7 @@ export const arCharacterHandler: ActionHandler<ArCharacterParams> = {
   async run(params, context) {
     const outcome = await context.ui.present<ViewOutcome>(
       'ar_character',
-      { ...pointProps(context), ...params },
+      { ...pointProps(context), scene: arSceneOf(params) },
       { variant: 'sheet', signal: context.signal },
     );
     return fromOutcome(outcome);

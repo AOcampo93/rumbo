@@ -300,21 +300,32 @@ describe('redirect', () => {
 });
 
 describe('ar_character', () => {
-  it('opens its sheet with the point and the character; done once started, dismissed on "not now"', async () => {
+  it('opens its sheet with the point and the scene; done once started, dismissed on "not now"', async () => {
     const started = setup({ outcome: { status: 'done' } });
-    const params = parse(arCharacterHandler, { character: 'artesano' });
+    const params = parse(arCharacterHandler, { scene: 'asalto_1140' });
     expect(await arCharacterHandler.run(params, started.context)).toEqual({ status: 'done' });
     expect(started.opened[0]).toMatchObject({
       view: 'ar_character',
       variant: 'sheet',
-      props: { name: 'P1', character: 'artesano' },
+      props: { name: 'P1', scene: 'asalto_1140' },
     });
+    expect(started.opened[0]?.props).not.toHaveProperty('character');
     const later = setup({ outcome: { status: 'dismissed' } });
     expect(await arCharacterHandler.run(params, later.context)).toEqual({ status: 'dismissed' });
   });
 
-  it('only knows the characters the API has', () => {
+  it("reads the first version's character as the scene of that name", async () => {
+    const t = setup({ outcome: { status: 'done' } });
+    await arCharacterHandler.run(parse(arCharacterHandler, { character: 'artesano' }), t.context);
+    expect(t.opened[0]?.props).toMatchObject({ scene: 'artesano' });
+    expect(t.opened[0]?.props).not.toHaveProperty('character');
+  });
+
+  it('only knows the scenes the API has', () => {
+    expect(accepts(arCharacterHandler, { scene: 'artesano' })).toBe(true);
+    expect(accepts(arCharacterHandler, { scene: 'asalto_1140' })).toBe(true);
     expect(accepts(arCharacterHandler, { character: 'artesano' })).toBe(true);
+    expect(accepts(arCharacterHandler, { scene: 'pirata' })).toBe(false);
     expect(accepts(arCharacterHandler, { character: 'pirata' })).toBe(false);
     expect(accepts(arCharacterHandler, {})).toBe(false);
   });

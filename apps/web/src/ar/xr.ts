@@ -57,7 +57,7 @@ export class Stage {
   readonly renderer: WebGLRenderer;
   readonly scene = new Scene();
   readonly camera = new PerspectiveCamera(50, 1, 0.05, 50);
-  /** The character and its shadow live here; AR placement moves this group. */
+  /** The characters and their shadows live here; AR placement moves this group. */
   readonly anchor = new Group();
   mode: StageMode = 'fallback';
   fps = 0;
@@ -65,7 +65,8 @@ export class Stage {
   private readonly controls: OrbitControls;
   private readonly floor: Mesh;
   private readonly reticle: Mesh;
-  private character: Object3D | null = null;
+  /** One group per character (the model and its shadow), turned by `turnActor`. */
+  private readonly actors: Group[] = [];
   private session: XRSession | null = null;
   private hitSource: XRHitTestSource | null = null;
   private refSpace: XRReferenceSpace | null = null;
@@ -76,6 +77,8 @@ export class Stage {
   private fpsFrames = 0;
   private fpsStart = 0;
   private readonly background = new Color(0xe9e4da);
+  /** How far back the 3D view's camera stands (1 frames one character). */
+  private viewScale = 1;
 
   constructor(private readonly options: StageOptions) {
     const renderer = new WebGLRenderer({ canvas: options.canvas, antialias: true, alpha: true });
@@ -97,7 +100,7 @@ export class Stage {
       new MeshStandardMaterial({ color: 0xd8d2c6, roughness: 1 }),
     );
     this.floor.rotation.x = -Math.PI / 2;
-    this.anchor.add(this.floor, contactShadow());
+    this.anchor.add(this.floor);
     this.scene.add(this.anchor);
 
     this.reticle = new Mesh(
@@ -120,10 +123,41 @@ export class Stage {
     renderer.setAnimationLoop((time, frame) => this.render(time, frame));
   }
 
-  /** Put the character on the stage (the model's feet are at y = 0). */
-  setCharacter(object: Object3D): void {
-    this.character = object;
-    this.anchor.add(object);
+  /** Put a character on the stage, his feet (y = 0) at (x, z) from its centre. */
+  addActor(object: Object3D, x = 0, z = 0): Group {
+    const group = new Group();
+    group.position.set(x, 0, z);
+    group.add(object, contactShadow());
+    group.visible = this.mode !== 'ar' || this.placed;
+    this.actors.push(group);
+    this.anchor.add(group);
+    return group;
+  }
+
+  /**
+   * Turns a character a step towards a point of the stage (anchor space), at most
+   * `maxStep` radians, so he turns round instead of snapping.
+   */
+  turnActor(actor: Group, towards: { x: number; z: number }, maxStep: number): void {
+    const target = facingAngle(actor.position, towards);
+    const delta = Math.atan2(
+      Math.sin(target - actor.rotation.y),
+      Math.cos(target - actor.rotation.y),
+    );
+    actor.rotation.y += Math.max(-maxStep, Math.min(maxStep, delta));
+  }
+
+  /** Frames a wider scene in the 3D view (e.g. 1.3 for two characters side by side). */
+  setViewScale(scale: number): void {
+    this.viewScale = scale;
+    if (this.mode === 'fallback') this.enterFallback();
+  }
+
+  /** Where the viewer (the phone, or the 3D view's camera) is, in the stage's own space. */
+  viewerOnStage(target = new Vector3()): Vector3 {
+    const camera = this.mode === 'ar' ? this.renderer.xr.getCamera() : this.camera;
+    target.setFromMatrixPosition(camera.matrixWorld);
+    return this.anchor.worldToLocal(target);
   }
 
   resize(): void {
@@ -155,7 +189,7 @@ export class Stage {
     this.scene.background = null;
     this.floor.visible = false;
     // Until the user taps, nobody is there.
-    if (this.character) this.character.visible = false;
+    for (const actor of this.actors) actor.visible = false;
     this.options.onModeChange?.('ar');
   }
 
@@ -182,7 +216,7 @@ export class Stage {
     this.anchor.rotation.y = facingAngle(target, cameraPos);
     this.placed = true;
     this.reticle.visible = false;
-    if (this.character) this.character.visible = true;
+    for (const actor of this.actors) actor.visible = true;
     this.options.onPlaced?.();
   }
 
@@ -203,8 +237,8 @@ export class Stage {
     this.floor.visible = true;
     this.anchor.position.set(0, 0, 0);
     this.anchor.rotation.set(0, 0, 0);
-    if (this.character) this.character.visible = true;
-    this.camera.position.set(0.8, 1.2, 3.7);
+    for (const actor of this.actors) actor.visible = true;
+    this.camera.position.set(0.8, 1.2, 3.7).multiplyScalar(this.viewScale);
     this.controls.enabled = true;
     this.controls.update();
     this.resize();

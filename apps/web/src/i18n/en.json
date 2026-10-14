@@ -665,8 +665,8 @@
           "help": "A brief “You've arrived at…” and the route moves on, no sheet."
         },
         "ar": {
-          "title": "AR character (test)",
-          "help": "The Leiria craftsman appears in augmented reality and answers by voice. Testing only."
+          "title": "AR scene (test)",
+          "help": "A character or a scene in augmented reality that answers by voice. Testing only."
         }
       },
       "quiz": {
@@ -702,6 +702,17 @@
         "labelPlaceholder": "E.g. Leiria cultural agenda",
         "labelRequired": "Tell whoever arrives where the link goes."
       },
+      "ar": {
+        "scene": "Scene",
+        "scenes": {
+          "artesano": "The craftsman (14th century)",
+          "asalto_1140": "The 1140 assault (two soldiers)"
+        },
+        "names": {
+          "artesano": "The craftsman",
+          "asalto_1140": "The 1140 assault"
+        }
+      },
       "tooLong": "That's too long.",
       "invalid": "Check the “On arrival” details.",
       "contentNote": "Places with another “On arrival” option don't get an AI card.",
@@ -713,7 +724,7 @@
         "videoTitled": "YouTube video: “{title}”",
         "link": "Link: {label} · {host}",
         "check": "Just a notice on arrival",
-        "ar": "Character in augmented reality"
+        "ar": "AR scene: {scene}"
       },
       "mix": {
         "basic": "{n} with name and address | {n} with name and address",
@@ -721,7 +732,7 @@
         "video": "{n} video | {n} videos",
         "link": "{n} link | {n} links",
         "check": "{n} notice | {n} notices",
-        "ar": "{n} AR character | {n} AR characters"
+        "ar": "{n} AR scene | {n} AR scenes"
       }
     },
     "review": {
@@ -901,32 +912,59 @@
     "date": "{date}, {time}"
   },
   "arCharacter": {
-    "title": "Talk to the craftsman",
-    "lead": "A craftsman from 14th-century Leiria appears beside you in augmented reality and answers out loud.",
-    "how": "How it works",
-    "steps": {
-      "camera": {
-        "title": "The camera opens",
-        "text": "Find a clear spot and point at the floor until you see a white ring."
+    "scenes": {
+      "artesano": {
+        "title": "Talk to the craftsman",
+        "lead": "A craftsman from 14th-century Leiria appears beside you in augmented reality and answers out loud.",
+        "steps": {
+          "camera": {
+            "title": "The camera opens",
+            "text": "Find a clear spot and point at the floor until you see a white ring."
+          },
+          "place": {
+            "title": "Tap to place him",
+            "text": "The craftsman appears where you tapped. Tap the floor again to move him there."
+          },
+          "talk": {
+            "title": "Press and hold to talk",
+            "text": "Ask him about the castle, his trade or the Leiria of his time. Let go and he answers."
+          },
+          "back": {
+            "title": "Back to the route",
+            "text": "When you’re done, close augmented reality and tap “Continue route”."
+          }
+        },
+        "opened": "The craftsman is waiting in another window"
       },
-      "place": {
-        "title": "Tap to place him",
-        "text": "The craftsman appears where you tapped. Tap the floor again to move him there."
-      },
-      "talk": {
-        "title": "Press and hold to talk",
-        "text": "Ask him about the castle, his trade or the Leiria of his time. Let go and he answers."
-      },
-      "back": {
-        "title": "Back to the route",
-        "text": "When you’re done, close augmented reality and tap “Continue route”."
+      "asalto_1140": {
+        "title": "Interrupt the battle",
+        "lead": "A Portuguese defender and an Almoravid warrior fight in front of the castle, around 1140. Walk up to one and talk to him.",
+        "steps": {
+          "camera": {
+            "title": "The camera opens",
+            "text": "Find a clear spot and point at the floor until you see a white ring."
+          },
+          "place": {
+            "title": "Tap to place the scene",
+            "text": "The two soldiers appear fighting where you tapped."
+          },
+          "talk": {
+            "title": "Walk up to one and tap “Talk”",
+            "text": "Both stop: the one you chose answers and the other waits. Hold the microphone to speak."
+          },
+          "back": {
+            "title": "Back to the route",
+            "text": "When they are done they go back to fighting. Close augmented reality and tap “Continue route”."
+          }
+        },
+        "opened": "The soldiers are waiting in another window"
       }
     },
+    "how": "How it works",
     "iphone": "On iPhone it opens as an App Clip: nothing to install. To come back, swipe up to close it.",
     "tips": "Turn the volume up or use headphones. Each conversation lasts up to 3 minutes.",
     "start": "Start",
     "later": "Not now",
-    "opened": "The craftsman is waiting in another window",
     "openedText": "When you’re done, come back here and carry on with the route.",
     "openedAppClip": "When you’re done, close the App Clip and carry on with the route here.",
     "reopen": "Open again"

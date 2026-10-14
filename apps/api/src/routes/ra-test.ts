@@ -34,10 +34,13 @@ export interface RaTestOptions {
   /** Null: the feature is off (voice_unavailable). */
   connector: LiveConnector | null;
   characters: ReadonlyMap<string, Character>;
-  facts: LocalizedFacts;
+  /** Each character's facts, by id; one without a sheet says it knows nothing. */
+  knowledge: ReadonlyMap<string, LocalizedFacts>;
   /** Also accept http://localhost and http://127.0.0.1 as the page's origin (development). */
   allowLocalOrigins: boolean;
 }
+
+const NO_KNOWLEDGE: LocalizedFacts = { es: '', en: '', pt: '' };
 
 /** The largest binary frame a client may send (1 s of PCM16 16 kHz is 32 KB). */
 export const MAX_FRAME_BYTES = 64 * 1024;
@@ -291,7 +294,11 @@ export const raTestRoutes: FastifyPluginAsync<RaTestOptions> = async (app, optio
             speechConfig: {
               voiceConfig: { prebuiltVoiceConfig: { voiceName: character.voiceName } },
             },
-            systemInstruction: systemInstruction(character, lang, options.facts),
+            systemInstruction: systemInstruction(
+              character,
+              lang,
+              options.knowledge.get(character.id) ?? NO_KNOWLEDGE,
+            ),
             inputAudioTranscription: {},
             outputAudioTranscription: {},
             realtimeInputConfig: { automaticActivityDetection: { disabled: true } },

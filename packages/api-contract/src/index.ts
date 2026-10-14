@@ -336,7 +336,7 @@ const USER_ACTION_PARAMS = new Map<string, z.ZodType>([
   ['redirect', USER_REDIRECT_PARAMS],
   ['toast', USER_TOAST_PARAMS],
   ['decision', DecisionParamsSchema],
-  // Version 2 prototype: the AR guide (its voice needs the tester's access code).
+  // Version 2 prototype: an AR scene (its voice needs the tester's access code).
   ['ar_character', ArCharacterParamsSchema],
 ]);
 const USER_ROUTE_TRIGGERS = new Set(['onDeviation', 'onIdle', 'onOutOfOrder', 'onTimeout']);

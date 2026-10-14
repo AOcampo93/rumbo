@@ -52,7 +52,8 @@ export function adoptArCodeFromUrl(
 }
 
 export interface ArPageOptions {
-  character: string;
+  /** An AR scene id (route-spec AR_SCENES): one guide, or several characters together. */
+  scene: string;
   lang: string;
   /** Opened from a route's arrival: the page offers to go back to it. */
   fromRoute?: boolean;
@@ -60,10 +61,10 @@ export interface ArPageOptions {
   code?: string;
 }
 
-/** The AR page for a character, on this site. */
+/** The AR page for a scene, on this site. */
 export function arPageUrl(origin: string, options: ArPageOptions): string {
   const url = new URL('/ra_test/', origin);
-  url.searchParams.set('character', options.character);
+  url.searchParams.set('scene', options.scene);
   url.searchParams.set('lang', options.lang);
   if (options.fromRoute) url.searchParams.set('from', 'route');
   if (options.code) url.searchParams.set('code', options.code);

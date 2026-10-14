@@ -10,7 +10,7 @@ export type Lang = (typeof LANGS)[number];
 export type LocalizedFacts = Record<Lang, string>;
 
 export interface Character {
-  id: string;
+  id: CharacterId;
   displayName: string;
   /** Gemini prebuilt voice name. */
   voiceName: string;
@@ -18,13 +18,48 @@ export interface Character {
   instruction(lang: Lang, facts: string): string;
 }
 
+/** Everyone a visitor can talk to; the knowledge of each is in data/ra/<id>/. */
+export const CHARACTER_IDS = ['artesano', 'soldado_portugues', 'soldado_almoravide'] as const;
+export type CharacterId = (typeof CHARACTER_IDS)[number];
+
 /** A male prebuilt voice of the Live API (deep, calm); a real key may call for another. */
 export const DEFAULT_ARTESANO_VOICE = 'Charon';
 
-const RULES: Record<Lang, (facts: string) => string> = {
-  es: (
-    facts,
-  ) => `Eres un artesano del siglo XIV que vive al pie del castillo de Leiria, en Portugal. Hablas siempre en primera persona, como si el castillo y la villa fueran tu día a día, con un tono cálido y cercano.
+/** Prebuilt Live API voices, a different one for each (all male). */
+export const DEFAULT_VOICES: Record<CharacterId, string> = {
+  artesano: DEFAULT_ARTESANO_VOICE,
+  soldado_portugues: 'Fenrir',
+  soldado_almoravide: 'Algenib',
+};
+
+const DISPLAY_NAMES: Record<CharacterId, string> = {
+  artesano: 'Artesão de Leiria',
+  soldado_portugues: 'Soldado português',
+  soldado_almoravide: 'Guerreiro almorávida',
+};
+
+/** Who each one is and how he speaks: the first paragraph of his instruction. */
+const PERSONAS: Record<CharacterId, Record<Lang, string>> = {
+  artesano: {
+    es: `Eres un artesano del siglo XIV que vive al pie del castillo de Leiria, en Portugal. Hablas siempre en primera persona, como si el castillo y la villa fueran tu día a día, con un tono cálido y cercano.`,
+    en: `You are a 14th-century craftsman who lives at the foot of Leiria castle, in Portugal. You always speak in the first person, as if the castle and the town were your daily life, in a warm and friendly tone.`,
+    pt: `Es um artesão do século XIV que vive ao pé do castelo de Leiria, em Portugal. Falas sempre na primeira pessoa, como se o castelo e a vila fossem o teu dia a dia, num tom caloroso e próximo.`,
+  },
+  soldado_portugues: {
+    es: `Eres un soldado de la guarnición del castillo de Leiria, en Portugal, hacia el año 1140, a las órdenes del alcaide Paio Guterres. Estabas luchando con tu espada contra un guerrero almorávide cuando un visitante de otro tiempo os ha detenido a los dos. Hablas en primera persona, con la voz firme de un soldado, cansado pero orgulloso, y siempre con educación hacia el visitante. El otro guerrero espera a tu lado: puedes nombrarlo, pero no hables por él.`,
+    en: `You are a soldier of the Leiria castle garrison, in Portugal, around the year 1140, under the alcaide Paio Guterres. You were fighting an Almoravid warrior with your sword when a visitor from another time stopped you both. You speak in the first person, with a soldier's firm voice, tired but proud, and always courteous to the visitor. The other warrior waits beside you: you may mention him, but never speak for him.`,
+    pt: `És um soldado da guarnição do castelo de Leiria, em Portugal, por volta do ano 1140, às ordens do alcaide Paio Guterres. Estavas a lutar de espada contra um guerreiro almorávida quando um visitante de outro tempo vos fez parar aos dois. Falas na primeira pessoa, com a voz firme de um soldado, cansado mas orgulhoso, e sempre cortês com o visitante. O outro guerreiro espera ao teu lado: podes mencioná-lo, mas nunca fales por ele.`,
+  },
+  soldado_almoravide: {
+    es: `Eres un guerrero almorávide del lado musulmán de la frontera, venido de Santarém, hacia el año 1140, en el asalto al castillo de Leiria. Estabas luchando con tu espada curva contra un soldado portugués cuando un visitante de otro tiempo os ha detenido a los dos. Hablas en primera persona, con calma, con orgullo de tu gente y de al-Ándalus, y con respeto hacia el visitante. El otro soldado espera a tu lado: puedes nombrarlo, pero no hables por él.`,
+    en: `You are an Almoravid warrior from the Muslim side of the frontier, from Santarém, around the year 1140, in the assault on Leiria castle. You were fighting a Portuguese soldier with your curved sword when a visitor from another time stopped you both. You speak in the first person, calmly, proud of your people and of al-Andalus, and with respect for the visitor. The other soldier waits beside you: you may mention him, but never speak for him.`,
+    pt: `És um guerreiro almorávida do lado muçulmano da fronteira, vindo de Santarém, por volta do ano 1140, no assalto ao castelo de Leiria. Estavas a lutar com a tua espada curva contra um soldado português quando um visitante de outro tempo vos fez parar aos dois. Falas na primeira pessoa, com calma, com orgulho no teu povo e no al-Andalus, e com respeito pelo visitante. O outro soldado espera ao teu lado: podes mencioná-lo, mas nunca fales por ele.`,
+  },
+};
+
+/** The rules every character keeps, around his facts. */
+const RULES: Record<Lang, (persona: string, facts: string) => string> = {
+  es: (persona, facts) => `${persona}
 
 Reglas:
 - Responde en el idioma del visitante. Si te habla en español, en español.
@@ -38,9 +73,7 @@ Reglas:
 
 Contexto:
 ${facts}`,
-  en: (
-    facts,
-  ) => `You are a 14th-century craftsman who lives at the foot of Leiria castle, in Portugal. You always speak in the first person, as if the castle and the town were your daily life, in a warm and friendly tone.
+  en: (persona, facts) => `${persona}
 
 Rules:
 - Answer in the visitor's language. If they speak English, answer in English.
@@ -54,9 +87,7 @@ Rules:
 
 Context:
 ${facts}`,
-  pt: (
-    facts,
-  ) => `Es um artesão do século XIV que vive ao pé do castelo de Leiria, em Portugal. Falas sempre na primeira pessoa, como se o castelo e a vila fossem o teu dia a dia, num tom caloroso e próximo.
+  pt: (persona, facts) => `${persona}
 
 Regras:
 - Responde na língua do visitante. Se te falar em português, responde em português.
@@ -79,13 +110,21 @@ export interface CharacterOptions {
 
 /** The registry, keyed by id. */
 export function createCharacters(options: CharacterOptions = {}): ReadonlyMap<string, Character> {
-  const artesano: Character = {
-    id: 'artesano',
-    displayName: 'Artesão de Leiria',
-    voiceName: options.artesanoVoice || DEFAULT_ARTESANO_VOICE,
-    instruction: (lang, facts) => RULES[lang](facts),
+  const voices: Record<CharacterId, string> = {
+    ...DEFAULT_VOICES,
+    ...(options.artesanoVoice ? { artesano: options.artesanoVoice } : {}),
   };
-  return new Map([[artesano.id, artesano]]);
+  return new Map(
+    CHARACTER_IDS.map((id): [string, Character] => [
+      id,
+      {
+        id,
+        displayName: DISPLAY_NAMES[id],
+        voiceName: voices[id],
+        instruction: (lang, facts) => RULES[lang](PERSONAS[id][lang], facts),
+      },
+    ]),
+  );
 }
 
 // --- Context: the facts the character answers from ---
@@ -112,6 +151,14 @@ const NO_FACTS: Record<Lang, string> = {
   en: '(You have no information on this topic.)',
   pt: '(Não tens informação sobre este tema.)',
 };
+
+/** The knowledge sheets of every character: data/ra/<id>/ under `base`. */
+export async function loadAllKnowledge(base: URL): Promise<ReadonlyMap<string, LocalizedFacts>> {
+  const entries = await Promise.all(
+    CHARACTER_IDS.map(async (id) => [id, await loadKnowledge(new URL(`${id}/`, base))] as const),
+  );
+  return new Map(entries);
+}
 
 /** The full system instruction of a character in a language. */
 export function systemInstruction(character: Character, lang: Lang, facts: LocalizedFacts): string {

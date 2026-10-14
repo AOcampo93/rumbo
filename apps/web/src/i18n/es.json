@@ -665,8 +665,8 @@
           "help": "Un breve «Llegaste a…» y la ruta sigue, sin ficha."
         },
         "ar": {
-          "title": "Personaje en RA (prueba)",
-          "help": "El artesano de Leiria aparece en realidad aumentada y responde por voz. Solo para pruebas."
+          "title": "Escena en RA (prueba)",
+          "help": "Un personaje o una escena en realidad aumentada que responde por voz. Solo para pruebas."
         }
       },
       "quiz": {
@@ -702,6 +702,17 @@
         "labelPlaceholder": "Ej.: Agenda cultural de Leiria",
         "labelRequired": "Dile a quien llegue adónde lleva el enlace."
       },
+      "ar": {
+        "scene": "Escena",
+        "scenes": {
+          "artesano": "El artesano (siglo XIV)",
+          "asalto_1140": "El asalto de 1140 (dos soldados)"
+        },
+        "names": {
+          "artesano": "El artesano",
+          "asalto_1140": "El asalto de 1140"
+        }
+      },
       "tooLong": "Es demasiado largo.",
       "invalid": "Revisa los datos de «Al llegar».",
       "contentNote": "Los lugares con otra opción en «Al llegar» no llevan ficha con IA.",
@@ -713,7 +724,7 @@
         "videoTitled": "Video de YouTube: «{title}»",
         "link": "Enlace: {label} · {host}",
         "check": "Solo un aviso al llegar",
-        "ar": "Personaje en realidad aumentada"
+        "ar": "Escena en RA: {scene}"
       },
       "mix": {
         "basic": "{n} con nombre y dirección | {n} con nombre y dirección",
@@ -721,7 +732,7 @@
         "video": "{n} video | {n} videos",
         "link": "{n} enlace | {n} enlaces",
         "check": "{n} aviso | {n} avisos",
-        "ar": "{n} personaje en RA | {n} personajes en RA"
+        "ar": "{n} escena en RA | {n} escenas en RA"
       }
     },
     "review": {
@@ -901,32 +912,59 @@
     "date": "{date}, {time}"
   },
   "arCharacter": {
-    "title": "Habla con el artesano",
-    "lead": "Un artesano de la Leiria del siglo XIV aparece a tu lado en realidad aumentada y te contesta en voz alta.",
-    "how": "Cómo funciona",
-    "steps": {
-      "camera": {
-        "title": "Se abre la cámara",
-        "text": "Busca un sitio despejado y apunta al suelo hasta ver un anillo blanco."
+    "scenes": {
+      "artesano": {
+        "title": "Habla con el artesano",
+        "lead": "Un artesano de la Leiria del siglo XIV aparece a tu lado en realidad aumentada y te contesta en voz alta.",
+        "steps": {
+          "camera": {
+            "title": "Se abre la cámara",
+            "text": "Busca un sitio despejado y apunta al suelo hasta ver un anillo blanco."
+          },
+          "place": {
+            "title": "Toca para colocarlo",
+            "text": "El artesano aparece donde tocaste. Si vuelves a tocar el suelo, se mueve allí."
+          },
+          "talk": {
+            "title": "Mantén pulsado para hablar",
+            "text": "Pregúntale por el castillo, su oficio o la Leiria de su tiempo. Suelta y te contesta."
+          },
+          "back": {
+            "title": "Vuelve a la ruta",
+            "text": "Cuando acabes, cierra la realidad aumentada y toca «Continuar ruta»."
+          }
+        },
+        "opened": "El artesano te espera en otra ventana"
       },
-      "place": {
-        "title": "Toca para colocarlo",
-        "text": "El artesano aparece donde tocaste. Si vuelves a tocar el suelo, se mueve allí."
-      },
-      "talk": {
-        "title": "Mantén pulsado para hablar",
-        "text": "Pregúntale por el castillo, su oficio o la Leiria de su tiempo. Suelta y te contesta."
-      },
-      "back": {
-        "title": "Vuelve a la ruta",
-        "text": "Cuando acabes, cierra la realidad aumentada y toca «Continuar ruta»."
+      "asalto_1140": {
+        "title": "Interrumpe la batalla",
+        "lead": "Un defensor portugués y un guerrero almorávide luchan ante el castillo, hacia 1140. Acércate a uno y háblale.",
+        "steps": {
+          "camera": {
+            "title": "Se abre la cámara",
+            "text": "Busca un sitio despejado y apunta al suelo hasta ver un anillo blanco."
+          },
+          "place": {
+            "title": "Toca para colocar la escena",
+            "text": "Los dos soldados aparecen luchando donde tocaste."
+          },
+          "talk": {
+            "title": "Acércate a uno y toca «Hablar»",
+            "text": "Los dos se detienen: el que elegiste te contesta y el otro espera. Mantén pulsado el micrófono para hablar."
+          },
+          "back": {
+            "title": "Vuelve a la ruta",
+            "text": "Al terminar vuelven a luchar. Cierra la realidad aumentada y toca «Continuar ruta»."
+          }
+        },
+        "opened": "Los soldados te esperan en otra ventana"
       }
     },
+    "how": "Cómo funciona",
     "iphone": "En iPhone se abre con un App Clip: no hace falta instalar nada. Para volver, ciérralo deslizando hacia arriba.",
     "tips": "Sube el volumen o usa auriculares. Cada conversación dura hasta 3 minutos.",
     "start": "Empezar",
     "later": "Ahora no",
-    "opened": "El artesano te espera en otra ventana",
     "openedText": "Cuando termines, vuelve aquí y sigue la ruta.",
     "openedAppClip": "Cuando termines, cierra el App Clip y sigue la ruta aquí.",
     "reopen": "Abrir de nuevo"

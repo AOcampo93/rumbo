@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTION_LIMITS,
   AiTemplateParamsSchema,
+  ArCharacterParamsSchema,
+  arSceneOf,
   DecisionParamsSchema,
   InfoSheetParamsSchema,
   INTERRUPTIONS,
@@ -17,6 +19,24 @@ import {
 // them; the handlers' own tests cover what each view gets.
 
 describe('action params', () => {
+  it("ar_character: a scene, or the first version's character, nothing else", () => {
+    expect(ArCharacterParamsSchema.safeParse({ scene: 'artesano' }).success).toBe(true);
+    expect(ArCharacterParamsSchema.safeParse({ scene: 'asalto_1140' }).success).toBe(true);
+    expect(ArCharacterParamsSchema.safeParse({ character: 'artesano' }).success).toBe(true);
+    expect(ArCharacterParamsSchema.safeParse({ scene: 'pirata' }).success).toBe(false);
+    expect(ArCharacterParamsSchema.safeParse({ character: 'asalto_1140' }).success).toBe(false);
+    expect(ArCharacterParamsSchema.safeParse({}).success).toBe(false);
+    expect(
+      ArCharacterParamsSchema.safeParse({ scene: 'artesano', character: 'artesano' }).success,
+    ).toBe(false);
+  });
+
+  it('arSceneOf reads the legacy character as the scene of the same name', () => {
+    expect(arSceneOf({ scene: 'asalto_1140' })).toBe('asalto_1140');
+    expect(arSceneOf({ scene: 'artesano' })).toBe('artesano');
+    expect(arSceneOf({ character: 'artesano' })).toBe('artesano');
+  });
+
   it('info_sheet: optional texts in any language, nothing unknown', () => {
     expect(InfoSheetParamsSchema.safeParse({}).success).toBe(true);
     expect(

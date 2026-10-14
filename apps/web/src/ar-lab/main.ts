@@ -1,4 +1,6 @@
-import { CharacterAnimator, levelToMouthOpen, loadCharacter } from '../ar/character.ts';
+import { type Group, Vector3 } from 'three';
+import { type CharacterAnimator, levelToMouthOpen, loadCharacter } from '../ar/character.ts';
+import { Encounter, type EncounterPhase } from '../ar/encounter.ts';
 import { generateSpeechLikePcm16 } from '../ar/pcm.ts';
 import { PcmPlayer, type AudioContextLike } from '../ar/playback.ts';
 import {
@@ -11,6 +13,7 @@ import {
   type VoiceErrorCode,
   type VoiceEvent,
 } from '../ar/voice.ts';
+import { type ActorDef, sceneFromParams, swordOut } from '../ar/scenes.ts';
 import { isArSupported, Stage } from '../ar/xr.ts';
 import { AR_CODE_KEY, appClipUrl, arPageUrl, isIos, readArCode, saveArCode } from '../ar/access.ts';
 import { tapHaptic } from './haptics.ts';
@@ -31,9 +34,6 @@ import {
 // AR lab (/ra_test/): the 3D tour-guide character in WebXR, or in a plain 3D view, with an
 // optional voice chat. Plain TypeScript + DOM on purpose (no Vue) to keep the page light.
 
-const MODEL_URL = '/ra_test/models/artesano.glb';
-/** The characters this page knows (the API holds their voice and knowledge). */
-const CHARACTERS = ['artesano'] as const;
 const LANG_KEY = 'ra_test_lang';
 const APP_SETTINGS_KEY = 'rumbo.settings';
 
@@ -71,6 +71,10 @@ const els = {
   code: $<HTMLInputElement>('code'),
   talk: $<HTMLButtonElement>('talk'),
   talkLabel: $('talkLabel'),
+  choiceHint: $('choiceHint'),
+  choiceButtons: $('choiceButtons'),
+  speakerName: $('speakerName'),
+  endTalk: $<HTMLButtonElement>('endTalk'),
   textForm: $<HTMLFormElement>('textForm'),
   text: $<HTMLInputElement>('text'),
 };
@@ -112,9 +116,13 @@ if (linkCode) {
 } else if (!readArCode() && session.get(AR_CODE_KEY)) {
   saveArCode(session.get(AR_CODE_KEY)); // kept per tab before
 }
-const character = (CHARACTERS as readonly string[]).includes(linkParams.get('character') ?? '')
-  ? (linkParams.get('character') as string)
-  : 'artesano';
+/** What the page shows: one guide, or an encounter of several characters. */
+const scene = sceneFromParams(linkParams);
+const isEncounter = scene.kind === 'encounter';
+document.documentElement.dataset.scene = scene.kind;
+// In an encounter one talks only after choosing a character; a guide is always ready.
+document.documentElement.dataset.talk = isEncounter ? 'closed' : 'open';
+if (isEncounter) els.arGuide.dataset.t = 'arGuideScene';
 /** Opened from a route's arrival: offer the way back to it. */
 const fromRoute = linkParams.get('from') === 'route';
 function replaceQuery(): void {
@@ -135,7 +143,7 @@ let t: Strings = STRINGS[lang];
 function refreshAppClipLink(): void {
   const code = accessCode();
   els.appclip.href = appClipUrl(
-    arPageUrl(location.origin, { character, lang, fromRoute, ...(code ? { code } : {}) }),
+    arPageUrl(location.origin, { scene: scene.id, lang, fromRoute, ...(code ? { code } : {}) }),
   );
 }
 
@@ -316,6 +324,9 @@ function applyStrings(): void {
   for (const button of langButtons) {
     button.setAttribute('aria-pressed', String(button.dataset.lang === lang));
   }
+  els.choiceHint.textContent = t.approach;
+  const speaker = encounter ? currentActor() : undefined;
+  els.speakerName.textContent = speaker ? t.talkingWith(speaker.def.name[lang]) : '';
   renderSetup();
   paintStatus();
 }
@@ -342,13 +353,28 @@ for (const button of langButtons) {
 // Audio output and the character -------------------------------------------------------------
 
 const audioCtx = new AudioContext();
-let animator: CharacterAnimator | null = null;
 let talkingHeld = false;
 let modelBusy = false;
 
+interface Actor {
+  def: ActorDef;
+  animator: CharacterAnimator;
+  group: Group;
+}
+let actors: Actor[] = [];
+/** The encounter's script (fight, stop, talk, fight again); null for a single guide. */
+let encounter: Encounter | null = null;
+
+/** Who answers now: the guide, or the character chosen in an encounter. */
+function currentActor(): Actor | undefined {
+  return encounter ? actors.find((actor) => actor.def.id === encounter?.speaker) : actors[0];
+}
+
 const player = new PcmPlayer(audioCtx as unknown as AudioContextLike, {
   onState: (state) => {
-    animator?.setState(state === 'speaking' ? 'talking' : 'idle');
+    const speaking = state === 'speaking';
+    if (encounter) encounter.speaking(speaking);
+    else actors[0]?.animator.setState(speaking ? 'talking' : 'idle');
     if (state === 'speaking') setStatus('speaking');
     else if (!talkingHeld && uiState !== 'error') setStatus('ready');
   },
@@ -363,8 +389,12 @@ const stage = new Stage({
     // Quick attack, slower release: the jaw follows syllables without flickering.
     const target = levelToMouthOpen(player.level());
     smoothed += (target - smoothed) * Math.min(1, dt * (target > smoothed ? 30 : 12));
-    animator?.setMouthOpen(smoothed);
-    animator?.update(dt);
+    const talker = currentActor();
+    for (const actor of actors) {
+      actor.animator.setMouthOpen(actor === talker ? smoothed : 0);
+      actor.animator.update(dt);
+    }
+    if (encounter) directEncounter(encounter, dt);
   },
   onModeChange: (mode) => {
     const ar = mode === 'ar';
@@ -372,12 +402,14 @@ const stage = new Stage({
     els.exitAr.hidden = !ar;
     els.ar.hidden = ar || !arSupported;
     els.arGuide.hidden = !ar;
+    placedInAr = false;
     els.advanced.open = false;
     setSetupOpen(false);
     if (uiState !== 'error') setStatus('ready');
   },
   onPlaced: () => {
     els.arGuide.hidden = true;
+    placedInAr = true;
   },
 });
 stage.resize();
@@ -412,10 +444,46 @@ els.ar.addEventListener('click', () => {
 });
 els.exitAr.addEventListener('click', () => void stage.endAr());
 
-void loadCharacter(MODEL_URL).then(
-  (character) => {
-    animator = character.animator;
-    stage.setCharacter(character.root);
+void Promise.all(
+  scene.actors.map((def) => loadCharacter(def.model, def.clips, isEncounter ? 'fight' : 'idle')),
+).then(
+  (loaded) => {
+    actors = loaded.map((character, i) => {
+      const def = scene.actors[i] as ActorDef;
+      for (const name of def.hidden ?? []) {
+        const mesh = character.root.getObjectByName(name);
+        if (mesh) mesh.visible = false;
+      }
+      return {
+        def,
+        animator: character.animator,
+        group: stage.addActor(character.root, def.x, def.z),
+      };
+    });
+    if (isEncounter) {
+      // Face to face, and a wider view for two.
+      for (const actor of actors) {
+        const other = actors.find((candidate) => candidate !== actor);
+        if (other) stage.turnActor(actor.group, other.group.position, Math.PI);
+      }
+      stage.setViewScale(1.35);
+      encounter = new Encounter(
+        actors.map((actor) => {
+          const sword = actor.def.sword ? actor.group.getObjectByName(actor.def.sword) : undefined;
+          return {
+            id: actor.def.id,
+            animator: {
+              setState: (state, done) => {
+                if (sword) sword.visible = swordOut(state);
+                actor.animator.setState(state, done);
+              },
+            },
+          };
+        }),
+        onEncounterChange,
+      );
+      encounter.start();
+    }
     els.demo.disabled = false;
     els.talk.disabled = false;
     checks.model = 'ok';
@@ -434,6 +502,126 @@ void loadCharacter(MODEL_URL).then(
 els.demo.addEventListener('click', () => {
   void unlockAudio().then(() => player.enqueue(generateSpeechLikePcm16(4)));
 });
+
+// The encounter: walk up to a character to talk to him ------------------------------------
+
+/** Close enough to a character to talk to him (AR), and far enough to leave him (metres). */
+const NEAR_METRES = 2;
+const LEAVE_METRES = 3.5;
+/** How long one has to stay away before the talk ends (seconds). */
+const LEAVE_SECONDS = 2;
+/** How fast they turn round (radians per second). */
+const TURN_SPEED = 3;
+const MIC_ICON =
+  '<svg viewBox="0 0 24 24"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>';
+
+let placedInAr = false;
+let awayFor = 0;
+let offered = '';
+let greeted: string | null = null;
+const viewer = new Vector3();
+
+function directEncounter(script: Encounter, dt: number): void {
+  stage.viewerOnStage(viewer);
+  // Each one looks at his opponent, or at the visitor while he is the one talking.
+  for (const actor of actors) {
+    const other = actors.find((candidate) => candidate !== actor);
+    const towards = script.facing(actor.def.id) === 'visitor' ? viewer : other?.group.position;
+    if (towards) stage.turnActor(actor.group, towards, dt * TURN_SPEED);
+  }
+  const talking = script.phase === 'stopping' || script.phase === 'talking';
+  if (stage.mode !== 'ar') {
+    // The 3D view has no walking: both can be asked.
+    offerTalk(talking ? [] : actors.map((actor) => actor.def.id));
+    return;
+  }
+  const away = (actor: Actor) =>
+    Math.hypot(viewer.x - actor.group.position.x, viewer.z - actor.group.position.z);
+  if (talking) {
+    const speaker = currentActor();
+    awayFor = speaker && away(speaker) > LEAVE_METRES ? awayFor + dt : 0;
+    if (awayFor > LEAVE_SECONDS) endConversation();
+    offerTalk([]);
+    return;
+  }
+  const nearest = actors.reduce<Actor | undefined>(
+    (best, actor) => (!best || away(actor) < away(best) ? actor : best),
+    undefined,
+  );
+  offerTalk(placedInAr && nearest && away(nearest) <= NEAR_METRES ? [nearest.def.id] : []);
+}
+
+/** Shows a "Talk to …" button for each character on offer (only when that changes). */
+function offerTalk(ids: string[]): void {
+  const key = `${lang}:${ids.join(',')}:${placedInAr}`;
+  if (key === offered) return;
+  offered = key;
+  els.choiceButtons.replaceChildren(
+    ...ids.map((id) => {
+      const actor = actors.find((candidate) => candidate.def.id === id) as Actor;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'choice-btn';
+      button.innerHTML = MIC_ICON;
+      const label = document.createElement('span');
+      label.textContent = t.talkWith(actor.def.name[lang]);
+      button.append(label);
+      button.addEventListener('click', () => talkTo(id));
+      return button;
+    }),
+  );
+  els.choiceHint.hidden = ids.length > 0 || !placedInAr;
+}
+
+function talkTo(id: string): void {
+  if (!encounter) return;
+  tapHaptic();
+  void unlockAudio();
+  if (encounter.speaker && encounter.speaker !== id) {
+    // Another character answers: a new session with his voice and knowledge.
+    voice.close();
+    player.interrupt();
+    greeted = null;
+  }
+  encounter.talkTo(id);
+}
+
+function onEncounterChange(phase: EncounterPhase, speaker: string | null): void {
+  const open = phase === 'stopping' || phase === 'talking';
+  document.documentElement.dataset.talk = open ? 'open' : 'closed';
+  const actor = actors.find((candidate) => candidate.def.id === speaker);
+  els.speakerName.textContent = actor ? t.talkingWith(actor.def.name[lang]) : '';
+  if (!open) greeted = null;
+  // Once both have put their swords away, the chosen one greets the visitor.
+  if (phase === 'talking' && speaker && greeted !== speaker) {
+    greeted = speaker;
+    ensureConnected().then(
+      () => {
+        player.interrupt();
+        voice.sendText(t.greet);
+        setStatus('thinking');
+      },
+      (error: unknown) => {
+        if (uiState !== 'error') showError(errorCode(error));
+      },
+    );
+  }
+}
+
+/** The talk is over: the session closes and they go back to the fight. */
+function endConversation(): void {
+  if (talkingHeld) releaseTalk();
+  voice.close();
+  mic.stop();
+  player.interrupt();
+  awayFor = 0;
+  els.captions.hidden = true;
+  els.subtitles.textContent = '';
+  els.userText.textContent = '';
+  encounter?.finish();
+  if (uiState !== 'error') setStatus('ready');
+}
+els.endTalk.addEventListener('click', endConversation);
 
 // Voice chat ---------------------------------------------------------------------------------
 
@@ -477,6 +665,7 @@ function onVoiceEvent(event: VoiceEvent): void {
       modelText.reset();
       break;
     case 'ended':
+      if (encounter) endConversation();
       setStatus('info', event.reason === 'time_limit' ? t.endedTimeLimit : t.ended);
       mic.stop();
       break;
@@ -498,7 +687,7 @@ const voice = new VoiceClient({
   onEvent: onVoiceEvent,
   location,
   getLang: () => lang,
-  character,
+  getCharacter: () => currentActor()?.def.id ?? (scene.actors[0] as ActorDef).id,
   getCode: accessCode,
 });
 

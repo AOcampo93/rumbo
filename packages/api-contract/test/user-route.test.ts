@@ -516,20 +516,27 @@ describe('checkUserRoute: what a place shows on arrival', () => {
   });
 
   describe('ar_character', () => {
-    it('takes the AR guide with a character the API knows, and nothing else', () => {
-      const bundle = withArrivals({ type: 'ar', character: 'artesano' });
-      expect(validateRouteBundle(bundle).errors).toEqual([]);
-      expect(checkUserRoute(bundle)).toEqual([]);
-      expect(bundle.spec.actions[FIRST]).toEqual({
-        type: 'ar_character',
-        params: { character: 'artesano' },
-      });
-      const other = withArrivals({ type: 'ar', character: 'artesano' });
-      Object.assign(paramsOf(other), { character: 'pirata' });
-      expect(paths(other)).toEqual(['spec.actions.content_castelo-de-leiria.params.character']);
-      const extra = withArrivals({ type: 'ar', character: 'artesano' });
+    it('takes an AR scene the API knows, and nothing else', () => {
+      for (const scene of ['artesano', 'asalto_1140'] as const) {
+        const bundle = withArrivals({ type: 'ar', scene });
+        expect(validateRouteBundle(bundle).errors).toEqual([]);
+        expect(checkUserRoute(bundle)).toEqual([]);
+        expect(bundle.spec.actions[FIRST]).toEqual({ type: 'ar_character', params: { scene } });
+      }
+      const other = withArrivals({ type: 'ar', scene: 'artesano' });
+      Object.assign(paramsOf(other), { scene: 'pirata' });
+      expect(checkUserRoute(other)).not.toEqual([]);
+      const extra = withArrivals({ type: 'ar', scene: 'artesano' });
       Object.assign(paramsOf(extra), { model: 'https://example.com/x.glb' });
-      expect(paths(extra)).toEqual(['spec.actions.content_castelo-de-leiria.params']);
+      expect(checkUserRoute(extra)).not.toEqual([]);
+    });
+
+    it("still takes the first version's character form", () => {
+      const bundle = withArrivals({ type: 'ar', scene: 'artesano' });
+      bundle.spec.actions[FIRST] = { type: 'ar_character', params: { character: 'artesano' } };
+      expect(checkUserRoute(bundle)).toEqual([]);
+      Object.assign(paramsOf(bundle), { character: 'pirata' });
+      expect(checkUserRoute(bundle)).not.toEqual([]);
     });
   });
 

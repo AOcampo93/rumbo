@@ -423,11 +423,17 @@ describe('PlaceEditorSheet · Al llegar', () => {
     await flushPromises();
   };
 
-  it('offers the AR guide (version 2 prototype) for any place, with no fields', async () => {
+  it('offers an AR scene (version 2 prototype) for any place, with a scene to pick', async () => {
     const view = mountEditor();
-    await choose(view, 'Personaje en RA (prueba)');
-    expect(current(view)).toEqual({ type: 'ar', character: 'artesano' });
-    expect(view.find('.arrival__fields').exists()).toBe(false);
+    await choose(view, 'Escena en RA (prueba)');
+    expect(current(view)).toEqual({ type: 'ar', scene: 'artesano' });
+    const scenes = view.get('.arrival__fields').findAll('[role="radio"]');
+    expect(scenes.map((chip) => chip.text())).toEqual([
+      'El artesano (siglo XIV)',
+      'El asalto de 1140 (dos soldados)',
+    ]);
+    await scenes[1]!.trigger('click');
+    expect(current(view)).toEqual({ type: 'ar', scene: 'asalto_1140' });
   });
 
   it('lists the seven ways to greet the user, each with its help, and checks the current one', () => {
@@ -441,7 +447,7 @@ describe('PlaceEditorSheet · Al llegar', () => {
       'Un video de YouTube',
       'Un enlace web',
       'Solo un aviso',
-      'Personaje en RA (prueba)',
+      'Escena en RA (prueba)',
     ]);
     expect(choices[0]?.get('.choice__help').text()).toBe(
       'La ficha con IA si está lista; si no, el nombre y la dirección.',
@@ -711,6 +717,16 @@ describe('C3 · Fichas with places that show something else', () => {
     // The progress counts the places that use a card.
     expect(view.get('[role="progressbar"]').attributes('aria-label')).toBe('1 de 1 fichas listas');
     expect(store.cardStats.total).toBe(1);
+  });
+
+  it('names the AR scene of a place', async () => {
+    const { view, store } = await mountStep(ContentStep);
+    await store.updatePlace('river', { arrival: { type: 'ar', scene: 'artesano' } });
+    await store.updatePlace('museum', { arrival: { type: 'ar', scene: 'asalto_1140' } });
+    await flushPromises();
+    const statuses = view.findAll('.row__status').map((status) => status.text());
+    expect(statuses[2]).toBe('Escena en RA: El artesano');
+    expect(statuses[3]).toBe('Escena en RA: El asalto de 1140');
   });
 
   it('names a video by its title, and a place with the plain sheet by what it shows', async () => {

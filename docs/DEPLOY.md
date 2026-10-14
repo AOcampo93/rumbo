@@ -287,9 +287,11 @@ Página de pruebas, fuera de la app: un personaje 3D en realidad aumentada que c
   - `RA_TEST_ACCESS_CODE`: el código que piden la página y el WebSocket. Los probadores abren `https://rumbo.arturoocampo.com/ra_test/?code=<código>`; la página lo guarda y lo quita de la barra de direcciones.
   - `GEMINI_LIVE_MODEL` (por defecto `gemini-3.8-live`) y los límites `RA_TEST_*` son opcionales.
 - **Comprobación de la página:** `GET /api/v1/ra-test/status?code=` responde `{ voice: 'ok' | 'unavailable' | 'code_required' | 'code_invalid' }` sin abrir sesión con Gemini (gratis). La usa el recuadro de estado de la página; tiene su propio límite de 20 por minuto y dirección.
+- **Escenas:** `?scene=artesano` (un guía) o `?scene=asalto_1140` (dos soldados que luchan; al acercarse a uno se le puede hablar). Personajes de la API: `artesano`, `soldado_portugues` y `soldado_almoravide`, cada uno con su voz y su ficha en `data/ra/<personaje>/`. Los modelos de los soldados van comprimidos con Draco: el decodificador de three.js se sirve desde `/ra_test/draco/` (copiado tal cual en `apps/web/public/ra_test/draco/`).
 - **Los modelos 3D no están en git.** El repo es público y la licencia de un modelo puede no permitir redistribuirlo. Viven en el volumen persistente `r1nkasrwx0no5zwedufosucn-ra-test-models` de `rumbo-web`, montado en `/usr/share/nginx/html/ra_test/models`, y sobreviven a los despliegues. Para subir o cambiar uno:
 
   ```bash
+  # Hoy: artesano.glb, soldado_portugues.glb y soldado_almoravide.glb (versiones webp + Draco).
   scp artesano.glb vmi:/tmp/rumbo-artesano.glb
   ssh vmi 'c=$(docker ps -q --filter name=r1nkasrwx0no5zwedufosucn | head -1); docker cp /tmp/rumbo-artesano.glb $c:/usr/share/nginx/html/ra_test/models/artesano.glb && docker exec $c chmod 644 /usr/share/nginx/html/ra_test/models/artesano.glb; rm /tmp/rumbo-artesano.glb'
   ```
