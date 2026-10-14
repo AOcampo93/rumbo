@@ -51,6 +51,8 @@ export interface StageOptions {
   onFrame: (dt: number) => void;
   onModeChange?: (mode: StageMode) => void;
   onPlaced?: () => void;
+  /** Asked on each AR tap: false when it was on the page's controls (see UiTapGuard). */
+  canPlace?: () => boolean;
 }
 
 export class Stage {
@@ -177,7 +179,9 @@ export class Stage {
     });
     this.session = session;
     session.addEventListener('end', () => this.onSessionEnd());
-    session.addEventListener('select', () => this.place());
+    session.addEventListener('select', () => {
+      if (this.options.canPlace?.() ?? true) this.place();
+    });
     await this.renderer.xr.setSession(session);
     this.refSpace = this.renderer.xr.getReferenceSpace() as XRReferenceSpace | null;
     const viewer = await session.requestReferenceSpace('viewer');

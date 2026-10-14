@@ -14,6 +14,7 @@ import {
   type VoiceEvent,
 } from '../ar/voice.ts';
 import { type ActorDef, sceneFromParams, swordOut } from '../ar/scenes.ts';
+import { UiTapGuard } from '../ar/tap-guard.ts';
 import { isArSupported, Stage } from '../ar/xr.ts';
 import { AR_CODE_KEY, appClipUrl, arPageUrl, isIos, readArCode, saveArCode } from '../ar/access.ts';
 import { tapHaptic } from './haptics.ts';
@@ -157,9 +158,15 @@ els.back.addEventListener('click', () => {
   setTimeout(() => location.assign('/'), 300);
 });
 
-// Taps on the controls must not place the character in AR.
+// Taps on the controls must not place the character in AR: `beforexrselect` where the
+// browser honours it, and the guard everywhere (the App Clip ignores that event).
+const tapGuard = new UiTapGuard();
 for (const el of [els.top, els.bottom]) {
   el.addEventListener('beforexrselect', (e) => e.preventDefault());
+  el.addEventListener('pointerdown', () => tapGuard.press(), { capture: true });
+}
+for (const type of ['pointerup', 'pointercancel'] as const) {
+  window.addEventListener(type, () => tapGuard.release(performance.now()), { capture: true });
 }
 
 // Icons (Lucide, ISC). Constant markup, never built from user input --------------------------
@@ -411,6 +418,7 @@ const stage = new Stage({
     els.arGuide.hidden = true;
     placedInAr = true;
   },
+  canPlace: () => tapGuard.allowsPlacing(performance.now()),
 });
 stage.resize();
 
