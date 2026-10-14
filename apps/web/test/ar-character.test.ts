@@ -1,9 +1,16 @@
-import { AnimationClip, LoopOnce, Quaternion } from 'three';
+import {
+  AnimationClip,
+  LoopOnce,
+  Quaternion,
+  QuaternionKeyframeTrack,
+  VectorKeyframeTrack,
+} from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   CharacterAnimator,
   CLIP_NAMES,
   CROSSFADE_SECONDS,
+  heldPose,
   IDLE_CLOSE_DEG,
   JAW_AXIS,
   MAX_JAW_DEG,
@@ -217,5 +224,31 @@ describe('the soldiers: fight, sheathe and draw', () => {
     animator.setMouthOpen(1);
     animator.update(0.016);
     expect(jaw.quaternion.angleTo(fromClip)).toBeLessThan(1e-6);
+  });
+});
+
+describe('the sword held while fighting', () => {
+  const draw = new AnimationClip('Desenvainar', 1, [
+    new QuaternionKeyframeTrack('Espada.quaternion', [0, 1], [0, 0, 0, 1, 0.7071, 0, 0, 0.7071]),
+    new VectorKeyframeTrack('Espada.scale', [0, 1], [0, 0, 0, 97, 97, 97]),
+  ]);
+
+  it('takes the pose the draw clip ends in, when the fight clip leaves the sword alone', () => {
+    const fight = new AnimationClip('Luchando', 2, [
+      new VectorKeyframeTrack('Hips.position', [0, 1], [0, 0, 0, 0, 1, 0]),
+    ]);
+    const pose = heldPose([draw, fight], 'Espada', 'Desenvainar', 'Luchando');
+    expect(pose?.scale.toArray()).toEqual([97, 97, 97]);
+    expect(pose?.quaternion.x).toBeCloseTo(0.7071);
+    expect(pose?.quaternion.w).toBeCloseTo(0.7071);
+  });
+
+  it('is none when the fight clip moves the sword itself, or a clip is missing', () => {
+    const fight = new AnimationClip('Luchando', 2, [
+      new VectorKeyframeTrack('Espada.scale', [0, 1], [97, 97, 97, 97, 97, 97]),
+    ]);
+    expect(heldPose([draw, fight], 'Espada', 'Desenvainar', 'Luchando')).toBeNull();
+    expect(heldPose([draw], 'Espada', 'Desenvainar', 'Luchando')).toBeNull();
+    expect(heldPose([draw, fight], 'Cimitarra', 'Desenvainar', 'Luchando')).toBeNull();
   });
 });

@@ -1,5 +1,11 @@
-import { type Group, Vector3 } from 'three';
-import { type CharacterAnimator, levelToMouthOpen, loadCharacter } from '../ar/character.ts';
+import { type Group, type Object3D, Vector3 } from 'three';
+import {
+  type CharacterAnimator,
+  heldPose,
+  levelToMouthOpen,
+  loadCharacter,
+  type PropPose,
+} from '../ar/character.ts';
 import { Encounter, type EncounterPhase } from '../ar/encounter.ts';
 import { generateSpeechLikePcm16 } from '../ar/pcm.ts';
 import { PcmPlayer, type AudioContextLike } from '../ar/playback.ts';
@@ -72,8 +78,7 @@ const els = {
   code: $<HTMLInputElement>('code'),
   talk: $<HTMLButtonElement>('talk'),
   talkLabel: $('talkLabel'),
-  choiceHint: $('choiceHint'),
-  choiceButtons: $('choiceButtons'),
+  targets: $('targets'),
   speakerName: $('speakerName'),
   endTalk: $<HTMLButtonElement>('endTalk'),
   textForm: $<HTMLFormElement>('textForm'),
@@ -304,8 +309,10 @@ function paintStatus(): void {
   els.statusText.textContent = words;
   els.status.setAttribute('aria-label', `${t.status}: ${words}`);
   els.live.textContent = uiState === 'ready' ? '' : words;
-  els.talkLabel.textContent = t.talkHint[uiState];
+  els.talkLabel.textContent = encounterHint() ?? t.talkHint[uiState];
   els.talk.classList.toggle('speaking', uiState === 'speaking');
+  // In an encounter the button waits (grey) until someone is close enough to talk to.
+  els.talk.classList.toggle('far', isEncounter && !talkOpen() && target === null);
 }
 
 // Language: every text on the page, live ------------------------------------------------------
@@ -331,7 +338,7 @@ function applyStrings(): void {
   for (const button of langButtons) {
     button.setAttribute('aria-pressed', String(button.dataset.lang === lang));
   }
-  els.choiceHint.textContent = t.approach;
+  renderTargets();
   const speaker = encounter ? currentActor() : undefined;
   els.speakerName.textContent = speaker ? t.talkingWith(speaker.def.name[lang]) : '';
   renderSetup();
@@ -367,6 +374,8 @@ interface Actor {
   def: ActorDef;
   animator: CharacterAnimator;
   group: Group;
+  /** His sword and how he holds it while fighting, when his fight clip leaves it out. */
+  sword?: { mesh: Object3D; pose: PropPose };
 }
 let actors: Actor[] = [];
 /** The encounter's script (fight, stop, talk, fight again); null for a single guide. */
@@ -400,6 +409,10 @@ const stage = new Stage({
     for (const actor of actors) {
       actor.animator.setMouthOpen(actor === talker ? smoothed : 0);
       actor.animator.update(dt);
+      if (actor.sword && actor.animator.state === 'fight') {
+        actor.sword.mesh.quaternion.copy(actor.sword.pose.quaternion);
+        actor.sword.mesh.scale.copy(actor.sword.pose.scale);
+      }
     }
     if (encounter) directEncounter(encounter, dt);
   },
@@ -410,6 +423,8 @@ const stage = new Stage({
     els.ar.hidden = ar || !arSupported;
     els.arGuide.hidden = !ar;
     placedInAr = false;
+    target = null;
+    renderTargets();
     els.advanced.open = false;
     setSetupOpen(false);
     if (uiState !== 'error') setStatus('ready');
@@ -462,10 +477,16 @@ void Promise.all(
         const mesh = character.root.getObjectByName(name);
         if (mesh) mesh.visible = false;
       }
+      const swordMesh = def.sword ? character.root.getObjectByName(def.sword) : undefined;
+      const pose =
+        def.sword && def.clips.draw && def.clips.fight
+          ? heldPose(character.clips, def.sword, def.clips.draw, def.clips.fight)
+          : null;
       return {
         def,
         animator: character.animator,
         group: stage.addActor(character.root, def.x, def.z),
+        ...(swordMesh && pose ? { sword: { mesh: swordMesh, pose } } : {}),
       };
     });
     if (isEncounter) {
@@ -520,14 +541,20 @@ const LEAVE_METRES = 3.5;
 const LEAVE_SECONDS = 2;
 /** How fast they turn round (radians per second). */
 const TURN_SPEED = 3;
-const MIC_ICON =
-  '<svg viewBox="0 0 24 24"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>';
-
 let placedInAr = false;
 let awayFor = 0;
-let offered = '';
+/**
+ * Who the round button talks to while they fight: the one close enough (AR), or the one
+ * picked in the 3D view, where nobody walks. Null: nobody near, the button waits.
+ */
+let target: string | null = null;
+let picked: string | null = null;
+/** The visitor asked something in this talk (held the button or wrote): no greeting then. */
+let asked = false;
 let greeted: string | null = null;
 const viewer = new Vector3();
+
+const talkOpen = (): boolean => encounter?.phase === 'stopping' || encounter?.phase === 'talking';
 
 function directEncounter(script: Encounter, dt: number): void {
   stage.viewerOnStage(viewer);
@@ -537,59 +564,72 @@ function directEncounter(script: Encounter, dt: number): void {
     const towards = script.facing(actor.def.id) === 'visitor' ? viewer : other?.group.position;
     if (towards) stage.turnActor(actor.group, towards, dt * TURN_SPEED);
   }
-  const talking = script.phase === 'stopping' || script.phase === 'talking';
-  if (stage.mode !== 'ar') {
-    // The 3D view has no walking: both can be asked.
-    offerTalk(talking ? [] : actors.map((actor) => actor.def.id));
-    return;
-  }
   const away = (actor: Actor) =>
     Math.hypot(viewer.x - actor.group.position.x, viewer.z - actor.group.position.z);
-  if (talking) {
+  if (talkOpen()) {
     const speaker = currentActor();
-    awayFor = speaker && away(speaker) > LEAVE_METRES ? awayFor + dt : 0;
-    if (awayFor > LEAVE_SECONDS) endConversation();
-    offerTalk([]);
+    if (stage.mode === 'ar') {
+      awayFor = speaker && away(speaker) > LEAVE_METRES ? awayFor + dt : 0;
+      if (awayFor > LEAVE_SECONDS) endConversation();
+    }
+    setTarget(script.speaker);
+    return;
+  }
+  if (stage.mode !== 'ar') {
+    setTarget(picked ?? actors[0]?.def.id ?? null);
     return;
   }
   const nearest = actors.reduce<Actor | undefined>(
     (best, actor) => (!best || away(actor) < away(best) ? actor : best),
     undefined,
   );
-  offerTalk(placedInAr && nearest && away(nearest) <= NEAR_METRES ? [nearest.def.id] : []);
+  setTarget(placedInAr && nearest && away(nearest) <= NEAR_METRES ? nearest.def.id : null);
 }
 
-/** Shows a "Talk to …" button for each character on offer (only when that changes). */
-function offerTalk(ids: string[]): void {
-  const key = `${lang}:${ids.join(',')}:${placedInAr}`;
-  if (key === offered) return;
-  offered = key;
-  els.choiceButtons.replaceChildren(
-    ...ids.map((id) => {
-      const actor = actors.find((candidate) => candidate.def.id === id) as Actor;
+function setTarget(id: string | null): void {
+  if (id === target) return;
+  target = id;
+  renderTargets();
+  paintStatus();
+}
+
+/** The 3D view's picker above the button: which of them it talks to. */
+function renderTargets(): void {
+  const show = encounter !== null && stage.mode !== 'ar' && !talkOpen();
+  els.targets.hidden = !show;
+  if (!show) return;
+  els.targets.replaceChildren(
+    ...actors.map((actor) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'choice-btn';
-      button.innerHTML = MIC_ICON;
-      const label = document.createElement('span');
-      label.textContent = t.talkWith(actor.def.name[lang]);
-      button.append(label);
-      button.addEventListener('click', () => talkTo(id));
+      button.textContent = actor.def.short[lang];
+      button.setAttribute('aria-pressed', String(actor.def.id === target));
+      button.addEventListener('click', () => {
+        picked = actor.def.id;
+        setTarget(actor.def.id);
+      });
       return button;
     }),
   );
-  els.choiceHint.hidden = ids.length > 0 || !placedInAr;
+}
+
+/** The words under the round button in an encounter, or null to use the usual ones. */
+function encounterHint(): string | null {
+  if (!encounter || talkOpen()) return null;
+  if (uiState !== 'ready' && uiState !== 'info' && uiState !== 'error') return null;
+  const actor = actors.find((candidate) => candidate.def.id === target);
+  return actor ? t.talkWith(actor.def.name[lang]) : t.approach;
 }
 
 function talkTo(id: string): void {
   if (!encounter) return;
-  tapHaptic();
   void unlockAudio();
-  if (encounter.speaker && encounter.speaker !== id) {
+  if (encounter.speaker !== id) {
     // Another character answers: a new session with his voice and knowledge.
     voice.close();
     player.interrupt();
     greeted = null;
+    asked = false;
   }
   encounter.talkTo(id);
 }
@@ -599,21 +639,29 @@ function onEncounterChange(phase: EncounterPhase, speaker: string | null): void 
   document.documentElement.dataset.talk = open ? 'open' : 'closed';
   const actor = actors.find((candidate) => candidate.def.id === speaker);
   els.speakerName.textContent = actor ? t.talkingWith(actor.def.name[lang]) : '';
-  if (!open) greeted = null;
-  // Once both have put their swords away, the chosen one greets the visitor.
-  if (phase === 'talking' && speaker && greeted !== speaker) {
-    greeted = speaker;
-    ensureConnected().then(
-      () => {
-        player.interrupt();
-        voice.sendText(t.greet);
-        setStatus('thinking');
-      },
-      (error: unknown) => {
-        if (uiState !== 'error') showError(errorCode(error));
-      },
-    );
+  if (!open) {
+    greeted = null;
+    asked = false;
   }
+  renderTargets();
+  paintStatus();
+  if (phase !== 'talking' || !speaker) return;
+  // An answer that came while they were still sheathing: now he can say it.
+  if (player.isSpeaking) encounter?.speaking(true);
+  // Once both have put their swords away, the chosen one greets the visitor, unless the
+  // visitor is already asking something.
+  if (greeted === speaker || asked || talkingHeld) return;
+  greeted = speaker;
+  ensureConnected().then(
+    () => {
+      player.interrupt();
+      voice.sendText(t.greet);
+      setStatus('thinking');
+    },
+    (error: unknown) => {
+      if (uiState !== 'error') showError(errorCode(error));
+    },
+  );
 }
 
 /** The talk is over: the session closes and they go back to the fight. */
@@ -732,6 +780,11 @@ function showMicLevel(level: number): void {
 
 let talkSeq = 0;
 async function pressTalk(): Promise<void> {
+  if (encounter && !talkOpen()) {
+    // Nobody close enough yet: the button waits.
+    if (!target) return;
+    talkTo(target);
+  }
   talkingHeld = true;
   const seq = ++talkSeq;
   els.talk.classList.add('held');
@@ -757,6 +810,7 @@ async function pressTalk(): Promise<void> {
   if (!talkingHeld || seq !== talkSeq) return;
   player.interrupt(); // barge-in: stop the model while the user speaks
   voice.startTalk();
+  asked = true;
   setStatus('listening');
 }
 
@@ -785,6 +839,11 @@ els.textForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = els.text.value.trim();
   if (!text) return;
+  if (encounter && !talkOpen()) {
+    if (!target) return;
+    talkTo(target);
+  }
+  asked = true;
   void unlockAudio();
   ensureConnected().then(
     () => {

@@ -517,6 +517,14 @@ describe('the craftsman', () => {
     expect(warrior).toMatch(/Answer ONLY from the context/);
   });
 
+  it("always speaks the page's language, whatever the visitor speaks", () => {
+    const craftsman = createCharacters().get('artesano')!;
+    const facts = { es: '', en: '', pt: '' };
+    expect(systemInstruction(craftsman, 'es', facts)).toContain('Habla siempre en español');
+    expect(systemInstruction(craftsman, 'en', facts)).toContain('Always speak English');
+    expect(systemInstruction(craftsman, 'pt', facts)).toContain('português de Portugal');
+  });
+
   it('says it has no information when there is no sheet', () => {
     expect(systemInstruction(craftsman, 'en', { es: '', en: '', pt: '' })).toContain(
       'no information',

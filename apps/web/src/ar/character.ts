@@ -165,9 +165,44 @@ export class CharacterAnimator {
   }
 }
 
+/** Where a held prop (a sword) sits: what a clip would set on its node. */
+export interface PropPose {
+  quaternion: Quaternion;
+  scale: Vector3;
+}
+
+/**
+ * The pose of a prop at the end of a clip (e.g. the sword once drawn), when another clip
+ * (the fight) leaves it alone: some models only bring the sword out in their draw clip, and
+ * fight with it at its rest scale of 0. Null when the second clip moves the prop itself.
+ */
+export function heldPose(
+  clips: readonly AnimationClip[],
+  prop: string,
+  from: string,
+  during: string,
+): PropPose | null {
+  const end = clips.find((clip) => clip.name === from);
+  const fight = clips.find((clip) => clip.name === during);
+  if (!end || !fight) return null;
+  if (fight.tracks.some((track) => track.name.startsWith(`${prop}.`))) return null;
+  const last = (path: string, size: number) => {
+    const track = end.tracks.find((candidate) => candidate.name === `${prop}.${path}`);
+    return track ? Array.from(track.values.slice(-size)) : null;
+  };
+  const q = last('quaternion', 4);
+  const s = last('scale', 3);
+  if (!q || !s) return null;
+  return {
+    quaternion: new Quaternion(q[0], q[1], q[2], q[3]),
+    scale: new Vector3(s[0], s[1], s[2]),
+  };
+}
+
 export interface Character {
   root: Object3D;
   animator: CharacterAnimator;
+  clips: readonly AnimationClip[];
   /** Height in metres, measured from the loaded model. */
   height: number;
 }
@@ -197,5 +232,5 @@ export async function loadCharacter(
   animator.setState(animator.has(initial) ? initial : 'idle');
   const size = new Vector3();
   new Box3().setFromObject(root).getSize(size);
-  return { root, animator, height: size.y };
+  return { root, animator, clips: gltf.animations, height: size.y };
 }

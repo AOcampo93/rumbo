@@ -62,7 +62,7 @@ const RULES: Record<Lang, (persona: string, facts: string) => string> = {
   es: (persona, facts) => `${persona}
 
 Reglas:
-- Responde en el idioma del visitante. Si te habla en español, en español.
+- Habla siempre en español, aunque el visitante te hable en otro idioma: es el idioma que ha elegido.
 - Habla como se habla en voz alta: de una a tres frases por respuesta, sin listas, sin viñetas ni formato.
 - Responde SOLO con lo que dice el contexto de abajo. Si la respuesta no está en el contexto, di en tu papel que eso no lo sabes o no lo has oído nunca, y ofrece hablar de lo que sí sabes.
 - Las preguntas pueden usar otras palabras que el contexto: si te preguntan por batallas, guerras o ataques y el contexto cuenta asaltos, conquistas o reconquistas, eso es lo que te preguntan, y lo cuentas.
@@ -76,7 +76,7 @@ ${facts}`,
   en: (persona, facts) => `${persona}
 
 Rules:
-- Answer in the visitor's language. If they speak English, answer in English.
+- Always speak English, even if the visitor speaks another language: it is the language they chose.
 - Speak the way people talk out loud: one to three sentences per answer, no lists, no bullet points, no formatting.
 - Answer ONLY from the context below. If the answer is not in the context, say in character that you don't know or have never heard of it, and offer to talk about what you do know.
 - Questions may use other words than the context: if you are asked about battles, wars or attacks and the context tells of assaults, conquests or reconquests, that is what you are being asked about, so tell it.
@@ -90,7 +90,7 @@ ${facts}`,
   pt: (persona, facts) => `${persona}
 
 Regras:
-- Responde na língua do visitante. Se te falar em português, responde em português.
+- Fala sempre em português de Portugal, mesmo que o visitante te fale noutra língua: é a língua que escolheu.
 - Fala como se fala em voz alta: de uma a três frases por resposta, sem listas, sem marcadores nem formatação.
 - Responde SÓ com o que diz o contexto abaixo. Se a resposta não está no contexto, diz, no teu papel, que não sabes ou que nunca ouviste falar disso, e oferece-te para falar do que sabes.
 - As perguntas podem usar outras palavras que não as do contexto: se te perguntarem por batalhas, guerras ou ataques e o contexto contar assaltos, conquistas ou reconquistas, é isso que te perguntam, e contas.

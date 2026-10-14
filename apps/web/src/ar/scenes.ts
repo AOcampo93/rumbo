@@ -10,6 +10,8 @@ export interface ActorDef {
   id: string;
   /** How the page names him ("Hablar con …"). */
   name: Record<SceneLang, string>;
+  /** A short name, for the 3D view's picker of who to talk to. */
+  short: Record<SceneLang, string>;
   model: string;
   clips: ClipNames;
   /** Meshes the scene never shows (e.g. a bow the model carries for other clips). */
@@ -46,6 +48,7 @@ export const SCENES: Record<string, SceneDef> = {
       {
         id: 'artesano',
         name: { es: 'el artesano', en: 'the craftsman', pt: 'o artesão' },
+        short: { es: 'Artesano', en: 'Craftsman', pt: 'Artesão' },
         model: '/ra_test/models/artesano.glb',
         clips: { idle: 'Idle_BocaCerrada', talking: 'Hablando' },
         x: 0,
@@ -64,6 +67,7 @@ export const SCENES: Record<string, SceneDef> = {
           en: 'the Portuguese soldier',
           pt: 'o soldado português',
         },
+        short: { es: 'Portugués', en: 'Portuguese', pt: 'Português' },
         model: '/ra_test/models/soldado_portugues.glb',
         clips: { idle: 'Idle_BocaCerrada', ...SOLDIER_CLIPS },
         hidden: ['Arco'],
@@ -78,6 +82,7 @@ export const SCENES: Record<string, SceneDef> = {
           en: 'the Almoravid warrior',
           pt: 'o guerreiro almorávida',
         },
+        short: { es: 'Almorávide', en: 'Almoravid', pt: 'Almorávida' },
         model: '/ra_test/models/soldado_almoravide.glb',
         clips: { idle: 'Idle', ...SOLDIER_CLIPS },
         hidden: ['Arco'],

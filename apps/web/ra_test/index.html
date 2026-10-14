@@ -596,19 +596,8 @@
         border-color: rgba(196, 73, 31, 0.4);
         animation: breathe 1.8s ease-in-out infinite;
       }
-      /* Encounters: choose who to talk to; then the talk controls, with who answers. */
-      #choices,
+      /* Encounters: the round button talks to whoever is near (AR) or picked (3D view). */
       #speaker {
-        display: none;
-      }
-      html[data-scene='encounter'][data-talk='closed'] #choices {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-      }
-      html[data-scene='encounter'][data-talk='closed'] .talk,
-      html[data-scene='encounter'][data-talk='closed'] #textForm {
         display: none;
       }
       html[data-scene='encounter'][data-talk='open'] #speaker {
@@ -625,40 +614,13 @@
       #speaker #speakerName {
         color: var(--ink);
       }
-      #choiceHint {
-        margin: 0;
-        padding: 10px 16px;
-        border-radius: 999px;
-        font-size: 15px;
-        font-weight: 600;
-        text-align: center;
+      #targets {
+        align-self: center;
+        background: var(--glass);
       }
-      #choiceButtons {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        width: 100%;
-        align-items: center;
-      }
-      .choice-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        min-height: 56px;
-        max-width: 100%;
-        padding: 0 22px;
-        border: 0;
-        border-radius: 999px;
-        background: var(--accent);
-        color: #fff;
-        font-size: 16px;
-        font-weight: 700;
-        box-shadow: 0 10px 24px rgba(196, 73, 31, 0.38);
-        animation: drop 200ms var(--ease);
-      }
-      .choice-btn:active {
-        transform: scale(0.97);
+      #talk.far {
+        background: #b9b1a4;
+        box-shadow: none;
       }
       #talkLabel {
         font-size: 13px;
@@ -948,10 +910,7 @@
           <p id="userText"></p>
           <p id="subtitles" class="glass"></p>
         </div>
-        <div id="choices">
-          <p id="choiceHint" class="glass" hidden></p>
-          <div id="choiceButtons"></div>
-        </div>
+        <div id="targets" class="seg glass" role="group" hidden></div>
         <div id="speaker" class="glass">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M2 10v3" />
