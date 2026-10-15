@@ -707,12 +707,14 @@
         "scenes": {
           "artesano": "El artesano (siglo XIV)",
           "asalto_1140": "El asalto de 1140 (dos soldados)",
-          "afonso_henriques": "El rey D. Afonso Henriques (1142)"
+          "afonso_henriques": "El rey D. Afonso Henriques (1142)",
+          "centinela": "El centinela del castillo (1324)"
         },
         "names": {
           "artesano": "El artesano",
           "asalto_1140": "El asalto de 1140",
-          "afonso_henriques": "El rey D. Afonso Henriques"
+          "afonso_henriques": "El rey D. Afonso Henriques",
+          "centinela": "El centinela del castillo"
         }
       },
       "tooLong": "Es demasiado largo.",
@@ -983,6 +985,29 @@
           }
         },
         "opened": "El rey te espera en otra ventana"
+      },
+      "centinela": {
+        "title": "Habla con el centinela",
+        "lead": "Un centinela del castillo de Leiria, de guardia hacia 1324 en tiempos del rey D. Dinis, aparece a tu lado y te contesta en voz alta.",
+        "steps": {
+          "camera": {
+            "title": "Se abre la cámara",
+            "text": "Busca un sitio despejado y apunta al suelo hasta ver un anillo blanco."
+          },
+          "place": {
+            "title": "Toca para colocarlo",
+            "text": "El centinela aparece donde tocaste. Si vuelves a tocar el suelo, se mueve allí."
+          },
+          "talk": {
+            "title": "Mantén pulsado para hablar",
+            "text": "Pregúntale por la guardia, las defensas del castillo o el rey y la reina que viven en él. Suelta y te contesta."
+          },
+          "back": {
+            "title": "Vuelve a la ruta",
+            "text": "Cuando acabes, cierra la realidad aumentada y toca «Continuar ruta»."
+          }
+        },
+        "opened": "El centinela te espera en otra ventana"
       }
     },
     "how": "Cómo funciona",

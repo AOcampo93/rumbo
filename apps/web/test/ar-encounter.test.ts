@@ -127,6 +127,7 @@ describe('the scenes', () => {
       'soldado_portugues',
       'soldado_almoravide',
       'afonso_henriques',
+      'centinela',
     ]);
     for (const scene of Object.values(SCENES)) {
       for (const actor of scene.actors) {

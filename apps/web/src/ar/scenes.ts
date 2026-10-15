@@ -120,6 +120,28 @@ SCENES.afonso_henriques = {
   ],
 };
 
+SCENES.centinela = {
+  id: 'centinela',
+  kind: 'guide',
+  actors: [
+    {
+      id: 'centinela',
+      name: {
+        es: 'el centinela del castillo',
+        en: 'the castle sentinel',
+        pt: 'a sentinela do castelo',
+      },
+      short: { es: 'Centinela', en: 'Sentinel', pt: 'Sentinela' },
+      model: '/ra_test/models/centinela_portugues.glb',
+      clips: { idle: 'Idle', talking: 'Hablando' },
+      // The same Mixamo rig as the king's.
+      jaw: { bone: 'mixamorig2:Jaw', closeDeg: 0 },
+      x: 0,
+      z: 0,
+    },
+  ],
+};
+
 /** Whether the sword is out in a state: put away while waiting or talking. */
 export function swordOut(state: string): boolean {
   return state !== 'idle' && state !== 'talking';

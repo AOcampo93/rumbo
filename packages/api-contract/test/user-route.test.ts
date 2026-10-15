@@ -517,7 +517,7 @@ describe('checkUserRoute: what a place shows on arrival', () => {
 
   describe('ar_character', () => {
     it('takes an AR scene the API knows, and nothing else', () => {
-      for (const scene of ['artesano', 'asalto_1140', 'afonso_henriques'] as const) {
+      for (const scene of ['artesano', 'asalto_1140', 'afonso_henriques', 'centinela'] as const) {
         const bundle = withArrivals({ type: 'ar', scene });
         expect(validateRouteBundle(bundle).errors).toEqual([]);
         expect(checkUserRoute(bundle)).toEqual([]);

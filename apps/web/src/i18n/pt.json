@@ -707,12 +707,14 @@
         "scenes": {
           "artesano": "O artesão (século XIV)",
           "asalto_1140": "O assalto de 1140 (dois soldados)",
-          "afonso_henriques": "O rei D. Afonso Henriques (1142)"
+          "afonso_henriques": "O rei D. Afonso Henriques (1142)",
+          "centinela": "A sentinela do castelo (1324)"
         },
         "names": {
           "artesano": "O artesão",
           "asalto_1140": "O assalto de 1140",
-          "afonso_henriques": "O rei D. Afonso Henriques"
+          "afonso_henriques": "O rei D. Afonso Henriques",
+          "centinela": "A sentinela do castelo"
         }
       },
       "tooLong": "É demasiado longo.",
@@ -983,6 +985,29 @@
           }
         },
         "opened": "O rei espera-te noutra janela"
+      },
+      "centinela": {
+        "title": "Fala com a sentinela",
+        "lead": "Uma sentinela do castelo de Leiria, de guarda por volta de 1324 no tempo do rei D. Dinis, aparece ao teu lado e responde-te em voz alta.",
+        "steps": {
+          "camera": {
+            "title": "A câmara abre-se",
+            "text": "Procura um sítio livre e aponta para o chão até veres um anel branco."
+          },
+          "place": {
+            "title": "Toca para a colocar",
+            "text": "A sentinela aparece onde tocaste. Se voltares a tocar no chão, muda-se para lá."
+          },
+          "talk": {
+            "title": "Mantém premido para falar",
+            "text": "Pergunta-lhe pela guarda, pelas defesas do castelo ou pelo rei e pela rainha que lá vivem. Solta e ela responde."
+          },
+          "back": {
+            "title": "Volta à rota",
+            "text": "Quando acabares, fecha a realidade aumentada e toca em «Continuar rota»."
+          }
+        },
+        "opened": "A sentinela espera-te noutra janela"
       }
     },
     "how": "Como funciona",

@@ -707,12 +707,14 @@
         "scenes": {
           "artesano": "The craftsman (14th century)",
           "asalto_1140": "The 1140 assault (two soldiers)",
-          "afonso_henriques": "King Afonso Henriques (1142)"
+          "afonso_henriques": "King Afonso Henriques (1142)",
+          "centinela": "The castle sentinel (1324)"
         },
         "names": {
           "artesano": "The craftsman",
           "asalto_1140": "The 1140 assault",
-          "afonso_henriques": "King Afonso Henriques"
+          "afonso_henriques": "King Afonso Henriques",
+          "centinela": "The castle sentinel"
         }
       },
       "tooLong": "That's too long.",
@@ -983,6 +985,29 @@
           }
         },
         "opened": "The king is waiting in another window"
+      },
+      "centinela": {
+        "title": "Talk to the sentinel",
+        "lead": "A sentinel of Leiria castle, on guard around 1324 in the time of King Dinis, appears beside you and answers out loud.",
+        "steps": {
+          "camera": {
+            "title": "The camera opens",
+            "text": "Find a clear spot and point at the floor until you see a white ring."
+          },
+          "place": {
+            "title": "Tap to place him",
+            "text": "The sentinel appears where you tapped. Tap the floor again to move him there."
+          },
+          "talk": {
+            "title": "Press and hold to talk",
+            "text": "Ask him about the watch, the castle’s defences or the king and queen who live there. Let go and he answers."
+          },
+          "back": {
+            "title": "Back to the route",
+            "text": "When you’re done, close augmented reality and tap “Continue route”."
+          }
+        },
+        "opened": "The sentinel is waiting in another window"
       }
     },
     "how": "How it works",

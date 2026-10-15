@@ -123,7 +123,7 @@ export const AR_CHARACTERS = ['artesano'] as const;
 export type ArCharacter = (typeof AR_CHARACTERS)[number];
 
 /** The AR scenes a place can open: one guide, or several characters together. The API holds each voice and knowledge. */
-export const AR_SCENES = ['artesano', 'asalto_1140', 'afonso_henriques'] as const;
+export const AR_SCENES = ['artesano', 'asalto_1140', 'afonso_henriques', 'centinela'] as const;
 export type ArScene = (typeof AR_SCENES)[number];
 
 /**
