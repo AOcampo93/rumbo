@@ -434,6 +434,7 @@ describe('PlaceEditorSheet · Al llegar', () => {
       'El asalto de 1140 (dos soldados)',
       'El rey D. Afonso Henriques (1142)',
       'El centinela del castillo (1324)',
+      'El sacerdote de la iglesia (1401)',
     ]);
     await select.setValue('asalto_1140');
     expect(current(view)).toEqual({ type: 'ar', scene: 'asalto_1140' });

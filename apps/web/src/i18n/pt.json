@@ -708,13 +708,15 @@
           "artesano": "O artesão (século XIV)",
           "asalto_1140": "O assalto de 1140 (dois soldados)",
           "afonso_henriques": "O rei D. Afonso Henriques (1142)",
-          "centinela": "A sentinela do castelo (1324)"
+          "centinela": "A sentinela do castelo (1324)",
+          "sacerdote": "O padre da igreja (1401)"
         },
         "names": {
           "artesano": "O artesão",
           "asalto_1140": "O assalto de 1140",
           "afonso_henriques": "O rei D. Afonso Henriques",
-          "centinela": "A sentinela do castelo"
+          "centinela": "A sentinela do castelo",
+          "sacerdote": "O padre da igreja"
         }
       },
       "tooLong": "É demasiado longo.",
@@ -1008,6 +1010,29 @@
           }
         },
         "opened": "A sentinela espera-te noutra janela"
+      },
+      "sacerdote": {
+        "title": "Fala com o padre",
+        "lead": "Um clérigo da igreja de Santa Maria da Pena, dentro do castelo, aparece ao teu lado por volta de 1401 e explica-te a igreja em voz alta.",
+        "steps": {
+          "camera": {
+            "title": "A câmara abre-se",
+            "text": "Procura um sítio livre e aponta para o chão até veres um anel branco."
+          },
+          "place": {
+            "title": "Toca para o colocar",
+            "text": "O padre aparece onde tocaste. Se voltares a tocar no chão, ele muda-se para lá."
+          },
+          "talk": {
+            "title": "Mantém premido para falar",
+            "text": "Pergunta-lhe pela igreja: quem a ergueu, como é e o que foi feito dela. Solta e ele responde."
+          },
+          "back": {
+            "title": "Volta à rota",
+            "text": "Quando acabares, fecha a realidade aumentada e toca em «Continuar rota»."
+          }
+        },
+        "opened": "O padre espera-te noutra janela"
       }
     },
     "how": "Como funciona",

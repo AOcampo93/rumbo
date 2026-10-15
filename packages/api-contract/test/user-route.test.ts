@@ -8,7 +8,7 @@ import {
   truncateText,
   validateDraft,
 } from '@rumbo/route-builder';
-import { type RouteSpec, validateRouteBundle } from '@rumbo/route-spec';
+import { AR_SCENES, type RouteSpec, validateRouteBundle } from '@rumbo/route-spec';
 import { describe, expect, it } from 'vitest';
 import { checkUserRoute, MAX_ERROR_DETAILS, USER_ROUTE_LIMITS } from '../src/index.ts';
 
@@ -517,7 +517,7 @@ describe('checkUserRoute: what a place shows on arrival', () => {
 
   describe('ar_character', () => {
     it('takes an AR scene the API knows, and nothing else', () => {
-      for (const scene of ['artesano', 'asalto_1140', 'afonso_henriques', 'centinela'] as const) {
+      for (const scene of AR_SCENES) {
         const bundle = withArrivals({ type: 'ar', scene });
         expect(validateRouteBundle(bundle).errors).toEqual([]);
         expect(checkUserRoute(bundle)).toEqual([]);

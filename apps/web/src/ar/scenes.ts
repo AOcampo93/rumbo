@@ -142,6 +142,28 @@ SCENES.centinela = {
   ],
 };
 
+SCENES.sacerdote = {
+  id: 'sacerdote',
+  kind: 'guide',
+  actors: [
+    {
+      id: 'sacerdote',
+      name: {
+        es: 'el sacerdote de la iglesia',
+        en: 'the church priest',
+        pt: 'o padre da igreja',
+      },
+      short: { es: 'Sacerdote', en: 'Priest', pt: 'Padre' },
+      model: '/ra_test/models/sacerdote.glb',
+      clips: { idle: 'Idle', talking: 'Hablando' },
+      // The same Mixamo rig as the king's.
+      jaw: { bone: 'mixamorig2:Jaw', closeDeg: 0 },
+      x: 0,
+      z: 0,
+    },
+  ],
+};
+
 /** Whether the sword is out in a state: put away while waiting or talking. */
 export function swordOut(state: string): boolean {
   return state !== 'idle' && state !== 'talking';

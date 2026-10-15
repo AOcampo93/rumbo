@@ -708,13 +708,15 @@
           "artesano": "The craftsman (14th century)",
           "asalto_1140": "The 1140 assault (two soldiers)",
           "afonso_henriques": "King Afonso Henriques (1142)",
-          "centinela": "The castle sentinel (1324)"
+          "centinela": "The castle sentinel (1324)",
+          "sacerdote": "The church priest (1401)"
         },
         "names": {
           "artesano": "The craftsman",
           "asalto_1140": "The 1140 assault",
           "afonso_henriques": "King Afonso Henriques",
-          "centinela": "The castle sentinel"
+          "centinela": "The castle sentinel",
+          "sacerdote": "The church priest"
         }
       },
       "tooLong": "That's too long.",
@@ -1008,6 +1010,29 @@
           }
         },
         "opened": "The sentinel is waiting in another window"
+      },
+      "sacerdote": {
+        "title": "Talk to the priest",
+        "lead": "A cleric of the church of Santa Maria da Pena, inside the castle, appears beside you around 1401 and explains the church out loud.",
+        "steps": {
+          "camera": {
+            "title": "The camera opens",
+            "text": "Find a clear spot and point at the floor until you see a white ring."
+          },
+          "place": {
+            "title": "Tap to place him",
+            "text": "The priest appears where you tapped. Tap the floor again to move him there."
+          },
+          "talk": {
+            "title": "Press and hold to talk",
+            "text": "Ask him about the church: who built it, what it is like and what became of it. Let go and he answers."
+          },
+          "back": {
+            "title": "Back to the route",
+            "text": "When you’re done, close augmented reality and tap “Continue route”."
+          }
+        },
+        "opened": "The priest is waiting in another window"
       }
     },
     "how": "How it works",

@@ -708,13 +708,15 @@
           "artesano": "El artesano (siglo XIV)",
           "asalto_1140": "El asalto de 1140 (dos soldados)",
           "afonso_henriques": "El rey D. Afonso Henriques (1142)",
-          "centinela": "El centinela del castillo (1324)"
+          "centinela": "El centinela del castillo (1324)",
+          "sacerdote": "El sacerdote de la iglesia (1401)"
         },
         "names": {
           "artesano": "El artesano",
           "asalto_1140": "El asalto de 1140",
           "afonso_henriques": "El rey D. Afonso Henriques",
-          "centinela": "El centinela del castillo"
+          "centinela": "El centinela del castillo",
+          "sacerdote": "El sacerdote de la iglesia"
         }
       },
       "tooLong": "Es demasiado largo.",
@@ -1008,6 +1010,29 @@
           }
         },
         "opened": "El centinela te espera en otra ventana"
+      },
+      "sacerdote": {
+        "title": "Habla con el sacerdote",
+        "lead": "Un clérigo de la iglesia de Santa María de la Pena, dentro del castillo, aparece a tu lado hacia 1401 y te explica la iglesia en voz alta.",
+        "steps": {
+          "camera": {
+            "title": "Se abre la cámara",
+            "text": "Busca un sitio despejado y apunta al suelo hasta ver un anillo blanco."
+          },
+          "place": {
+            "title": "Toca para colocarlo",
+            "text": "El sacerdote aparece donde tocaste. Si vuelves a tocar el suelo, se mueve allí."
+          },
+          "talk": {
+            "title": "Mantén pulsado para hablar",
+            "text": "Pregúntale por la iglesia: quién la levantó, cómo es y qué ha sido de ella. Suelta y te contesta."
+          },
+          "back": {
+            "title": "Vuelve a la ruta",
+            "text": "Cuando acabes, cierra la realidad aumentada y toca «Continuar ruta»."
+          }
+        },
+        "opened": "El sacerdote te espera en otra ventana"
       }
     },
     "how": "Cómo funciona",
