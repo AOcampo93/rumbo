@@ -39,6 +39,14 @@ export const JAW_AXIS = new Vector3(1, 0, 0);
 export const MAX_JAW_DEG = 10;
 /** How far below the idle clip's jaw the closed mouth is, so it really looks shut. */
 export const IDLE_CLOSE_DEG = 4;
+
+/** A model's jaw bone, and how much further to shut it than its idle clip does (degrees). */
+export interface JawSettings {
+  bone: string;
+  closeDeg: number;
+}
+/** The craftsman's (the first model's): a "jaw" bone, a little open in his idle clip. */
+export const DEFAULT_JAW: JawSettings = { bone: JAW_BONE, closeDeg: IDLE_CLOSE_DEG };
 export const CROSSFADE_SECONDS = 0.3;
 
 /** Where three's Draco decoder is served (compressed models). */
@@ -93,6 +101,7 @@ export class CharacterAnimator {
     clips: readonly AnimationClip[],
     private readonly jaw: JawLike | null,
     names: ClipNames = CLIP_NAMES,
+    private readonly closeDeg = IDLE_CLOSE_DEG,
   ) {
     for (const [state, name] of Object.entries(names) as [CharacterState, string][]) {
       const clip = clips.find((c) => c.name === name);
@@ -155,7 +164,7 @@ export class CharacterAnimator {
     // After the mixer, which has just posed the jaw from the clip of this frame.
     if (!this.jaw || !this.current) return;
     if (!this.closed && this.current === 'idle') {
-      this.offset.setFromAxisAngle(JAW_AXIS, -IDLE_CLOSE_DEG * DEG);
+      this.offset.setFromAxisAngle(JAW_AXIS, -this.closeDeg * DEG);
       this.closed = this.jaw.quaternion.clone().multiply(this.offset);
     }
     // Only the voice moves the mouth: closed while idle or talking, the clip's own otherwise.
@@ -220,12 +229,13 @@ export async function loadCharacter(
   url: string,
   names: ClipNames = CLIP_NAMES,
   initial: CharacterState = 'idle',
+  jawSettings: JawSettings = DEFAULT_JAW,
 ): Promise<Character> {
   const gltf = await gltfLoader().loadAsync(url);
   const root = gltf.scene;
-  const jaw = root.getObjectByName(JAW_BONE) ?? null;
+  const jaw = root.getObjectByName(jawSettings.bone) ?? null;
   const mixer = new AnimationMixer(root);
-  const animator = new CharacterAnimator(mixer, gltf.animations, jaw, names);
+  const animator = new CharacterAnimator(mixer, gltf.animations, jaw, names, jawSettings.closeDeg);
   root.traverse((o) => {
     o.frustumCulled = false; // skinned bounds don't follow the animation
   });

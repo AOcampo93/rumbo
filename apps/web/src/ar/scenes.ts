@@ -1,4 +1,4 @@
-import type { ClipNames } from './character.ts';
+import type { ClipNames, JawSettings } from './character.ts';
 
 // The AR scenes a route's place can open (route-spec AR_SCENES): one guide who waits to be
 // asked, or an encounter where several characters act a loop until the visitor talks to one.
@@ -18,6 +18,8 @@ export interface ActorDef {
   hidden?: readonly string[];
   /** The sword's mesh: only out while fighting, drawing or sheathing. */
   sword?: string;
+  /** His jaw bone, when it isn't the craftsman's "jaw" (the voice opens it). */
+  jaw?: JawSettings;
   /** Feet on the floor, in metres from the scene's centre (x to the right, z towards the viewer). */
   x: number;
   z: number;
@@ -95,6 +97,28 @@ export const SCENES: Record<string, SceneDef> = {
 };
 
 export const DEFAULT_SCENE = 'artesano';
+
+SCENES.afonso_henriques = {
+  id: 'afonso_henriques',
+  kind: 'guide',
+  actors: [
+    {
+      id: 'afonso_henriques',
+      name: {
+        es: 'el rey D. Afonso Henriques',
+        en: 'King Afonso Henriques',
+        pt: 'o rei D. Afonso Henriques',
+      },
+      short: { es: 'Rey', en: 'King', pt: 'Rei' },
+      model: '/ra_test/models/rey_portugues.glb',
+      clips: { idle: 'Idle', talking: 'Hablando' },
+      // A Mixamo jaw, already shut in his idle clip.
+      jaw: { bone: 'mixamorig2:Jaw', closeDeg: 0 },
+      x: 0,
+      z: 0,
+    },
+  ],
+};
 
 /** Whether the sword is out in a state: put away while waiting or talking. */
 export function swordOut(state: string): boolean {

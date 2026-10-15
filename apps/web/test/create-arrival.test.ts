@@ -432,6 +432,7 @@ describe('PlaceEditorSheet · Al llegar', () => {
     expect(select.findAll('option').map((option) => option.text())).toEqual([
       'El artesano (siglo XIV)',
       'El asalto de 1140 (dos soldados)',
+      'El rey D. Afonso Henriques (1142)',
     ]);
     await select.setValue('asalto_1140');
     expect(current(view)).toEqual({ type: 'ar', scene: 'asalto_1140' });

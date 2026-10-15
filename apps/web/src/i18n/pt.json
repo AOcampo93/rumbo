@@ -706,11 +706,13 @@
         "scene": "Cena",
         "scenes": {
           "artesano": "O artesão (século XIV)",
-          "asalto_1140": "O assalto de 1140 (dois soldados)"
+          "asalto_1140": "O assalto de 1140 (dois soldados)",
+          "afonso_henriques": "O rei D. Afonso Henriques (1142)"
         },
         "names": {
           "artesano": "O artesão",
-          "asalto_1140": "O assalto de 1140"
+          "asalto_1140": "O assalto de 1140",
+          "afonso_henriques": "O rei D. Afonso Henriques"
         }
       },
       "tooLong": "É demasiado longo.",
@@ -958,6 +960,29 @@
           }
         },
         "opened": "Os soldados esperam-te noutra janela"
+      },
+      "afonso_henriques": {
+        "title": "Fala com o rei",
+        "lead": "D. Afonso Henriques, o primeiro rei de Portugal, que fundou este castelo, aparece ao teu lado por volta de 1142 e responde-te em voz alta.",
+        "steps": {
+          "camera": {
+            "title": "A câmara abre-se",
+            "text": "Procura um sítio livre e aponta para o chão até veres um anel branco."
+          },
+          "place": {
+            "title": "Toca para o colocar",
+            "text": "O rei aparece onde tocaste. Se voltares a tocar no chão, ele muda-se para lá."
+          },
+          "talk": {
+            "title": "Mantém premido para falar",
+            "text": "Pergunta-lhe pela fundação do castelo, pelas batalhas ou pelo reino que está a nascer. Solta e ele responde."
+          },
+          "back": {
+            "title": "Volta à rota",
+            "text": "Quando acabares, fecha a realidade aumentada e toca em «Continuar rota»."
+          }
+        },
+        "opened": "O rei espera-te noutra janela"
       }
     },
     "how": "Como funciona",

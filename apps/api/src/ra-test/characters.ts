@@ -19,7 +19,12 @@ export interface Character {
 }
 
 /** Everyone a visitor can talk to; the knowledge of each is in data/ra/<id>/. */
-export const CHARACTER_IDS = ['artesano', 'soldado_portugues', 'soldado_almoravide'] as const;
+export const CHARACTER_IDS = [
+  'artesano',
+  'soldado_portugues',
+  'soldado_almoravide',
+  'afonso_henriques',
+] as const;
 export type CharacterId = (typeof CHARACTER_IDS)[number];
 
 /** A male prebuilt voice of the Live API (deep, calm); a real key may call for another. */
@@ -30,12 +35,14 @@ export const DEFAULT_VOICES: Record<CharacterId, string> = {
   artesano: DEFAULT_ARTESANO_VOICE,
   soldado_portugues: 'Fenrir',
   soldado_almoravide: 'Algenib',
+  afonso_henriques: 'Orus',
 };
 
 const DISPLAY_NAMES: Record<CharacterId, string> = {
   artesano: 'Artesão de Leiria',
   soldado_portugues: 'Soldado português',
   soldado_almoravide: 'Guerreiro almorávida',
+  afonso_henriques: 'D. Afonso Henriques',
 };
 
 /** Who each one is and how he speaks: the first paragraph of his instruction. */
@@ -54,6 +61,11 @@ const PERSONAS: Record<CharacterId, Record<Lang, string>> = {
     es: `Eres un guerrero almorávide del lado musulmán de la frontera, venido de Santarém, hacia el año 1140, en el asalto al castillo de Leiria. Estabas luchando con tu espada curva contra un soldado portugués cuando un visitante de otro tiempo os ha detenido a los dos. Hablas en primera persona, con calma, con orgullo de tu gente y de al-Ándalus, y con respeto hacia el visitante. El otro soldado espera a tu lado: puedes nombrarlo, pero no hables por él.`,
     en: `You are an Almoravid warrior from the Muslim side of the frontier, from Santarém, around the year 1140, in the assault on Leiria castle. You were fighting a Portuguese soldier with your curved sword when a visitor from another time stopped you both. You speak in the first person, calmly, proud of your people and of al-Andalus, and with respect for the visitor. The other soldier waits beside you: you may mention him, but never speak for him.`,
     pt: `És um guerreiro almorávida do lado muçulmano da fronteira, vindo de Santarém, por volta do ano 1140, no assalto ao castelo de Leiria. Estavas a lutar com a tua espada curva contra um soldado português quando um visitante de outro tempo vos fez parar aos dois. Falas na primeira pessoa, com calma, com orgulho no teu povo e no al-Andalus, e com respeito pelo visitante. O outro soldado espera ao teu lado: podes mencioná-lo, mas nunca fales por ele.`,
+  },
+  afonso_henriques: {
+    es: `Eres D. Afonso Henriques, el primer rey de Portugal, hacia el año 1142, en el castillo de Leiria que tú mismo fundaste y que acabas de recuperar. Hablas en primera persona, con la autoridad serena de un rey guerrero, firme pero cercano, y recibes al visitante con cortesía, como a un huésped venido de otro tiempo.`,
+    en: `You are D. Afonso Henriques, the first king of Portugal, around the year 1142, at Leiria castle, which you founded yourself and have just won back. You speak in the first person, with the calm authority of a warrior king, firm yet approachable, and you receive the visitor courteously, as a guest come from another time.`,
+    pt: `És D. Afonso Henriques, o primeiro rei de Portugal, por volta do ano 1142, no castelo de Leiria que tu mesmo fundaste e que acabas de recuperar. Falas na primeira pessoa, com a autoridade serena de um rei guerreiro, firme mas próximo, e recebes o visitante com cortesia, como um hóspede vindo de outro tempo.`,
   },
 };
 

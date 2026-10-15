@@ -706,11 +706,13 @@
         "scene": "Scene",
         "scenes": {
           "artesano": "The craftsman (14th century)",
-          "asalto_1140": "The 1140 assault (two soldiers)"
+          "asalto_1140": "The 1140 assault (two soldiers)",
+          "afonso_henriques": "King Afonso Henriques (1142)"
         },
         "names": {
           "artesano": "The craftsman",
-          "asalto_1140": "The 1140 assault"
+          "asalto_1140": "The 1140 assault",
+          "afonso_henriques": "King Afonso Henriques"
         }
       },
       "tooLong": "That's too long.",
@@ -958,6 +960,29 @@
           }
         },
         "opened": "The soldiers are waiting in another window"
+      },
+      "afonso_henriques": {
+        "title": "Talk to the king",
+        "lead": "Afonso Henriques, the first king of Portugal, who founded this castle, appears beside you around 1142 and answers out loud.",
+        "steps": {
+          "camera": {
+            "title": "The camera opens",
+            "text": "Find a clear spot and point at the floor until you see a white ring."
+          },
+          "place": {
+            "title": "Tap to place him",
+            "text": "The king appears where you tapped. Tap the floor again to move him there."
+          },
+          "talk": {
+            "title": "Press and hold to talk",
+            "text": "Ask him about founding the castle, his battles or the kingdom being born. Let go and he answers."
+          },
+          "back": {
+            "title": "Back to the route",
+            "text": "When you’re done, close augmented reality and tap “Continue route”."
+          }
+        },
+        "opened": "The king is waiting in another window"
       }
     },
     "how": "How it works",

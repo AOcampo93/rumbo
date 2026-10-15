@@ -122,7 +122,12 @@ describe('the scenes', () => {
 
   it('names its characters in the three languages, with the API ids', () => {
     const ids = Object.values(SCENES).flatMap((scene) => scene.actors.map((actor) => actor.id));
-    expect(ids).toEqual(['artesano', 'soldado_portugues', 'soldado_almoravide']);
+    expect(ids).toEqual([
+      'artesano',
+      'soldado_portugues',
+      'soldado_almoravide',
+      'afonso_henriques',
+    ]);
     for (const scene of Object.values(SCENES)) {
       for (const actor of scene.actors) {
         expect(Object.keys(actor.name)).toEqual(['es', 'en', 'pt']);
@@ -135,5 +140,16 @@ describe('the scenes', () => {
         ['draw', 'fight', 'idle', 'sheathe', 'talking'].sort(),
       );
     }
+  });
+});
+
+describe('the king', () => {
+  it('is a guide of his own, with his Mixamo jaw (already shut when idle)', () => {
+    const king = SCENES.afonso_henriques!;
+    expect(king.kind).toBe('guide');
+    expect(king.actors[0]?.jaw).toEqual({ bone: 'mixamorig2:Jaw', closeDeg: 0 });
+    expect(sceneFromParams(new URLSearchParams('scene=afonso_henriques')).id).toBe(
+      'afonso_henriques',
+    );
   });
 });

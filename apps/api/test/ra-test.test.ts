@@ -504,7 +504,15 @@ describe('the craftsman', () => {
 
   it('gives each one his own voice and persona, with the same rules', () => {
     const characters = createCharacters();
-    expect(new Set(CHARACTER_IDS.map((id) => characters.get(id)!.voiceName)).size).toBe(3);
+    expect(new Set(CHARACTER_IDS.map((id) => characters.get(id)!.voiceName)).size).toBe(
+      CHARACTER_IDS.length,
+    );
+    const king = systemInstruction(characters.get('afonso_henriques')!, 'pt', {
+      es: '',
+      en: '',
+      pt: 'Facto.',
+    });
+    expect(king).toMatch(/^És D\. Afonso Henriques, o primeiro rei de Portugal/);
     const facts = { es: 'Hecho.', en: 'Fact.', pt: 'Facto.' };
     const soldier = systemInstruction(characters.get('soldado_portugues')!, 'es', facts);
     expect(soldier).toMatch(/^Eres un soldado de la guarnición del castillo de Leiria/);

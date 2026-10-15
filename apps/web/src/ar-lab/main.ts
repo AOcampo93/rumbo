@@ -468,7 +468,9 @@ els.ar.addEventListener('click', () => {
 els.exitAr.addEventListener('click', () => void stage.endAr());
 
 void Promise.all(
-  scene.actors.map((def) => loadCharacter(def.model, def.clips, isEncounter ? 'fight' : 'idle')),
+  scene.actors.map((def) =>
+    loadCharacter(def.model, def.clips, isEncounter ? 'fight' : 'idle', def.jaw),
+  ),
 ).then(
   (loaded) => {
     actors = loaded.map((character, i) => {

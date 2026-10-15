@@ -706,11 +706,13 @@
         "scene": "Escena",
         "scenes": {
           "artesano": "El artesano (siglo XIV)",
-          "asalto_1140": "El asalto de 1140 (dos soldados)"
+          "asalto_1140": "El asalto de 1140 (dos soldados)",
+          "afonso_henriques": "El rey D. Afonso Henriques (1142)"
         },
         "names": {
           "artesano": "El artesano",
-          "asalto_1140": "El asalto de 1140"
+          "asalto_1140": "El asalto de 1140",
+          "afonso_henriques": "El rey D. Afonso Henriques"
         }
       },
       "tooLong": "Es demasiado largo.",
@@ -958,6 +960,29 @@
           }
         },
         "opened": "Los soldados te esperan en otra ventana"
+      },
+      "afonso_henriques": {
+        "title": "Habla con el rey",
+        "lead": "D. Afonso Henriques, el primer rey de Portugal, que fundó este castillo, aparece a tu lado hacia 1142 y te contesta en voz alta.",
+        "steps": {
+          "camera": {
+            "title": "Se abre la cámara",
+            "text": "Busca un sitio despejado y apunta al suelo hasta ver un anillo blanco."
+          },
+          "place": {
+            "title": "Toca para colocarlo",
+            "text": "El rey aparece donde tocaste. Si vuelves a tocar el suelo, se mueve allí."
+          },
+          "talk": {
+            "title": "Mantén pulsado para hablar",
+            "text": "Pregúntale por la fundación del castillo, sus batallas o el reino que está naciendo. Suelta y te contesta."
+          },
+          "back": {
+            "title": "Vuelve a la ruta",
+            "text": "Cuando acabes, cierra la realidad aumentada y toca «Continuar ruta»."
+          }
+        },
+        "opened": "El rey te espera en otra ventana"
       }
     },
     "how": "Cómo funciona",
