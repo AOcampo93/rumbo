@@ -4,8 +4,10 @@ import {
   heldPose,
   levelToMouthOpen,
   loadCharacter,
+  loadModel,
   type PropPose,
 } from '../ar/character.ts';
+import { addPropLight, flickerLights, type PropLight } from '../ar/props.ts';
 import { Encounter, type EncounterPhase } from '../ar/encounter.ts';
 import { generateSpeechLikePcm16 } from '../ar/pcm.ts';
 import { PcmPlayer, type AudioContextLike } from '../ar/playback.ts';
@@ -398,6 +400,9 @@ const player = new PcmPlayer(audioCtx as unknown as AudioContextLike, {
 const unlockAudio = () => player.unlock().catch(() => undefined);
 
 let smoothed = 0;
+/** Lights of the scene's props (a lantern): they flicker like a flame. */
+const propLights: PropLight[] = [];
+let clock = 0;
 const stage = new Stage({
   canvas: els.canvas,
   overlay: els.overlay,
@@ -415,6 +420,8 @@ const stage = new Stage({
       }
     }
     if (encounter) directEncounter(encounter, dt);
+    clock += dt;
+    if (propLights.length) flickerLights(propLights, clock);
   },
   onModeChange: (mode) => {
     const ar = mode === 'ar';
@@ -466,6 +473,20 @@ els.ar.addEventListener('click', () => {
   });
 });
 els.exitAr.addEventListener('click', () => void stage.endAr());
+
+// The scene's props: they don't hold up the characters, and one that fails is just left out.
+for (const prop of scene.props ?? []) {
+  void loadModel(prop.model).then(
+    (object) => {
+      const group = stage.addActor(object, prop.x, prop.z);
+      group.rotation.y = prop.turn ?? 0;
+      if (prop.light) propLights.push(addPropLight(group, prop.light));
+    },
+    (error: unknown) => console.warn(`The prop ${prop.id} did not load`, error),
+  );
+}
+// A guide with company needs a wider 3D view.
+if (scene.props?.length && !isEncounter) stage.setViewScale(1.5);
 
 void Promise.all(
   scene.actors.map((def) =>

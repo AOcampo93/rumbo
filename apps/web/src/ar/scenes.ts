@@ -1,4 +1,5 @@
 import type { ClipNames, JawSettings } from './character.ts';
+import type { PropLightDef } from './props.ts';
 
 // The AR scenes a route's place can open (route-spec AR_SCENES): one guide who waits to be
 // asked, or an encounter where several characters act a loop until the visitor talks to one.
@@ -25,6 +26,19 @@ export interface ActorDef {
   z: number;
 }
 
+/** A still object that keeps the characters company (a lantern post, a flag). */
+export interface PropDef {
+  id: string;
+  model: string;
+  /** Where it stands, like an actor (metres from the scene's centre). */
+  x: number;
+  z: number;
+  /** A turn round the vertical, in radians (0: as modelled, facing the viewer). */
+  turn?: number;
+  /** Something in it that glows, like a lantern. */
+  light?: PropLightDef;
+}
+
 export interface SceneDef {
   id: string;
   /**
@@ -33,6 +47,7 @@ export interface SceneDef {
    */
   kind: 'guide' | 'encounter';
   actors: readonly ActorDef[];
+  props?: readonly PropDef[];
 }
 
 const SOLDIER_CLIPS = {
@@ -118,6 +133,8 @@ SCENES.afonso_henriques = {
       z: 0,
     },
   ],
+  // The royal banner beside him, a step behind.
+  props: [{ id: 'bandera', model: '/ra_test/models/bandera_portuguesa.glb', x: 0.8, z: -0.3 }],
 };
 
 SCENES.centinela = {
@@ -138,6 +155,25 @@ SCENES.centinela = {
       jaw: { bone: 'mixamorig2:Jaw', closeDeg: 0 },
       x: 0,
       z: 0,
+    },
+  ],
+  // A lantern post at his side; its lantern hangs towards him and lights him warmly.
+  props: [
+    {
+      id: 'poste_linterna',
+      model: '/ra_test/models/poste_linterna.glb',
+      x: -0.85,
+      z: -0.15,
+      // The lantern's glass, measured in the model: 1.05 m up, on the arm's side.
+      light: {
+        x: 0.24,
+        y: 1.05,
+        z: 0.22,
+        color: 0xffb04a,
+        intensity: 2.5,
+        distance: 4,
+        halo: 0.55,
+      },
     },
   ],
 };

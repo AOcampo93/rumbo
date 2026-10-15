@@ -237,6 +237,15 @@ function gltfLoader(): GLTFLoader {
   return loader;
 }
 
+/** Loads a still model (a prop): no clips, no jaw. */
+export async function loadModel(url: string): Promise<Object3D> {
+  const gltf = await gltfLoader().loadAsync(url);
+  gltf.scene.traverse((o) => {
+    o.frustumCulled = false;
+  });
+  return gltf.scene;
+}
+
 /** Loads a character; it starts in `initial` (idle unless told otherwise). */
 export async function loadCharacter(
   url: string,

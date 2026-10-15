@@ -291,7 +291,7 @@ Página de pruebas, fuera de la app: un personaje 3D en realidad aumentada que c
 - **Los modelos 3D no están en git.** El repo es público y la licencia de un modelo puede no permitir redistribuirlo. Viven en el volumen persistente `r1nkasrwx0no5zwedufosucn-ra-test-models` de `rumbo-web`, montado en `/usr/share/nginx/html/ra_test/models`, y sobreviven a los despliegues. Para subir o cambiar uno:
 
   ```bash
-  # Hoy: artesano.glb, soldado_portugues.glb, soldado_almoravide.glb, rey_portugues.glb, centinela_portugues.glb y sacerdote.glb (versiones webp + Draco).
+  # Hoy: artesano.glb, soldado_portugues.glb, soldado_almoravide.glb, rey_portugues.glb, centinela_portugues.glb, sacerdote.glb y los objetos poste_linterna.glb y bandera_portuguesa.glb (versiones webp + Draco).
   scp artesano.glb vmi:/tmp/rumbo-artesano.glb
   ssh vmi 'c=$(docker ps -q --filter name=r1nkasrwx0no5zwedufosucn | head -1); docker cp /tmp/rumbo-artesano.glb $c:/usr/share/nginx/html/ra_test/models/artesano.glb && docker exec $c chmod 644 /usr/share/nginx/html/ra_test/models/artesano.glb; rm /tmp/rumbo-artesano.glb'
   ```
@@ -299,6 +299,7 @@ Página de pruebas, fuera de la app: un personaje 3D en realidad aumentada que c
 - **Como acción de una ruta (`ar_character`):** al llegar, una hoja explica la actividad y abre `/ra_test/?character=…&lang=…&from=route` en otra ventana (en iPhone, por el App Clip, con el código). El creador ofrece «Personaje en RA (prueba)» para cualquier lugar. La voz sigue pidiendo el código: abrir cualquier página de la app con `?ra_code=<código>` lo guarda en el `localStorage` del sitio (lo comparten la app y la página de RA, y el App Clip lo recibe en su enlace) y lo quita de la dirección. Cada navegador guarda el suyo: en el iPhone, Safari, Chrome y la app instalada en la pantalla de inicio son almacenamientos distintos. Sin código, la página de RA lo pide en su recuadro de estado.
 - **Contexto por escena:** `data/ra/<personaje>/escenas/<escena>/{es,en,pt}.md` se añade a la ficha cuando el personaje sale en esa escena (hoy, los dos soldados en `puerta_traicion`, la Puerta de la Traición). La página manda la escena en el WebSocket (`&scene=`).
 - **Ruta curada «El castillo de Leiria»** (`data/routes/castillo-de-leiria.json`): cinco puntos dentro del castillo, cada uno con su escena de RA (centinela, artesano, Puerta de la Traición, rey, sacerdote). Radios de 15 a 20 m, porque los puntos están a 31–121 m. La API la siembra al arrancar, como la otra.
+- **Objetos que acompañan** (`props` de la escena en `apps/web/src/ar/scenes.ts`): el poste con farol junto al centinela, con una luz cálida que parpadea como una llama (`apps/web/src/ar/props.ts`), y la bandera junto al rey. Si un objeto no carga, la escena sigue sin él.
 - **Lo que sabe el personaje:** `data/ra/<personaje>/{es,en,pt}.md`, con sus fuentes en `FUENTES.md` (que no entra en la imagen). La API los lee al arrancar: tras cambiarlos hay que desplegar la API.
 - **Coste:** se paga por tokens de audio (orientativo: ~0,005 USD por minuto escuchado y ~0,018 USD por minuto hablado). Las sesiones duran como mucho `RA_TEST_SESSION_SECONDS` (180 s) y hay como mucho `RA_TEST_MAX_SESSIONS` (3) a la vez. En el log, `voice session ended` deja la duración y los tokens, nunca lo que se dijo.
 

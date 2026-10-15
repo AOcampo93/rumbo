@@ -667,3 +667,19 @@ Un personaje 3D aparece en RA al llegar a un lugar y responde por voz con la IA,
 - La ficha de conocimiento por lugar, no solo por personaje, y la revisión de sus fuentes por una persona.
 - Coste por sesión (unos céntimos con los límites de hoy) y un tope diario como el de la IA de las fichas.
 
+
+## 18. Cofres, monedas y pergaminos (pendiente)
+
+Un minijuego en los puntos de una ruta: al llegar aparece un **cofre**; al abrirlo sale una **moneda** (puntos) o un **pergamino** (una pista del siguiente punto, en el idioma del usuario). Va con las cuentas (§4) y la gamificación (§6), por eso se hace en la versión 2.
+
+**Modelos listos** (fuera de git, como los personajes): cofre con *Idle* (vibra), *Abrir* y *Cerrar*; moneda con el escudo portugués; pergamino enrollado con sello. Webp + Draco, entre 0,2 y 0,9 MB.
+
+**Cómo llega el premio a la ruta aunque el cofre se abra en el App Clip.** El App Clip tiene su propio almacenamiento y no puede escribir en el recorrido de la app, pero sí habla con nuestro servidor (como la voz). Por eso el premio pasa por el servidor:
+
+1. Al llegar al punto, la app crea un **ticket** de un solo uso (aleatorio, no adivinable) para ese cofre de ese recorrido y lo pone en el enlace de la RA (`&ticket=`), como el idioma y el código.
+2. Al abrir el cofre, la página de RA manda al servidor «ticket X abierto»; el servidor lo guarda con su premio.
+3. De vuelta en la app, la hoja de llegada pregunta por el ticket y, si está abierto, suma los puntos o muestra la pista.
+
+Funciona igual en iPhone (App Clip) y en Android (otra pestaña). En los retos (§5) el servidor es quien da fe de que se abrió en el punto y una sola vez por intento (§7).
+
+**Por decidir:** qué da cada cofre (monedas, pistas, llaves para un cofre final), cómo se abre (mantener pulsado, con una pregunta del lugar, un botón) y si también se puede abrir en la app sin RA.
