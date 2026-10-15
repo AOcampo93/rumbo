@@ -3,6 +3,7 @@ import {
   Box3,
   LoopOnce,
   LoopRepeat,
+  PropertyBinding,
   Quaternion,
   Vector3,
   type AnimationClip,
@@ -216,6 +217,18 @@ export interface Character {
   height: number;
 }
 
+/**
+ * A bone by the name the model gives it. three's loader drops characters that are reserved in
+ * animation paths (":" among them), so a Mixamo "mixamorig2:Jaw" is "mixamorig2Jaw" once loaded.
+ */
+export function findBone(root: Object3D, name: string): Object3D | null {
+  return (
+    root.getObjectByName(name) ??
+    root.getObjectByName(PropertyBinding.sanitizeNodeName(name)) ??
+    null
+  );
+}
+
 let loader: GLTFLoader | null = null;
 function gltfLoader(): GLTFLoader {
   if (!loader) {
@@ -233,7 +246,7 @@ export async function loadCharacter(
 ): Promise<Character> {
   const gltf = await gltfLoader().loadAsync(url);
   const root = gltf.scene;
-  const jaw = root.getObjectByName(jawSettings.bone) ?? null;
+  const jaw = findBone(root, jawSettings.bone);
   const mixer = new AnimationMixer(root);
   const animator = new CharacterAnimator(mixer, gltf.animations, jaw, names, jawSettings.closeDeg);
   root.traverse((o) => {

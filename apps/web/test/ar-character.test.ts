@@ -1,5 +1,7 @@
 import {
   AnimationClip,
+  Bone,
+  Group,
   LoopOnce,
   Quaternion,
   QuaternionKeyframeTrack,
@@ -10,6 +12,7 @@ import {
   CharacterAnimator,
   CLIP_NAMES,
   CROSSFADE_SECONDS,
+  findBone,
   heldPose,
   IDLE_CLOSE_DEG,
   JAW_AXIS,
@@ -250,5 +253,19 @@ describe('the sword held while fighting', () => {
     expect(heldPose([draw, fight], 'Espada', 'Desenvainar', 'Luchando')).toBeNull();
     expect(heldPose([draw], 'Espada', 'Desenvainar', 'Luchando')).toBeNull();
     expect(heldPose([draw, fight], 'Cimitarra', 'Desenvainar', 'Luchando')).toBeNull();
+  });
+});
+
+describe('finding the jaw', () => {
+  it('finds a Mixamo jaw under the name the loader gives it, and a plain one as is', () => {
+    const root = new Group();
+    const mixamo = new Bone();
+    mixamo.name = 'mixamorig2Jaw'; // what GLTFLoader makes of "mixamorig2:Jaw"
+    const plain = new Bone();
+    plain.name = 'jaw';
+    root.add(mixamo, plain);
+    expect(findBone(root, 'mixamorig2:Jaw')).toBe(mixamo);
+    expect(findBone(root, 'jaw')).toBe(plain);
+    expect(findBone(root, 'mixamorig2:Head')).toBeNull();
   });
 });
