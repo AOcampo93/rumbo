@@ -435,6 +435,7 @@ describe('PlaceEditorSheet · Al llegar', () => {
       'El rey D. Afonso Henriques (1142)',
       'El centinela del castillo (1324)',
       'El sacerdote de la iglesia (1401)',
+      'La lucha en la Puerta de la Traición (dos soldados)',
     ]);
     await select.setValue('asalto_1140');
     expect(current(view)).toEqual({ type: 'ar', scene: 'asalto_1140' });

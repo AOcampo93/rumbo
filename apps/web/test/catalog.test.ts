@@ -35,7 +35,7 @@ describe('the Explore map', () => {
 
   it('builds popups in the active language, with photo credits', () => {
     i18n.global.locale.value = 'en';
-    const [marker] = routeMarkers(routes, 'en', t);
+    const marker = routeMarkers(routes, 'en', t).find((m) => m.id.startsWith('leiria-historica/'));
     expect(marker?.popup).toMatchObject({
       kicker: 'Historic Leiria',
       actions: [{ id: 'viewRoute', label: 'View route' }],
@@ -54,7 +54,7 @@ describe('the Explore map', () => {
       filterMarkers(markers, { ...none, showPois: false }).every((m) => m.state === 'explore'),
     ).toBe(true);
     expect(
-      filterMarkers(markers, { ...none, hiddenRoutes: new Set(['leiria-historica']) }).every(
+      filterMarkers(markers, { ...none, hiddenRoutes: new Set(routes.map((r) => r.id)) }).every(
         (m) => m.state === 'poi',
       ),
     ).toBe(true);

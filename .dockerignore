@@ -14,3 +14,6 @@ scripts
 !data/ra/*/es.md
 !data/ra/*/en.md
 !data/ra/*/pt.md
+!data/ra/*/escenas/*/es.md
+!data/ra/*/escenas/*/en.md
+!data/ra/*/escenas/*/pt.md

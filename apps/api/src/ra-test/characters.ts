@@ -182,10 +182,51 @@ const NO_FACTS: Record<Lang, string> = {
 
 /** The knowledge sheets of every character: data/ra/<id>/ under `base`. */
 export async function loadAllKnowledge(base: URL): Promise<ReadonlyMap<string, LocalizedFacts>> {
-  const entries = await Promise.all(
-    CHARACTER_IDS.map(async (id) => [id, await loadKnowledge(new URL(`${id}/`, base))] as const),
+  const sheets = CHARACTER_IDS.map(
+    async (id) => [id, await loadKnowledge(new URL(`${id}/`, base))] as const,
   );
-  return new Map(entries);
+  const settings = CHARACTER_IDS.flatMap((id) =>
+    SCENE_SETTINGS.map(
+      async (scene) =>
+        [
+          sceneKey(scene, id),
+          await loadKnowledge(new URL(`${id}/escenas/${scene}/`, base)),
+        ] as const,
+    ),
+  );
+  const entries = await Promise.all([...sheets, ...settings]);
+  // A scene a character has no text for adds nothing.
+  return new Map(entries.filter(([, facts]) => LANGS.some((lang) => facts[lang])));
+}
+
+/**
+ * Scenes that tell a character where he is now (e.g. fighting at the Traitor's Gate):
+ * data/ra/<character>/escenas/<scene>/{es,en,pt}.md, added after his sheet.
+ */
+export const SCENE_SETTINGS = ['puerta_traicion'] as const;
+
+/** Where a character's text for a scene is kept in the knowledge map. */
+export function sceneKey(scene: string, character: string): string {
+  return `${scene}/${character}`;
+}
+
+const NO_FACTS_AT_ALL: LocalizedFacts = { es: '', en: '', pt: '' };
+
+/** A character's facts in a scene: his sheet, plus where he is now when the scene says. */
+export function factsIn(
+  knowledge: ReadonlyMap<string, LocalizedFacts>,
+  character: string,
+  scene?: string,
+): LocalizedFacts {
+  const sheet = knowledge.get(character) ?? NO_FACTS_AT_ALL;
+  const setting = scene ? knowledge.get(sceneKey(scene, character)) : undefined;
+  if (!setting) return sheet;
+  const join = (a: string, b: string) => [a, b].filter(Boolean).join('\n\n');
+  return {
+    es: join(sheet.es, setting.es),
+    en: join(sheet.en, setting.en),
+    pt: join(sheet.pt, setting.pt),
+  };
 }
 
 /** The full system instruction of a character in a language. */

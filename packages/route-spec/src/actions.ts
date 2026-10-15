@@ -129,6 +129,7 @@ export const AR_SCENES = [
   'afonso_henriques',
   'centinela',
   'sacerdote',
+  'puerta_traicion',
 ] as const;
 export type ArScene = (typeof AR_SCENES)[number];
 

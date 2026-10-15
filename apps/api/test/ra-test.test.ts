@@ -11,6 +11,7 @@ import {
   CHARACTER_IDS,
   createCharacters,
   DEFAULT_VOICES,
+  factsIn,
   loadAllKnowledge,
   loadKnowledge,
   systemInstruction,
@@ -286,6 +287,21 @@ describe('the Gemini session', () => {
     expect(prompt).not.toContain('artesano del siglo XIV');
   });
 
+  it('tells a character where he is when the scene says so (the Traitor’s Gate)', async () => {
+    const { connector, sessions } = fakeConnector();
+    const server = await setup({}, connector);
+    await open(server, '?lang=es&character=soldado_portugues&scene=puerta_traicion');
+    const atTheGate = String(sessions[0]!.request.config.systemInstruction);
+    expect(atTheGate).toContain('## Dónde estás ahora');
+    expect(atTheGate).toContain('Puerta de la Traición');
+    // Another scene, or none, adds nothing; a malformed one is ignored.
+    await open(server, '?lang=es&character=soldado_portugues&scene=asalto_1140');
+    await open(server, '?lang=es&character=soldado_portugues&scene=..%2F..%2Fetc');
+    for (const session of sessions.slice(1)) {
+      expect(String(session.request.config.systemInstruction)).not.toContain('Dónde estás ahora');
+    }
+  });
+
   it('refuses a character it does not know', async () => {
     const { connector, sessions } = fakeConnector();
     const server = await setup({}, connector);
@@ -491,8 +507,9 @@ describe('the craftsman', () => {
 
   it('loads a sheet for every character', async () => {
     const knowledge = await loadAllKnowledge(new URL('../../../data/ra/', import.meta.url));
-    expect([...knowledge.keys()]).toEqual([...CHARACTER_IDS]);
-    for (const [id, facts] of knowledge) {
+    const sheets = [...knowledge].filter(([key]) => !key.includes('/'));
+    expect(sheets.map(([id]) => id)).toEqual([...CHARACTER_IDS]);
+    for (const [id, facts] of sheets) {
       for (const lang of ['es', 'en', 'pt'] as const) {
         expect(facts[lang].length, `${id} ${lang}`).toBeGreaterThan(1500);
       }
@@ -531,6 +548,31 @@ describe('the craftsman', () => {
     expect(systemInstruction(craftsman, 'es', facts)).toContain('Habla siempre en español');
     expect(systemInstruction(craftsman, 'en', facts)).toContain('Always speak English');
     expect(systemInstruction(craftsman, 'pt', facts)).toContain('português de Portugal');
+  });
+
+  it('adds the scene’s setting after the sheet, in each language', () => {
+    const knowledge = new Map([
+      ['soldado_almoravide', { es: 'Ficha.', en: 'Sheet.', pt: 'Ficha.' }],
+      ['puerta_traicion/soldado_almoravide', { es: 'Aquí.', en: 'Here.', pt: '' }],
+    ]);
+    expect(factsIn(knowledge, 'soldado_almoravide', 'puerta_traicion')).toEqual({
+      es: 'Ficha.\n\nAquí.',
+      en: 'Sheet.\n\nHere.',
+      pt: 'Ficha.',
+    });
+    expect(factsIn(knowledge, 'soldado_almoravide')).toEqual(knowledge.get('soldado_almoravide'));
+    expect(factsIn(knowledge, 'nadie', 'puerta_traicion')).toEqual({ es: '', en: '', pt: '' });
+  });
+
+  it('loads the Traitor’s Gate setting of both soldiers', async () => {
+    const knowledge = await loadAllKnowledge(new URL('../../../data/ra/', import.meta.url));
+    for (const id of ['soldado_portugues', 'soldado_almoravide']) {
+      const setting = knowledge.get(`puerta_traicion/${id}`);
+      expect(setting?.es).toContain('## Dónde estás ahora');
+      expect(setting?.en).toContain('## Where you are now');
+      expect(setting?.pt).toContain('## Onde estás agora');
+    }
+    expect(knowledge.has('puerta_traicion/artesano')).toBe(false);
   });
 
   it('says it has no information when there is no sheet', () => {

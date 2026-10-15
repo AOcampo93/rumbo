@@ -10,6 +10,7 @@ import {
   LANGS,
   type Lang,
   type LocalizedFacts,
+  factsIn,
   systemInstruction,
 } from '../ra-test/characters.js';
 import type { LiveConnector, LiveSessionHandle } from '../ra-test/live.js';
@@ -40,8 +41,6 @@ export interface RaTestOptions {
   allowLocalOrigins: boolean;
 }
 
-const NO_KNOWLEDGE: LocalizedFacts = { es: '', en: '', pt: '' };
-
 /** The largest binary frame a client may send (1 s of PCM16 16 kHz is 32 KB). */
 export const MAX_FRAME_BYTES = 64 * 1024;
 /** Checks of the page's setup box per address and minute (they open no Gemini session). */
@@ -57,6 +56,12 @@ const INPUT_MIME = 'audio/pcm;rate=16000';
 const QuerySchema = z.object({
   lang: z.enum(LANGS).catch('es').default('es'),
   character: z.string().default('artesano'),
+  /** The AR scene, for a character who is somewhere in particular (see SCENE_SETTINGS). */
+  scene: z
+    .string()
+    .regex(/^[a-z0-9_]{1,40}$/)
+    .optional()
+    .catch(undefined),
   code: z.string().optional(),
 });
 
@@ -141,7 +146,7 @@ export const raTestRoutes: FastifyPluginAsync<RaTestOptions> = async (app, optio
         }
         if (!character) return refuse('internal');
         if (active >= config.raTestMaxSessions) return refuse('session_limit');
-        run(socket, request, options.connector as LiveConnector, character, lang);
+        run(socket, request, options.connector as LiveConnector, character, lang, query.scene);
       })().catch(() => refuse('internal'));
     },
   );
@@ -166,6 +171,7 @@ export const raTestRoutes: FastifyPluginAsync<RaTestOptions> = async (app, optio
     connector: LiveConnector,
     character: Character,
     lang: Lang,
+    scene: string | undefined,
   ): void {
     active += 1;
     const startedAt = Date.now();
@@ -297,7 +303,7 @@ export const raTestRoutes: FastifyPluginAsync<RaTestOptions> = async (app, optio
             systemInstruction: systemInstruction(
               character,
               lang,
-              options.knowledge.get(character.id) ?? NO_KNOWLEDGE,
+              factsIn(options.knowledge, character.id, scene),
             ),
             inputAudioTranscription: {},
             outputAudioTranscription: {},

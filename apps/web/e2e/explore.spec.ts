@@ -1,5 +1,13 @@
+import { readFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
-import { setup } from './helpers.ts';
+import { type Bundle, setup } from './helpers.ts';
+
+/** The routes these tests are written for: Historic Leiria alone, whatever else the app ships. */
+const ONLY_LEIRIA: Bundle[] = [
+  JSON.parse(
+    readFileSync(new URL('../../../data/routes/leiria-historica.json', import.meta.url), 'utf8'),
+  ) as Bundle,
+];
 
 // PROJECT_PLAN §14.2 and the course requirements (§2.1): the Explore map has
 // 20+ markers of more than one kind, popups and a filter; and it opens where
@@ -8,7 +16,7 @@ import { setup } from './helpers.ts';
 // and the filter works by origin and interest instead of by route.
 
 test('the Explore map shows 20+ markers with popups and a filter', async ({ page }) => {
-  await setup(page);
+  await setup(page, {}, ONLY_LEIRIA);
   await page.goto('/');
   await page.getByRole('radio', { name: 'Mapa' }).click();
   await expect(page.locator('.arcgis[data-ready]')).toBeVisible({ timeout: 60_000 });
@@ -179,7 +187,7 @@ const emptyPart = async (page: Page) => {
 };
 
 async function openRoutesView(page: Page) {
-  await setup(page);
+  await setup(page, {}, ONLY_LEIRIA);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.getByRole('radio', { name: 'Mapa' }).click();
@@ -192,7 +200,7 @@ async function openRoutesView(page: Page) {
 test('the Rutas view lists the curated route as a route and highlights it when it is chosen', async ({
   page,
 }) => {
-  await setup(page);
+  await setup(page, {}, ONLY_LEIRIA);
   await page.goto('/');
   await page.getByRole('radio', { name: 'Mapa' }).click();
   await expect(page.locator('.arcgis[data-ready]')).toBeVisible({ timeout: 60_000 });

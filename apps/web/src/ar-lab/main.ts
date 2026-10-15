@@ -746,6 +746,7 @@ const voice = new VoiceClient({
   location,
   getLang: () => lang,
   getCharacter: () => currentActor()?.def.id ?? (scene.actors[0] as ActorDef).id,
+  scene: scene.id,
   getCode: accessCode,
 });
 

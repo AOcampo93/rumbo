@@ -35,13 +35,14 @@ const OPEN = 1;
 
 export function buildVoiceUrl(
   location: { protocol: string; host: string },
-  options: { lang?: string; character?: string; code?: string } = {},
+  options: { lang?: string; character?: string; scene?: string; code?: string } = {},
 ): string {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   const params = new URLSearchParams({
     lang: options.lang ?? 'es',
     character: options.character ?? 'artesano',
   });
+  if (options.scene) params.set('scene', options.scene);
   if (options.code) params.set('code', options.code);
   return `${scheme}://${location.host}/api/v1/ra-test/voice?${params.toString()}`;
 }
@@ -135,6 +136,8 @@ export class VoiceClient {
       character?: string;
       /** Read on every connect, so a scene can switch who answers. */
       getCharacter?: () => string;
+      /** The AR scene: where the character is (it may add to what he knows). */
+      scene?: string;
       getCode?: () => string | undefined;
     },
   ) {}
@@ -151,6 +154,7 @@ export class VoiceClient {
     const url = buildVoiceUrl(loc, {
       lang: this.options.getLang?.() ?? this.options.lang,
       character: this.options.getCharacter?.() ?? this.options.character,
+      ...(this.options.scene ? { scene: this.options.scene } : {}),
       code: this.options.getCode?.(),
     });
     const socket = this.options.createSocket(url);

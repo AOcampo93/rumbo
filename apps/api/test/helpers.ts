@@ -1,3 +1,4 @@
+import { copyFileSync, mkdtempSync } from 'node:fs';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +11,18 @@ import { type AppDeps, buildApp } from '../src/app.js';
 import { type AppConfig, loadConfig } from '../src/config.js';
 import { createDatabase, type Database } from '../src/db/index.js';
 
-export const CURATED = new URL('../../../data/routes/', import.meta.url);
+/**
+ * The curated routes the community tests seed: Historic Leiria only (the real file), so
+ * their lists don't change whenever data/routes gains a route. The seed has its own tests.
+ */
+export const CURATED = (() => {
+  const dir = mkdtempSync(join(tmpdir(), 'rumbo-curated-'));
+  copyFileSync(
+    new URL('../../../data/routes/leiria-historica.json', import.meta.url),
+    join(dir, 'leiria-historica.json'),
+  );
+  return pathToFileURL(`${dir}/`);
+})();
 export const DEVICE = '6f1d1c1e-3a7b-4c1e-9d0f-2b6a7c8d9e01';
 export const OTHER_DEVICE = '0b7e9c2a-5d4f-4a8b-8c1d-3e2f1a0b9c87';
 

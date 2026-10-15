@@ -1,0 +1,172 @@
+{
+  "spec": {
+    "specVersion": 1,
+    "id": "castillo-de-leiria",
+    "name": {
+      "es": "El castillo de Leiria",
+      "en": "Leiria Castle",
+      "pt": "O castelo de Leiria"
+    },
+    "summary": {
+      "es": "Cinco rincones del castillo donde te esperan personajes de su historia, en realidad aumentada.",
+      "en": "Five corners of the castle where characters from its history wait for you, in augmented reality.",
+      "pt": "Cinco recantos do castelo onde te esperam personagens da sua história, em realidade aumentada."
+    },
+    "description": {
+      "es": "Un recorrido por dentro del castillo de Leiria en el que su historia te habla. En la puerta te recibe un centinela; en la plaza, un artesano; en la Puerta de la Traición luchan dos soldados de hacia 1140; en el palacio te espera el rey D. Afonso Henriques, y en la iglesia, un clérigo que te la explica. Cada personaje aparece en realidad aumentada al llegar y responde por voz. Es una experiencia en pruebas: para hablar con ellos hace falta un código de acceso.",
+      "en": "A walk inside Leiria Castle where its history talks to you. At the gate a sentinel greets you; in the square, a craftsman; at the Traitor’s Gate two soldiers from around 1140 are fighting; in the palace King Afonso Henriques awaits you, and in the church, a cleric who explains it. Each character appears in augmented reality when you arrive and answers by voice. This is a test experience: talking to them needs an access code.",
+      "pt": "Um percurso dentro do castelo de Leiria em que a sua história fala contigo. À porta recebe-te uma sentinela; na praça, um artesão; na Porta da Traição lutam dois soldados de por volta de 1140; no paço espera-te o rei D. Afonso Henriques e, na igreja, um clérigo que ta explica. Cada personagem aparece em realidade aumentada quando chegas e responde por voz. É uma experiência em teste: para falar com eles é preciso um código de acesso."
+    },
+    "locale": "es",
+    "mode": "free",
+    "activity": "walk",
+    "settings": {
+      "defaultRadius": 15,
+      "exitHysteresis": 4,
+      "dwellTime": 3,
+      "minAccuracy": 20,
+      "approachDistance": 25
+    },
+    "coverImage": {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/10/CASTELO_DE_LEIRIA.jpg",
+      "alt": {
+        "pt": "O castelo de Leiria no alto da sua colina",
+        "es": "El castillo de Leiria en lo alto de su colina",
+        "en": "Leiria Castle on top of its hill"
+      },
+      "credit": "JMFH4778",
+      "license": "CC BY-SA 3.0",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:CASTELO_DE_LEIRIA.jpg"
+    },
+    "source": "curated",
+    "meta": {
+      "attribution": "Coordinates: taken on site by the route author. Characters’ knowledge: data/ra/*/FUENTES.md (based on Wikipedia). Cover photo: JMFH4778, CC BY-SA 3.0, Wikimedia Commons.",
+      "interests": ["history", "architecture"]
+    },
+    "points": [
+      {
+        "id": "porta-do-castelo",
+        "name": {
+          "es": "Puerta del castillo",
+          "en": "Castle gate",
+          "pt": "Porta do castelo"
+        },
+        "position": {
+          "lat": 39.7476535,
+          "lng": -8.8087312
+        },
+        "order": 1,
+        "radius": 15,
+        "category": "monument",
+        "triggers": {
+          "onEnter": "ra_porta-do-castelo"
+        }
+      },
+      {
+        "id": "praca-principal",
+        "name": {
+          "es": "Plaza principal",
+          "en": "Main square",
+          "pt": "Praça principal"
+        },
+        "position": {
+          "lat": 39.7476964,
+          "lng": -8.8090945
+        },
+        "order": 2,
+        "radius": 15,
+        "category": "other",
+        "triggers": {
+          "onEnter": "ra_praca-principal"
+        }
+      },
+      {
+        "id": "porta-da-traicao",
+        "name": {
+          "es": "Puerta de la Traición",
+          "en": "Traitor’s Gate",
+          "pt": "Porta da Traição"
+        },
+        "position": {
+          "lat": 39.7470092,
+          "lng": -8.8098763
+        },
+        "order": 3,
+        "radius": 20,
+        "category": "monument",
+        "triggers": {
+          "onEnter": "ra_porta-da-traicao"
+        }
+      },
+      {
+        "id": "paco-real",
+        "name": {
+          "es": "Palacio real",
+          "en": "Royal palace",
+          "pt": "Paço real"
+        },
+        "position": {
+          "lat": 39.7467296,
+          "lng": -8.8093343
+        },
+        "order": 4,
+        "radius": 17,
+        "category": "monument",
+        "triggers": {
+          "onEnter": "ra_paco-real"
+        }
+      },
+      {
+        "id": "igreja-da-pena",
+        "name": {
+          "es": "Iglesia de Santa María de la Pena",
+          "en": "Church of Santa Maria da Pena",
+          "pt": "Igreja de Nossa Senhora da Pena"
+        },
+        "position": {
+          "lat": 39.7469947,
+          "lng": -8.8090956
+        },
+        "order": 5,
+        "radius": 17,
+        "category": "church",
+        "triggers": {
+          "onEnter": "ra_igreja-da-pena"
+        }
+      }
+    ],
+    "actions": {
+      "ra_porta-do-castelo": {
+        "type": "ar_character",
+        "params": {
+          "scene": "centinela"
+        }
+      },
+      "ra_praca-principal": {
+        "type": "ar_character",
+        "params": {
+          "scene": "artesano"
+        }
+      },
+      "ra_porta-da-traicao": {
+        "type": "ar_character",
+        "params": {
+          "scene": "puerta_traicion"
+        }
+      },
+      "ra_paco-real": {
+        "type": "ar_character",
+        "params": {
+          "scene": "afonso_henriques"
+        }
+      },
+      "ra_igreja-da-pena": {
+        "type": "ar_character",
+        "params": {
+          "scene": "sacerdote"
+        }
+      }
+    }
+  },
+  "contents": {}
+}

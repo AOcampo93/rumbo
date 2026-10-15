@@ -174,3 +174,6 @@ export function sceneFromParams(params: URLSearchParams): SceneDef {
   const id = params.get('scene') ?? params.get('character') ?? DEFAULT_SCENE;
   return SCENES[id] ?? (SCENES[DEFAULT_SCENE] as SceneDef);
 }
+
+/** The same fight, at the castle's Traitor's Gate: both soldiers know where they are. */
+SCENES.puerta_traicion = { ...(SCENES.asalto_1140 as SceneDef), id: 'puerta_traicion' };

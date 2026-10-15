@@ -66,6 +66,17 @@ describe('buildVoiceUrl', () => {
       'ws://localhost:5173/api/v1/ra-test/voice?lang=es&character=artesano&code=x+y',
     );
   });
+
+  it('says which scene the character is in', () => {
+    expect(
+      buildVoiceUrl(
+        { protocol: 'https:', host: 'a.b' },
+        { lang: 'pt', character: 'soldado_portugues', scene: 'puerta_traicion' },
+      ),
+    ).toBe(
+      'wss://a.b/api/v1/ra-test/voice?lang=pt&character=soldado_portugues&scene=puerta_traicion',
+    );
+  });
 });
 
 describe('VoiceClient', () => {

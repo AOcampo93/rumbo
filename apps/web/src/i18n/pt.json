@@ -709,14 +709,16 @@
           "asalto_1140": "O assalto de 1140 (dois soldados)",
           "afonso_henriques": "O rei D. Afonso Henriques (1142)",
           "centinela": "A sentinela do castelo (1324)",
-          "sacerdote": "O padre da igreja (1401)"
+          "sacerdote": "O padre da igreja (1401)",
+          "puerta_traicion": "A luta na Porta da Traição (dois soldados)"
         },
         "names": {
           "artesano": "O artesão",
           "asalto_1140": "O assalto de 1140",
           "afonso_henriques": "O rei D. Afonso Henriques",
           "centinela": "A sentinela do castelo",
-          "sacerdote": "O padre da igreja"
+          "sacerdote": "O padre da igreja",
+          "puerta_traicion": "A Porta da Traição"
         }
       },
       "tooLong": "É demasiado longo.",
@@ -1033,6 +1035,29 @@
           }
         },
         "opened": "O padre espera-te noutra janela"
+      },
+      "puerta_traicion": {
+        "title": "A batalha da Porta da Traição",
+        "lead": "Um defensor português e um guerreiro almorávida lutam junto à porta por onde se crê que entraram os muçulmanos numa das tomadas do castelo. Aproxima-te de um e fala com ele.",
+        "steps": {
+          "camera": {
+            "title": "A câmara abre-se",
+            "text": "Procura um sítio livre e aponta para o chão até veres um anel branco."
+          },
+          "place": {
+            "title": "Toca para colocar a cena",
+            "text": "Os dois soldados aparecem a lutar onde tocaste."
+          },
+          "talk": {
+            "title": "Aproxima-te de um e toca no microfone",
+            "text": "Os dois param: o que escolheste responde-te e o outro espera. Pergunta-lhes pela batalha nesta porta."
+          },
+          "back": {
+            "title": "Volta à rota",
+            "text": "No fim voltam a lutar. Fecha a realidade aumentada e toca em «Continuar rota»."
+          }
+        },
+        "opened": "Os soldados esperam-te noutra janela"
       }
     },
     "how": "Como funciona",

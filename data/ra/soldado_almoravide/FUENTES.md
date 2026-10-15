@@ -38,3 +38,8 @@ Abreviaturas: PTW = https://pt.wikipedia.org/wiki/ · ENW = https://en.wikipedia
 - Motivos personales del soldado: las fuentes no los dan; se limitó a servicio al emir y defensa de las tierras de la dinastía, sin juicio sobre ningún bando.
 
 La persona es una ficción para el prototipo.
+
+## Escena «puerta_traicion» (escenas/puerta_traicion/)
+
+- La Porta da Traição se abre en el lado oeste, en arco quebrado, y señala el sitio de la puerta original, por donde se cree que entraron los musulmanes en una de las tomas del castillo: «Pelo lado oeste, rasga-se a chamada Porta da Traição, em arco quebrado […] assinala o sítio da porta original, onde se crê terem entrado os Muçulmanos numa das tomadas ao castelo» (https://pt.wikipedia.org/wiki/Castelo_de_Leiria).
+- La fuente no explica el nombre: el personaje dice que no lo sabe. El arco quebrado es de una puerta posterior, por eso lo cuentan «los viajeros».

@@ -114,6 +114,7 @@ describe('the catalog', () => {
     answer(json({ code: 'internal' }, 500));
     await loading;
     expect(catalog.routes.map((route) => route.id)).toEqual([
+      'castillo-de-leiria',
       'leiria-historica',
       newer.id,
       older.id,

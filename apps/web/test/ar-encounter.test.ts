@@ -121,7 +121,9 @@ describe('the scenes', () => {
   });
 
   it('names its characters in the three languages, with the API ids', () => {
-    const ids = Object.values(SCENES).flatMap((scene) => scene.actors.map((actor) => actor.id));
+    const ids = [
+      ...new Set(Object.values(SCENES).flatMap((scene) => scene.actors.map((actor) => actor.id))),
+    ];
     expect(ids).toEqual([
       'artesano',
       'soldado_portugues',
@@ -152,6 +154,17 @@ describe('the king', () => {
     expect(king.actors[0]?.jaw).toEqual({ bone: 'mixamorig2:Jaw', closeDeg: 0 });
     expect(sceneFromParams(new URLSearchParams('scene=afonso_henriques')).id).toBe(
       'afonso_henriques',
+    );
+  });
+});
+
+describe('the Traitor’s Gate', () => {
+  it('is the same fight, under its own id, so the voice knows where they are', () => {
+    const gate = SCENES.puerta_traicion!;
+    expect(gate.kind).toBe('encounter');
+    expect(gate.actors).toBe(SCENES.asalto_1140!.actors);
+    expect(sceneFromParams(new URLSearchParams('scene=puerta_traicion')).id).toBe(
+      'puerta_traicion',
     );
   });
 });

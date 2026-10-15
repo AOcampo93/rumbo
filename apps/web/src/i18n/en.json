@@ -709,14 +709,16 @@
           "asalto_1140": "The 1140 assault (two soldiers)",
           "afonso_henriques": "King Afonso Henriques (1142)",
           "centinela": "The castle sentinel (1324)",
-          "sacerdote": "The church priest (1401)"
+          "sacerdote": "The church priest (1401)",
+          "puerta_traicion": "The fight at the Traitor’s Gate (two soldiers)"
         },
         "names": {
           "artesano": "The craftsman",
           "asalto_1140": "The 1140 assault",
           "afonso_henriques": "King Afonso Henriques",
           "centinela": "The castle sentinel",
-          "sacerdote": "The church priest"
+          "sacerdote": "The church priest",
+          "puerta_traicion": "The Traitor’s Gate"
         }
       },
       "tooLong": "That's too long.",
@@ -1033,6 +1035,29 @@
           }
         },
         "opened": "The priest is waiting in another window"
+      },
+      "puerta_traicion": {
+        "title": "The battle at the Traitor’s Gate",
+        "lead": "A Portuguese defender and an Almoravid warrior fight by the gate through which the Muslims are believed to have entered during one of the times the castle was taken. Walk up to one and talk to him.",
+        "steps": {
+          "camera": {
+            "title": "The camera opens",
+            "text": "Find a clear spot and point at the floor until you see a white ring."
+          },
+          "place": {
+            "title": "Tap to place the scene",
+            "text": "The two soldiers appear fighting where you tapped."
+          },
+          "talk": {
+            "title": "Walk up to one and tap the microphone",
+            "text": "Both stop: the one you chose answers and the other waits. Ask them about the battle at this gate."
+          },
+          "back": {
+            "title": "Back to the route",
+            "text": "When you finish they fight again. Close augmented reality and tap “Continue route”."
+          }
+        },
+        "opened": "The soldiers are waiting in another window"
       }
     },
     "how": "How it works",
