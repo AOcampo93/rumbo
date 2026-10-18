@@ -20,7 +20,8 @@ What the app does today:
   - Android runs WebXR in the browser; iPhone uses an App Clip.
   - The "Leiria Castle" route puts one scene at each of its five stops: the gate, the main square, the Traitor's Gate, the royal palace and the church.
 
-[Software Demo Video](#) _(coming soon)_
+- [Software Demo Video](https://youtu.be/FVY-t9x-pss)
+- [Live MVP](https://rumbo.arturoocampo.com/)
 
 # Development Environment
 
