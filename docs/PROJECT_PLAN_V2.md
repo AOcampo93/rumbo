@@ -683,3 +683,18 @@ Un minijuego en los puntos de una ruta: al llegar aparece un **cofre**; al abrir
 Funciona igual en iPhone (App Clip) y en Android (otra pestaña). En los retos (§5) el servidor es quien da fe de que se abrió en el punto y una sola vez por intento (§7).
 
 **Por decidir:** qué da cada cofre (monedas, pistas, llaves para un cofre final), cómo se abre (mantener pulsado, con una pregunta del lugar, un botón) y si también se puede abrir en la app sin RA.
+
+## 19. Pendientes de la revisión del curso (2026-10)
+
+La revisión de CSE 310 hizo cinco observaciones técnicas. Se comprobaron contra el código: tres siguen abiertas y dos ya estaban resueltas.
+
+**Abiertas:**
+
+- [ ] **El presupuesto de IA no resiste peticiones a la vez.** `apps/api/src/ai/budget.ts`: `check()` suma el gasto del día y cuenta las generaciones del dispositivo, y `record()` las apunta cuando la generación termina. Varias peticiones simultáneas pasan la comprobación antes de que se apunte ninguna, así que el tope diario (`AI_DAILY_BUDGET_USD`) y el límite por dispositivo se pueden pasar. Hoy el exceso es pequeño (pocas generaciones a la vez por los límites de uso, céntimos cada una), pero el tope tiene que ser un tope. Arreglo: reservar en `check()` dentro de una transacción con un cerrojo (`pg_advisory_xact_lock` por día) una fila «pendiente» con el coste estimado, y que `record()` la cierre con el coste real. Con un test de peticiones concurrentes.
+- [ ] **Qué pasa cuando falla cada dependencia, en un solo sitio.** Hoy está repartido (la ficha básica cuando falla la IA, la cuota de ArcGIS, los límites de Wikidata). Falta una tabla en `docs/` con cada servicio externo (GPS del navegador, teselas y servicios de ArcGIS, Wikidata, Wikipedia y Commons, el proveedor de IA, Gemini Live, Web Push y el App Clip de Needle), qué hace la app si no responde y qué test lo prueba.
+- [ ] **Decir para qué se usa la ubicación cuando se pide.** Ajustes ya dice «Nunca guardamos tu ubicación», y es cierto: `/v1/runs` guarda solo el inicio y el final de un recorrido, nunca posiciones. Pero la pantalla Preparar pide el permiso sin explicarlo. Añadir ahí una línea: la ubicación se usa en el teléfono para saber cuándo llegas, no se envía ni se guarda, y se para al terminar o pausar.
+
+**Ya resueltas:**
+
+- **El identificador del dispositivo no es autenticación.** Ya era así. El `X-Device-Id` solo sirve para los límites de uso. Para modificar una ruta de usuario hace falta su token de edición: 32 bytes aleatorios de los que el servidor guarda solo el SHA-256 y que compara en tiempo constante (`edit-token.ts`). Lo que sí permite cambiar de identificador es saltarse el límite de IA por dispositivo, aunque el tope diario global sigue aplicando. Las cuentas (§4) lo cierran.
+- **El GPS con la pantalla bloqueada.** Ya se avisa en Preparar («La ubicación solo funciona con la pantalla encendida»), y la app pide mantener la pantalla encendida (Wake Lock) durante el recorrido.
